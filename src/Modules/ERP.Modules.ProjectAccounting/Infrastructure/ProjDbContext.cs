@@ -23,6 +23,7 @@ public class ProjDbContext : DispatchableDbContext
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
     public DbSet<BillingSchedule> BillingSchedules => Set<BillingSchedule>();
     public DbSet<ProjectAllocationRule> ProjectAllocationRules => Set<ProjectAllocationRule>();
+    public DbSet<ProjectCostCategoryMapping> ProjectCostCategoryMappings => Set<ProjectCostCategoryMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -174,6 +175,17 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.Description).HasMaxLength(500);
 
             entity.HasIndex(e => e.ProjectId);
+        });
+
+        // ProjectCostCategoryMapping (job-costing overlay: cost category -> GL account)
+        modelBuilder.Entity<ProjectCostCategoryMapping>(entity =>
+        {
+            entity.ToTable("ProjectCostCategoryMappings");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Description).HasMaxLength(500);
+
+            entity.HasIndex(e => new { e.CompanyId, e.CostCategory }).IsUnique();
         });
     }
 }

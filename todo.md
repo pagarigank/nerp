@@ -494,7 +494,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Unit: reorder-point logic (test: on-hand 50, reorder point 100, on-PO 30 → suggest order = 100 + order qty - 50 - 30)
 - [ ] Integration: negative inventory blocked without override permission (test: issue 100 when on-hand = 90, expect validation error)
 - [ ] Integration: negative inventory override sends notification to warehouse manager
-- [ ] Integration: item issue to project correctly posts cost to project ledger (emit `ItemIssued` event)
+- [x] Integration: item issue to project correctly posts cost to project ledger (emit `ItemIssued` event) [GAP-2026-08-18] [built 2026-08-19 — InventoryPostedToProjectHandler consumes InventoryTransactionPostedEvent (Issue + ProjectId) → CostTransaction + raises ProjectCostPostedEvent → dual-posted to GL]
 - [ ] Integration: item receipt from PO updates item cost layer and on-hand quantity atomically
 - [ ] Integration: cycle count variance >$1,000 requires approval before posting GL adjustment
 - [ ] Integration: lot-controlled item cannot be received without lot number assignment
@@ -738,7 +738,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Subcontract master (subcontractor vendor, contract amount, retainage %, insurance/bond requirements)
 - [x] Change Order master (CO number, description, amount, status: draft/submitted/approved/rejected/executed) [built 2026-08-19 — ChangeOrder + verified]
 - [ ] Employee-Project assignment (employee, project, task, role, allocation %, effective dates)
-- [ ] Project cost category → GL account mapping (job-costing overlay: each project account category maps to GL expense/asset accounts per company — drives dual-posting) [GAP-2026-08-18]
+- [x] Project cost category → GL account mapping (job-costing overlay: each project account category maps to GL expense/asset accounts per company — drives dual-posting) [GAP-2026-08-18] [built 2026-08-19 — ProjectCostCategoryMapping entity + migration + CostTransactionDualPostingHandler resolves per-company mapping (fallback defaults: Labor→6000, Materials→5000, Subcontract→6100, Equipment→1500, Overhead→6200, Other→7000)]
 - [ ] Contract currency & exchange rate (project in foreign currency, billable in base or project currency — multi-currency per spec §5.6) [GAP-2026-08-18]
 - [ ] Project attachments/documents (contract PDFs, drawings, correspondence — links to object storage per architecture §3) [GAP-2026-08-18]
 
@@ -748,7 +748,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Change Order entry** (scope change, budget impact, cost/revenue, approval workflow) [built 2026-08-19 — verified]
 - [x] **Change Order approval routing** (amount threshold: <$10k PM, $10-50k Director, >$50k CFO) [built 2026-08-19]
 - [x] **Change Order execution** (approved CO updates budget, contract value, billing schedule) [built 2026-08-19]
-- [ ] **Cost transaction dual-posting service** (CRITICAL: simultaneous post to GL + project ledger)
+- [x] **Cost transaction dual-posting service** (CRITICAL: simultaneous post to GL + project ledger) [built 2026-08-19 — CostTransactionController raises ProjectCostPostedEvent; CostTransactionDualPostingHandler dual-posts to GL via CanonicalPostingEvent (Dr job-cost account / Cr 2300 Accrued Job Costs) with PROJECT/TASK segments; verified both Manual cost and Inventory-issue-to-project chains create balanced GL batches]
   - Consumes `VoucherPosted` event (AP): post to project as material/subcontract/other cost
   - Consumes `TimesheetApproved` event (Payroll): post to project as labor cost (with burden)
   - Consumes `ItemIssued` event (Inventory): post to project as material cost (with allocated overhead)

@@ -4,6 +4,7 @@
 
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Infrastructure;
+using ERP.Modules.ProjectAccounting.Infrastructure.Handlers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,11 @@ public static class ModuleExtensions
         });
 
         services.AddScoped<IProjUnitOfWork, ProjUnitOfWork>();
+
+        // Dual-posting consumers: project cost -> GL, and inventory issue against a
+        // project -> project ledger cost transaction. (Phase 10 critical gap.)
+        services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.ProjectAccounting.Domain.Events.ProjectCostPostedEvent>, CostTransactionDualPostingHandler>();
+        services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.Inventory.Domain.Events.InventoryTransactionPostedEvent>, InventoryPostedToProjectHandler>();
 
         return services;
     }
