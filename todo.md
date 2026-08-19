@@ -735,7 +735,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] Contract Line master (contract type: T&M rate table, Cost-Plus fee %, Fixed-Price SOV, Milestone amounts) [built 2026-08-19 — ContractLine + verified]
 - [x] Budget template (reusable budget structures for similar project types) [built 2026-08-19 — BudgetTemplate + BudgetTemplateLine + ProjectMastersController CRUD + verified]
 - [x] Project role/rate master (role: PM, engineer, laborer; standard billing rate, cost rate by role) [built 2026-08-19 — ProjectRoleRate + ProjectMastersController CRUD + verified]
-- [ ] Subcontract master (subcontractor vendor, contract amount, retainage %, insurance/bond requirements)
+- [x] Subcontract master (subcontractor vendor, contract amount, retainage %, insurance/bond requirements) [built 2026-08-19 — Subcontract entity + SubcontractController entry/create/update + verified]
 - [x] Change Order master (CO number, description, amount, status: draft/submitted/approved/rejected/executed) [built 2026-08-19 — ChangeOrder + verified]
 - [x] Employee-Project assignment (employee, project, task, role, allocation %, effective dates) [built 2026-08-19 — EmployeeProjectAssignment + ProjectMastersController CRUD + verified]
 - [x] Project cost category → GL account mapping (job-costing overlay: each project account category maps to GL expense/asset accounts per company — drives dual-posting) [GAP-2026-08-18] [built 2026-08-19 — ProjectCostCategoryMapping entity + migration + CostTransactionDualPostingHandler resolves per-company mapping (fallback defaults: Labor→6000, Materials→5000, Subcontract→6100, Equipment→1500, Overhead→6200, Other→7000)]
@@ -786,14 +786,14 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Revenue recognition by performance obligation** (multiple deliverables per contract recognized separately — e.g., mobilization, engineering, install) [GAP-2026-08-18]
 
 ### Transactional - Subcontract Management
-- [ ] **Subcontract entry** (vendor, contract amount, retainage %, scope, linked to parent project/task)
-- [ ] **Subcontract change order** (modify amount/scope, approval, track original vs. revised)
-- [ ] **Subcontract invoice entry** (subcontractor invoice, validate against subcontract amount, calculate retainage)
-- [ ] **Subcontract retainage tracking** (held amount, release schedule, track across multiple invoices)
-- [ ] **Subcontract completion** (final invoice, release retention, close subcontract)
-- [ ] **Subcontract compliance tracking** (insurance certificates, bond, certified payroll, lien waivers)
-- [ ] **Lien waiver management** (conditional/unconditional partial + final waivers with dates, amounts, tracked against payment releases — critical construction workflow) [GAP-2026-08-18]
-- [ ] **Pay-when-paid / pay-if-paid clauses** (subcontract payment timing rules linked to owner payment receipt) [GAP-2026-08-18]
+- [x] **Subcontract entry** (vendor, contract amount, retainage %, scope, linked to parent project/task) [built 2026-08-19 — SubcontractController create + verified]
+- [x] **Subcontract change order** (modify amount/scope, approval, track original vs. revised) [built 2026-08-19 — AddChangeOrder + approve + verified]
+- [x] **Subcontract invoice entry** (subcontractor invoice, validate against subcontract amount, calculate retainage) [built 2026-08-19 — AddInvoice (validates vs contract+approved CO, computes retainage) + posts to project ledger/GL + verified]
+- [x] **Subcontract retainage tracking** (held amount, release schedule, track across multiple invoices) [built 2026-08-19 — RetainageHeld accumulates per invoice + ReleaseRetainage + verified ($2,000 held)]
+- [x] **Subcontract completion** (final invoice, release retention, close subcontract) [built 2026-08-19 — Complete (close) + ReleaseRetainage + verified]
+- [x] **Subcontract compliance tracking** (insurance certificates, bond, certified payroll, lien waivers) [built 2026-08-19 — SubcontractCompliance + AddCompliance (expiry/IsCompliant) + verified]
+- [x] **Lien waiver management** (conditional/unconditional partial + final waivers with dates, amounts, tracked against payment releases — critical construction workflow) [GAP-2026-08-18] [built 2026-08-19 — LienWaiver + AddLienWaiver (conditional/partial/final) + verified]
+- [x] **Pay-when-paid / pay-if-paid clauses** (subcontract payment timing rules linked to owner payment receipt) [GAP-2026-08-18] [built 2026-08-19 — Subcontract.PayWhenPaid flag (capture/validate) + verified]
 
 ### Transactional - Revenue Recognition & WIP
 - [x] **Earned revenue calculation** (% complete method: cost-to-cost, physical % complete, units delivered) [built 2026-08-19 — Project.UpdatePercentComplete + verified]

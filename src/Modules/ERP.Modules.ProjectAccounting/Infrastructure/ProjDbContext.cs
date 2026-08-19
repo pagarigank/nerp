@@ -30,6 +30,11 @@ public class ProjDbContext : DispatchableDbContext
     public DbSet<CostAllocationBatch> CostAllocationBatches => Set<CostAllocationBatch>();
     public DbSet<ProjectCommittedCost> ProjectCommittedCosts => Set<ProjectCommittedCost>();
     public DbSet<CostAdjustment> CostAdjustments => Set<CostAdjustment>();
+    public DbSet<Subcontract> Subcontracts => Set<Subcontract>();
+    public DbSet<SubcontractChangeOrder> SubcontractChangeOrders => Set<SubcontractChangeOrder>();
+    public DbSet<SubcontractInvoice> SubcontractInvoices => Set<SubcontractInvoice>();
+    public DbSet<SubcontractCompliance> SubcontractCompliances => Set<SubcontractCompliance>();
+    public DbSet<LienWaiver> LienWaivers => Set<LienWaiver>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -287,6 +292,66 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.AdjustmentAmount).HasColumnType("decimal(18,2)");
             entity.HasIndex(e => e.SourceProjectId);
             entity.HasIndex(e => e.Status);
+        });
+
+        // Subcontract + children
+        modelBuilder.Entity<Subcontract>(entity =>
+        {
+            entity.ToTable("Subcontracts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SubcontractNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Scope).HasMaxLength(2000);
+            entity.Property(e => e.ContractAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RetainagePercentage).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.BilledToDate).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RetainageHeld).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.VendorId);
+            entity.HasMany(e => e.ChangeOrders).WithOne().HasForeignKey(c => c.SubcontractId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Invoices).WithOne().HasForeignKey(i => i.SubcontractId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Compliance).WithOne().HasForeignKey(c => c.SubcontractId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.LienWaivers).WithOne().HasForeignKey(w => w.SubcontractId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SubcontractChangeOrder>(entity =>
+        {
+            entity.ToTable("SubcontractChangeOrders");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.HasIndex(e => e.SubcontractId);
+        });
+
+        modelBuilder.Entity<SubcontractInvoice>(entity =>
+        {
+            entity.ToTable("SubcontractInvoices");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.InvoiceNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RetainageRate).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.RetainageAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasIndex(e => e.SubcontractId);
+        });
+
+        modelBuilder.Entity<SubcontractCompliance>(entity =>
+        {
+            entity.ToTable("SubcontractCompliances");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DocumentReference).HasMaxLength(200);
+            entity.HasIndex(e => e.SubcontractId);
+        });
+
+        modelBuilder.Entity<LienWaiver>(entity =>
+        {
+            entity.ToTable("LienWaivers");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.WaiverType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasIndex(e => e.SubcontractId);
         });
     }
 }
