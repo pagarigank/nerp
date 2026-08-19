@@ -1,0 +1,129 @@
+- generic [ref=f16e2]:
+  - generic [ref=f16e3]:
+    - complementary "Main navigation" [ref=f16e4]:
+      - link "ERP Home" [ref=f16e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f16e10]: ERP
+      - navigation "Main" [ref=f16e11]:
+        - link "Dashboard" [ref=f16e12] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f16e17] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f16e22] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f16e28] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f16e34] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [active] [ref=f16e40] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f16e46] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f16e52] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f16e58] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f16e64] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f16e70] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f16e76] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f16e82] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f16e88] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f16e94] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f16e100]:
+        - generic [ref=f16e101]:
+          - generic [ref=f16e102]: Company
+          - combobox "Company" [ref=f16e105]: US001 - US Operations
+        - generic [ref=f16e106]:
+          - generic [ref=f16e107]: Period
+          - combobox "Period" [ref=f16e110]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f16e111] [cursor=pointer]:
+          - generic [ref=f16e114]: Dark Mode
+        - button [ref=f16e116] [cursor=pointer]:
+          - generic [ref=f16e121]:
+            - paragraph [ref=f16e122]: John Doe
+            - paragraph [ref=f16e123]: US Operations
+        - button "Logout" [ref=f16e124] [cursor=pointer]
+    - main [ref=f16e129]:
+      - generic [ref=f16e131]:
+        - heading "Cash Management" [level=1] [ref=f16e583]
+        - generic [ref=f16e134]:
+          - searchbox "Global search" [ref=f16e139]
+          - button "Help" [ref=f16e140] [cursor=pointer]
+          - button "Notifications" [ref=f16e144] [cursor=pointer]:
+            - generic [ref=f16e147]: "3"
+      - generic [ref=f16e584]:
+        - generic [ref=f16e585]:
+          - heading "Cash Management" [level=1] [ref=f16e586]
+          - paragraph [ref=f16e587]: Track cash position, import bank statements, and reconcile accounts to the bank.
+        - navigation "Cash Management sections" [ref=f16e588]:
+          - link "Bank Accounts" [ref=f16e589] [cursor=pointer]:
+            - /url: /cash/bank-accounts
+          - link "Deposits" [ref=f16e590] [cursor=pointer]:
+            - /url: /cash/deposits
+          - link "Bank Statements" [ref=f16e591] [cursor=pointer]:
+            - /url: /cash/bank-statements
+          - link "Reconciliations" [ref=f16e592] [cursor=pointer]:
+            - /url: /cash/reconciliations
+          - link "Transfers" [ref=f16e593] [cursor=pointer]:
+            - /url: /cash/transfers
+          - link "Bank Fees" [ref=f16e594] [cursor=pointer]:
+            - /url: /cash/bank-fees
+          - link "NSF" [ref=f16e595] [cursor=pointer]:
+            - /url: /cash/nsf
+          - link "Reports" [ref=f16e596] [cursor=pointer]:
+            - /url: /cash/reports
+        - generic [ref=f16e598]:
+          - generic [ref=f16e599]:
+            - generic [ref=f16e600]:
+              - heading "Bank Accounts" [level=3] [ref=f16e601]
+              - paragraph [ref=f16e602]: 2 account(s) on file
+            - button "New Bank Account" [ref=f16e604] [cursor=pointer]
+          - generic [ref=f16e607]:
+            - textbox "Search bank accounts" [ref=f16e611]:
+              - /placeholder: Search by code, name, or account number...
+            - table [ref=f16e613]:
+              - rowgroup [ref=f16e614]:
+                - row [ref=f16e615]:
+                  - columnheader "Code" [ref=f16e616]
+                  - columnheader "Account" [ref=f16e617]
+                  - columnheader "Type" [ref=f16e618]
+                  - columnheader "Balance" [ref=f16e619]
+                  - columnheader "Currency" [ref=f16e620]
+                  - columnheader "Status" [ref=f16e621]
+                  - columnheader "Actions" [ref=f16e622]
+              - rowgroup [ref=f16e623]:
+                - row [ref=f16e624]:
+                  - cell "BNK-CHK-001" [ref=f16e625]
+                  - cell [ref=f16e626]:
+                    - paragraph [ref=f16e627]: Operating Checking
+                    - paragraph [ref=f16e628]: First National Bank · •••• 7890
+                  - cell "Checking" [ref=f16e629]
+                  - cell "$24,988.00" [ref=f16e630]
+                  - cell "USD" [ref=f16e631]
+                  - cell [ref=f16e632]
+                  - cell [ref=f16e635]:
+                    - generic [ref=f16e636]:
+                      - button "Deactivate Operating Checking" [ref=f16e637] [cursor=pointer]
+                      - button "Edit Operating Checking" [ref=f16e641] [cursor=pointer]
+                      - button "Delete Operating Checking" [ref=f16e645] [cursor=pointer]
+                - row [ref=f16e649]:
+                  - cell "BNK-CHK-002" [ref=f16e650]
+                  - cell [ref=f16e651]:
+                    - paragraph [ref=f16e652]: Payroll Checking
+                    - paragraph [ref=f16e653]: First National Bank · •••• 6655
+                  - cell "Checking" [ref=f16e654]
+                  - cell "$10,000.00" [ref=f16e655]
+                  - cell "USD" [ref=f16e656]
+                  - cell [ref=f16e657]
+                  - cell [ref=f16e660]:
+                    - generic [ref=f16e661]:
+                      - button "Deactivate Payroll Checking" [ref=f16e662] [cursor=pointer]
+                      - button "Edit Payroll Checking" [ref=f16e666] [cursor=pointer]
+                      - button "Delete Payroll Checking" [ref=f16e670] [cursor=pointer]
+  - button "Open Tanstack query devtools" [ref=f16e199] [cursor=pointer]

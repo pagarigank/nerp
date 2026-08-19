@@ -1,0 +1,141 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e159]:
+    - complementary "Main navigation" [ref=f3e160]:
+      - generic [ref=f3e161]:
+        - link "ERP Home" [ref=f3e162] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=f3e166]: ERP
+        - button "Collapse sidebar" [ref=f3e167] [cursor=pointer]
+      - navigation "Main" [ref=f3e170]:
+        - link "Dashboard" [ref=f3e171] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f3e176] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f3e181] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f3e187] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f3e193] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f3e199] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f3e205] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f3e211] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f3e217] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f3e223] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f3e229] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f3e235] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f3e241] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f3e247] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f3e253] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f3e259]:
+        - generic [ref=f3e260]:
+          - generic [ref=f3e261]: Company
+          - combobox "Company" [ref=f3e264]: US001 - US Operations
+        - generic [ref=f3e265]:
+          - generic [ref=f3e266]: Period
+          - combobox "Period" [ref=f3e269]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f3e270] [cursor=pointer]:
+          - generic [ref=f3e273]: Dark Mode
+        - button [ref=f3e275] [cursor=pointer]:
+          - generic [ref=f3e280]:
+            - paragraph [ref=f3e281]: John Doe
+            - paragraph [ref=f3e282]: US Operations
+        - button "Logout" [ref=f3e283] [cursor=pointer]
+    - main [ref=f3e288]:
+      - generic [ref=f3e290]:
+        - generic [ref=f3e291]:
+          - button "Open menu" [ref=f3e292] [cursor=pointer]
+          - heading "General Ledger" [level=1] [ref=f3e645]
+        - generic [ref=f3e295]:
+          - searchbox "Global search" [ref=f3e300]
+          - button "Help" [ref=f3e301] [cursor=pointer]
+          - button "Notifications" [ref=f3e305] [cursor=pointer]:
+            - generic [ref=f3e308]: "3"
+      - generic [ref=f3e646]:
+        - generic [ref=f3e647]:
+          - heading "General Ledger" [level=1] [ref=f3e648]
+          - paragraph [ref=f3e649]: Manage journal batches, recurring templates, allocation rules, budgets, and financial reports.
+        - navigation "General Ledger sections" [ref=f3e650]:
+          - link "Journal Batches" [ref=f3e651] [cursor=pointer]:
+            - /url: /gl/journal-batches
+          - link "Recurring Templates" [ref=f3e652] [cursor=pointer]:
+            - /url: /gl/recurring-templates
+          - link "Allocation Rules" [ref=f3e653] [cursor=pointer]:
+            - /url: /gl/allocation-rules
+          - link "Budgets" [ref=f3e654] [cursor=pointer]:
+            - /url: /gl/budgets
+          - link "Reports" [ref=f3e655] [cursor=pointer]:
+            - /url: /gl/reports
+        - generic [ref=f3e657]:
+          - generic [ref=f3e658]:
+            - generic [ref=f3e659]:
+              - heading "Journal Batches" [level=3] [ref=f3e660]
+              - paragraph [ref=f3e661]: 5 batch(es) — debits $0.00 / credits $0.00
+            - button "New Batch" [ref=f3e663] [cursor=pointer]
+          - table [ref=f3e668]:
+            - rowgroup [ref=f3e669]:
+              - row [ref=f3e670]:
+                - 'columnheader "Batch #" [ref=f3e671]'
+                - columnheader "Description" [ref=f3e672]
+                - columnheader "Posting Date" [ref=f3e673]
+                - columnheader "Status" [ref=f3e674]
+                - columnheader "Lines" [ref=f3e675]
+                - columnheader "Total" [ref=f3e676]
+                - columnheader "Balanced" [ref=f3e677]
+            - rowgroup [ref=f3e678]:
+              - row [ref=f3e679] [cursor=pointer]:
+                - cell "JB-0001" [ref=f3e680]
+                - cell "July manual entry - draft" [ref=f3e681]
+                - cell "Jul 25, 2026" [ref=f3e682]
+                - cell [ref=f3e683]
+                - cell "0" [ref=f3e686]
+                - cell "$0.00" [ref=f3e687]
+                - cell [ref=f3e688]
+                - cell [ref=f3e691]
+              - row [ref=f3e694] [cursor=pointer]:
+                - cell "JB-0002" [ref=f3e695]
+                - cell "July cash sale" [ref=f3e696]
+                - cell "Jul 1, 2026" [ref=f3e697]
+                - cell [ref=f3e698]
+                - cell "0" [ref=f3e701]
+                - cell "$0.00" [ref=f3e702]
+                - cell [ref=f3e703]
+                - cell [ref=f3e706]
+              - row [ref=f3e709] [cursor=pointer]:
+                - cell "JB-0003" [ref=f3e710]
+                - cell "June rent accrual" [ref=f3e711]
+                - cell "Jun 30, 2026" [ref=f3e712]
+                - cell [ref=f3e713]
+                - cell "0" [ref=f3e716]
+                - cell "$0.00" [ref=f3e717]
+                - cell [ref=f3e718]
+                - cell [ref=f3e721]
+              - row [ref=f3e724] [cursor=pointer]:
+                - cell "JB-0004" [ref=f3e725]
+                - cell "June utilities accrual" [ref=f3e726]
+                - cell "Jun 30, 2026" [ref=f3e727]
+                - cell [ref=f3e728]
+                - cell "0" [ref=f3e731]
+                - cell "$0.00" [ref=f3e732]
+                - cell [ref=f3e733]
+                - cell [ref=f3e736]
+              - row [ref=f3e739] [cursor=pointer]:
+                - cell "JB-0005" [ref=f3e740]
+                - cell "June consulting revenue" [ref=f3e741]
+                - cell "Jun 15, 2026" [ref=f3e742]
+                - cell [ref=f3e743]
+                - cell "0" [ref=f3e746]
+                - cell "$0.00" [ref=f3e747]
+                - cell [ref=f3e748]
+                - cell [ref=f3e751]
+  - button "Open Tanstack query devtools" [ref=f3e106] [cursor=pointer]

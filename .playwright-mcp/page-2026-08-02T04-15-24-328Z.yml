@@ -1,0 +1,261 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e159]:
+    - complementary "Main navigation" [ref=f3e160]:
+      - generic [ref=f3e161]:
+        - link "ERP Home" [ref=f3e162] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=f3e166]: ERP
+        - button "Collapse sidebar" [ref=f3e167] [cursor=pointer]
+      - navigation "Main" [ref=f3e170]:
+        - link "Dashboard" [ref=f3e171] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f3e176] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f3e181] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f3e187] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f3e193] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f3e199] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f3e205] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f3e211] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f3e217] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f3e223] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f3e229] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f3e235] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f3e241] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f3e247] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f3e253] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f3e259]:
+        - generic [ref=f3e260]:
+          - generic [ref=f3e261]: Company
+          - combobox "Company" [ref=f3e264]: US001 - US Operations
+        - generic [ref=f3e265]:
+          - generic [ref=f3e266]: Period
+          - combobox "Period" [ref=f3e269]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f3e270] [cursor=pointer]:
+          - generic [ref=f3e273]: Dark Mode
+        - button [ref=f3e275] [cursor=pointer]:
+          - generic [ref=f3e280]:
+            - paragraph [ref=f3e281]: John Doe
+            - paragraph [ref=f3e282]: US Operations
+        - button "Logout" [ref=f3e283] [cursor=pointer]
+    - main [ref=f3e288]:
+      - generic [ref=f3e290]:
+        - generic [ref=f3e291]:
+          - button "Open menu" [ref=f3e292] [cursor=pointer]
+          - heading "Dashboard" [level=1] [ref=f3e294]
+        - generic [ref=f3e295]:
+          - searchbox "Global search" [ref=f3e300]
+          - button "Help" [ref=f3e301] [cursor=pointer]
+          - button "Notifications" [ref=f3e305] [cursor=pointer]:
+            - generic [ref=f3e308]: "3"
+      - generic [ref=f3e311]:
+        - generic [ref=f3e312]:
+          - generic [ref=f3e313]:
+            - heading "Welcome back, John!" [level=1] [ref=f3e314]
+            - paragraph [ref=f3e315]: "US Operations • Period: Jul 2026"
+          - generic [ref=f3e316]:
+            - button "Run Reports" [ref=f3e317] [cursor=pointer]
+            - button "New Company" [ref=f3e321] [cursor=pointer]
+        - region "System alerts" [ref=f3e326]:
+          - alert [ref=f3e327]:
+            - generic [ref=f3e328]: 3 vouchers over 30 days past due
+            - link "View AP Aging" [ref=f3e333] [cursor=pointer]:
+              - /url: /ap/aging
+          - alert [ref=f3e334]:
+            - generic [ref=f3e335]: Period close checklist 80% complete
+            - link "View Checklist" [ref=f3e342] [cursor=pointer]:
+              - /url: /platform/period-close
+          - alert [ref=f3e343]:
+            - generic [ref=f3e344]: 5 inventory items below reorder point
+            - link "View Reorder Report" [ref=f3e349] [cursor=pointer]:
+              - /url: /inventory/reorder
+          - alert [ref=f3e350]:
+            - generic [ref=f3e351]: Monthly financial statements generated
+            - link "View Reports" [ref=f3e357] [cursor=pointer]:
+              - /url: /reporting/financial
+        - generic [ref=f3e358]:
+          - generic [ref=f3e362]:
+            - paragraph [ref=f3e363]: Active Companies
+            - generic [ref=f3e364]:
+              - generic [ref=f3e365]: "3.00"
+              - generic [ref=f3e366]: +1 this month
+          - generic [ref=f3e375]:
+            - paragraph [ref=f3e376]: Total Revenue (YTD)
+            - generic [ref=f3e377]:
+              - generic [ref=f3e378]: $2,847,500.00
+              - generic [ref=f3e379]: +12.5% vs last year
+          - generic [ref=f3e386]:
+            - paragraph [ref=f3e387]: Active Users
+            - generic [ref=f3e388]:
+              - generic [ref=f3e389]: "127.00"
+              - generic [ref=f3e390]: +5 new this week
+          - generic [ref=f3e400]:
+            - paragraph [ref=f3e401]: Inventory Value
+            - generic [ref=f3e402]:
+              - generic [ref=f3e403]: $892,300.00
+              - generic [ref=f3e404]: "-2.3% vs last month"
+          - generic [ref=f3e413]:
+            - paragraph [ref=f3e414]: Outstanding Payables
+            - generic [ref=f3e415]:
+              - generic [ref=f3e416]: $156,800.00
+              - generic [ref=f3e417]: +8 overdue
+          - generic [ref=f3e424]:
+            - paragraph [ref=f3e425]: Outstanding Receivables
+            - generic [ref=f3e426]:
+              - generic [ref=f3e427]: $342,100.00
+              - generic [ref=f3e428]: "-15 collected today"
+        - generic [ref=f3e433]:
+          - link [ref=f3e435] [cursor=pointer]:
+            - /url: /gl/batch/new
+          - link [ref=f3e442] [cursor=pointer]:
+            - /url: /ap/voucher/new
+          - link [ref=f3e449] [cursor=pointer]:
+            - /url: /ar/invoice/new
+          - link [ref=f3e456] [cursor=pointer]:
+            - /url: /purchasing/po/new
+          - link [ref=f3e463] [cursor=pointer]:
+            - /url: /payroll/timesheet/new
+          - link [ref=f3e470] [cursor=pointer]:
+            - /url: /projects/new
+        - generic [ref=f3e476]:
+          - generic [ref=f3e477]:
+            - generic [ref=f3e478]:
+              - generic [ref=f3e479]:
+                - heading "Recent Activity" [level=3] [ref=f3e480]
+                - paragraph [ref=f3e481]: Latest transactions and system events
+              - link "View All" [ref=f3e484] [cursor=pointer]:
+                - /url: /reporting/activity
+            - generic [ref=f3e486]:
+              - generic [ref=f3e487]:
+                - generic [ref=f3e492]:
+                  - paragraph [ref=f3e493]: Journal Batch GL-2026-0045 posted
+                  - paragraph [ref=f3e494]:
+                    - generic [ref=f3e495]: GL
+                    - generic [ref=f3e496]: 2 min ago
+                - generic [ref=f3e497]: $12,500.00
+              - generic [ref=f3e498]:
+                - generic [ref=f3e503]:
+                  - paragraph [ref=f3e504]: Voucher batch VCH-2026-0123 approved for payment
+                  - paragraph [ref=f3e505]:
+                    - generic [ref=f3e506]: AP
+                    - generic [ref=f3e507]: 15 min ago
+                - generic [ref=f3e508]: $45,600.00
+              - generic [ref=f3e509]:
+                - generic [ref=f3e515]:
+                  - paragraph [ref=f3e516]: Cash receipt CR-2026-0456 applied to invoices
+                  - paragraph [ref=f3e517]:
+                    - generic [ref=f3e518]: AR
+                    - generic [ref=f3e519]: 1 hour ago
+                - generic [ref=f3e520]: $28,900.00
+              - generic [ref=f3e521]:
+                - generic [ref=f3e528]:
+                  - paragraph [ref=f3e529]: Sales order SO-2026-0789 shipped complete
+                  - paragraph [ref=f3e530]:
+                    - generic [ref=f3e531]: OM
+                    - generic [ref=f3e532]: 3 hours ago
+                - generic [ref=f3e533]: $15,750.00
+              - generic [ref=f3e534]:
+                - generic [ref=f3e541]:
+                  - paragraph [ref=f3e542]: PO receipt RCV-2026-0234 received into warehouse
+                  - paragraph [ref=f3e543]:
+                    - generic [ref=f3e544]: INV
+                    - generic [ref=f3e545]: 5 hours ago
+                - generic [ref=f3e546]: $8,900.00
+              - generic [ref=f3e547]:
+                - generic [ref=f3e554]:
+                  - paragraph [ref=f3e555]: Project PRJ-2026-001 created with budget $500K
+                  - paragraph [ref=f3e556]:
+                    - generic [ref=f3e557]: PRJ
+                    - generic [ref=f3e558]: 1 day ago
+                - generic [ref=f3e559]: $500,000.00
+          - generic [ref=f3e560]:
+            - generic [ref=f3e561]:
+              - heading "Period Status" [level=3] [ref=f3e564]
+              - generic [ref=f3e565]:
+                - generic [ref=f3e566]:
+                  - generic [ref=f3e567]:
+                    - paragraph [ref=f3e568]: Jul 2026
+                    - paragraph [ref=f3e569]: Jul 1, 2026 - Jul 31, 2026
+                  - generic [ref=f3e570]: Active
+                - generic [ref=f3e572]:
+                  - generic [ref=f3e573]:
+                    - generic [ref=f3e574]: GL Batches
+                    - generic [ref=f3e575]:
+                      - generic [ref=f3e576]: 12 posted
+                      - generic [ref=f3e577]: 3 pending
+                  - generic [ref=f3e578]:
+                    - generic [ref=f3e579]: AP Vouchers
+                    - generic [ref=f3e580]:
+                      - generic [ref=f3e581]: 45 posted
+                      - generic [ref=f3e582]: 7 pending
+                  - generic [ref=f3e583]:
+                    - generic [ref=f3e584]: AR Invoices
+                    - generic [ref=f3e585]:
+                      - generic [ref=f3e586]: 38 posted
+                      - generic [ref=f3e587]: 2 pending
+                  - generic [ref=f3e588]:
+                    - generic [ref=f3e589]: Inventory Txns
+                    - generic [ref=f3e590]: 156 posted
+            - generic [ref=f3e592]:
+              - heading "Cash Position" [level=3] [ref=f3e595]
+              - generic [ref=f3e596]:
+                - generic [ref=f3e597]:
+                  - generic [ref=f3e598]: Operating Account
+                  - generic [ref=f3e599]: $485,600.00
+                - generic [ref=f3e600]:
+                  - generic [ref=f3e601]: Payroll Account
+                  - generic [ref=f3e602]: $125,000.00
+                - generic [ref=f3e603]:
+                  - generic [ref=f3e604]: Tax Account
+                  - generic [ref=f3e605]: $89,200.00
+                - generic [ref=f3e606]:
+                  - generic [ref=f3e607]: Foreign Currency (CAD)
+                  - generic [ref=f3e608]: CA$56,700.00
+                - generic [ref=f3e609]:
+                  - generic [ref=f3e610]: Total Cash
+                  - generic [ref=f3e611]: $756,500.00
+            - generic [ref=f3e612]:
+              - heading "Upcoming Deadlines" [level=3] [ref=f3e615]
+              - generic [ref=f3e616]:
+                - generic [ref=f3e617]:
+                  - generic [ref=f3e618]:
+                    - generic [ref=f3e619]: "31"
+                    - generic [ref=f3e620]: Jul
+                  - generic [ref=f3e621]:
+                    - paragraph [ref=f3e622]: Period Close - July 2026
+                    - generic [ref=f3e623]: critical
+                - generic [ref=f3e624]:
+                  - generic [ref=f3e625]:
+                    - generic [ref=f3e626]: "05"
+                    - generic [ref=f3e627]: Aug
+                  - generic [ref=f3e628]:
+                    - paragraph [ref=f3e629]: Payroll Run - Biweekly
+                    - generic [ref=f3e630]: normal
+                - generic [ref=f3e631]:
+                  - generic [ref=f3e632]:
+                    - generic [ref=f3e633]: "10"
+                    - generic [ref=f3e634]: Aug
+                  - generic [ref=f3e635]:
+                    - paragraph [ref=f3e636]: Sales Tax Return Due
+                    - generic [ref=f3e637]: warning
+                - generic [ref=f3e638]:
+                  - generic [ref=f3e639]:
+                    - generic [ref=f3e640]: "15"
+                    - generic [ref=f3e641]: Aug
+                  - generic [ref=f3e642]:
+                    - paragraph [ref=f3e643]: 1099 Filing Preparation
+                    - generic [ref=f3e644]: normal
+  - button "Open Tanstack query devtools" [ref=f3e106] [cursor=pointer]

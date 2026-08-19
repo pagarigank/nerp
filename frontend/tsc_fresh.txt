@@ -1,0 +1,78 @@
+src/api/ap.ts(137,73): error TS2304: Cannot find name 'VendorTrialBalanceReport'.
+src/api/client.ts(93,77): error TS2379: Argument of type '{ method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"; headers: Record<string, string>; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'body' are incompatible.
+    Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+      Type 'undefined' is not assignable to type 'BodyInit | null'.
+src/pages/ar/CashReceiptsPage.tsx(65,5): error TS2322: Type 'Resolver<{ customerId: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; currencyCode?: string | undefined; referenceNumber?: string | undefined; }, any, { ...; }>' is not assignable to type 'Resolver<{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }, any, { ...; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }>' is not assignable to type 'ResolverOptions<{ customerId: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; currencyCode?: string | undefined; referenceNumber?: string | undefined; }>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/pages/ar/CashReceiptsPage.tsx(247,61): error TS2345: Argument of type '(data: ReceiptForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }': customerId, currencyCode, receiptReference, totalAmount, and 2 more.
+src/pages/ar/CashReceiptsPage.tsx(253,38): error TS2345: Argument of type '(data: ReceiptForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ customerId: string; currencyCode: string; receiptReference: string; totalAmount: number; receiptDate: string; paymentMethod: string; referenceNumber?: string | undefined; }': customerId, currencyCode, receiptReference, totalAmount, and 2 more.
+src/pages/ar/CustomersPage.tsx(64,5): error TS2322: Type 'Resolver<{ name: string; customerId: string; creditLimit: number; legalName?: string | undefined; taxId?: string | undefined; creditHoldDays?: number | undefined; taxExempt?: boolean | undefined; taxExemptCertificate?: string | undefined; currencyCode?: string | undefined; }, any, { ...; }>' is not assignable to type 'Resolver<{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }, any, { ...; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }>' is not assignable to type 'ResolverOptions<{ name: string; customerId: string; creditLimit: number; legalName?: string | undefined; taxId?: string | undefined; creditHoldDays?: number | undefined; taxExempt?: boolean | undefined; taxExemptCertificate?: string | undefined; currencyCode?: string | undefined; }>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/ar/CustomersPage.tsx(306,37): error TS2345: Argument of type '(data: CustomerForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }': name, customerId, creditLimit, creditHoldDays, and 2 more.
+src/pages/ar/CustomersPage.tsx(314,38): error TS2345: Argument of type '(data: CustomerForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ name: string; customerId: string; creditLimit: number; creditHoldDays: number; taxExempt: boolean; currencyCode: string; legalName?: string | undefined; taxId?: string | undefined; taxExemptCertificate?: string | undefined; }': name, customerId, creditLimit, creditHoldDays, and 2 more.
+src/pages/gl/AllocationRulesPage.tsx(89,44): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/AllocationRulesPage.tsx(100,30): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/AllocationRulesPage.tsx(129,42): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/AllocationRulesPage.tsx(130,40): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/GlReportsPage.tsx(129,48): error TS2379: Argument of type '{ fiscalPeriodId: string; fromDate: string | undefined; toDate: string | undefined; budgetId: string; }' is not assignable to parameter of type '{ fiscalPeriodId: string; fromDate?: string; toDate?: string; budgetId: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fromDate' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/pages/gl/JournalBatchDetailPage.tsx(252,41): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/JournalBatchDetailPage.tsx(253,50): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/JournalBatchDetailPage.tsx(254,42): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/pages/gl/JournalBatchDetailPage.tsx(311,19): error TS2322: Type '"danger"' is not assignable to type '"primary" | "secondary" | "outline" | "ghost" | "destructive" | "success"'.
+src/pages/gl/JournalBatchDetailPage.tsx(489,15): error TS2322: Type '"danger"' is not assignable to type '"primary" | "secondary" | "outline" | "ghost" | "destructive" | "success"'.
+src/pages/platform/AccountsPage.tsx(60,5): error TS2322: Type 'Resolver<{ description: string; accountNumber: string; accountType: string; normalBalance: string; isActive?: boolean | undefined; }, any, { description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }>' is not assignable to type 'Resolver<{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }, any, { description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }>' is not assignable to type 'ResolverOptions<{ description: string; accountNumber: string; accountType: string; normalBalance: string; isActive?: boolean | undefined; }>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/pages/platform/AccountsPage.tsx(284,37): error TS2345: Argument of type '(data: AccountForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }'.
+      Type 'FieldValues' is missing the following properties from type '{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }': description, isActive, accountNumber, accountType, normalBalance
+src/pages/platform/AccountsPage.tsx(292,38): error TS2345: Argument of type '(data: AccountForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }'.
+      Type 'FieldValues' is missing the following properties from type '{ description: string; isActive: boolean; accountNumber: string; accountType: string; normalBalance: string; }': description, isActive, accountNumber, accountType, normalBalance
+src/pages/platform/AuditLogsPage.tsx(123,47): error TS2379: Argument of type '{ from: string | undefined; to: string | undefined; }' is not assignable to parameter of type '{ from?: string; to?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'from' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/pages/platform/AuditLogsPage.tsx(296,26): error TS2375: Type '{ oldValues: string | null | undefined; newValues: string | null | undefined; }' is not assignable to type '{ oldValues?: string | null; newValues?: string | null; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'oldValues' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/pages/platform/SegmentTypesPage.tsx(44,5): error TS2322: Type 'Resolver<{ code: string; name: string; displayOrder: number; isRequired?: boolean | undefined; }, any, { code: string; name: string; displayOrder: number; isRequired: boolean; }>' is not assignable to type 'Resolver<{ code: string; name: string; displayOrder: number; isRequired: boolean; }, any, { code: string; name: string; displayOrder: number; isRequired: boolean; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ code: string; name: string; displayOrder: number; isRequired: boolean; }>' is not assignable to type 'ResolverOptions<{ code: string; name: string; displayOrder: number; isRequired?: boolean | undefined; }>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/pages/platform/SegmentTypesPage.tsx(259,37): error TS2345: Argument of type '(data: SegmentTypeForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ code: string; name: string; displayOrder: number; isRequired: boolean; }'.
+      Type 'FieldValues' is missing the following properties from type '{ code: string; name: string; displayOrder: number; isRequired: boolean; }': code, name, displayOrder, isRequired
+src/pages/platform/SegmentTypesPage.tsx(267,38): error TS2345: Argument of type '(data: SegmentTypeForm) => void' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ code: string; name: string; displayOrder: number; isRequired: boolean; }'.
+      Type 'FieldValues' is missing the following properties from type '{ code: string; name: string; displayOrder: number; isRequired: boolean; }': code, name, displayOrder, isRequired

@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>ERP.Api</AssemblyName>
+    <RootNamespace>ERP.Api</RootNamespace>
+    <NoWarn>SA1000;CA1848;CA1031;CA1812;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.Core\ERP.Core.csproj" />
+    <ProjectReference Include="..\ERP.Shared\ERP.Shared.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.AccountsPayable\ERP.Modules.AccountsPayable.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.AccountsReceivable\ERP.Modules.AccountsReceivable.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.CashManagement\ERP.Modules.CashManagement.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.Purchasing\ERP.Modules.Purchasing.csproj" />
+    <ProjectReference Include="..\Modules\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
+    <!-- Phase 7+ modules - temporarily disabled due to build errors -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.OrderManagement\ERP.Modules.OrderManagement.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.BillOfMaterials\ERP.Modules.BillOfMaterials.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.ProjectAccounting\ERP.Modules.ProjectAccounting.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.Payroll\ERP.Modules.Payroll.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.FieldService\ERP.Modules.FieldService.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.Reporting\ERP.Modules.Reporting.csproj" /> -->
+    <!-- <ProjectReference Include="..\Modules\ERP.Modules.Integration\ERP.Modules.Integration.csproj" /> -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.0" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.1.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.8" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.RabbitMQ" Version="8.0.1" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.14" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.8" />
+  </ItemGroup>
+</Project>

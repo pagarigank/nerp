@@ -1,0 +1,29 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ERP.Core -> D:\nerp\src\ERP.Core\bin\Debug\net8.0\ERP.Core.dll
+  ERP.Shared -> D:\nerp\src\ERP.Shared\bin\Debug\net8.0\ERP.Shared.dll
+  ERP.Modules.Platform -> D:\nerp\src\Modules\ERP.Modules.Platform\bin\Debug\net8.0\ERP.Modules.Platform.dll
+  ERP.Modules.GeneralLedger -> D:\nerp\src\Modules\ERP.Modules.GeneralLedger\bin\Debug\net8.0\ERP.Modules.GeneralLedger.dll
+  ERP.Modules.Platform.Tests -> D:\nerp\tests\ERP.Modules.Platform.Tests\bin\Debug\net8.0\ERP.Modules.Platform.Tests.dll
+  ERP.Modules.ProjectAccounting -> D:\nerp\src\Modules\ERP.Modules.ProjectAccounting\bin\Debug\net8.0\ERP.Modules.ProjectAccounting.dll
+  ERP.Modules.Purchasing -> D:\nerp\src\Modules\ERP.Modules.Purchasing\bin\Debug\net8.0\ERP.Modules.Purchasing.dll
+  ERP.Modules.AccountsReceivable -> D:\nerp\src\Modules\ERP.Modules.AccountsReceivable\bin\Debug\net8.0\ERP.Modules.AccountsReceivable.dll
+  ERP.Modules.Payroll -> D:\nerp\src\Modules\ERP.Modules.Payroll\bin\Debug\net8.0\ERP.Modules.Payroll.dll
+  ERP.Modules.Inventory -> D:\nerp\src\Modules\ERP.Modules.Inventory\bin\Debug\net8.0\ERP.Modules.Inventory.dll
+  ERP.Modules.OrderManagement -> D:\nerp\src\Modules\ERP.Modules.OrderManagement\bin\Debug\net8.0\ERP.Modules.OrderManagement.dll
+  ERP.Modules.Reporting -> D:\nerp\src\Modules\ERP.Modules.Reporting\bin\Debug\net8.0\ERP.Modules.Reporting.dll
+  ERP.Modules.GeneralLedger.Tests -> D:\nerp\tests\ERP.Modules.GeneralLedger.Tests\bin\Debug\net8.0\ERP.Modules.GeneralLedger.Tests.dll
+  ERP.Modules.FieldService -> D:\nerp\src\Modules\ERP.Modules.FieldService\bin\Debug\net8.0\ERP.Modules.FieldService.dll
+  ERP.Modules.BillOfMaterials -> D:\nerp\src\Modules\ERP.Modules.BillOfMaterials\bin\Debug\net8.0\ERP.Modules.BillOfMaterials.dll
+  ERP.Modules.AccountsPayable -> D:\nerp\src\Modules\ERP.Modules.AccountsPayable\bin\Debug\net8.0\ERP.Modules.AccountsPayable.dll
+  ERP.Modules.CashManagement -> D:\nerp\src\Modules\ERP.Modules.CashManagement\bin\Debug\net8.0\ERP.Modules.CashManagement.dll
+  ERP.Modules.Integration -> D:\nerp\src\Modules\ERP.Modules.Integration\bin\Debug\net8.0\ERP.Modules.Integration.dll
+  ERP.Api -> D:\nerp\src\ERP.Api\bin\Debug\net8.0\ERP.Api.dll
+  ERP.Api.Tests -> D:\nerp\tests\ERP.Api.Tests\bin\Debug\net8.0\ERP.Api.Tests.dll
+  ERP.Modules.AccountsPayable.Tests -> D:\nerp\tests\ERP.Modules.AccountsPayable.Tests\bin\Debug\net8.0\ERP.Modules.AccountsPayable.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.46

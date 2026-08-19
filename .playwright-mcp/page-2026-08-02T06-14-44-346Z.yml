@@ -1,0 +1,143 @@
+- generic [ref=f18e2]:
+  - generic [ref=f18e3]:
+    - complementary "Main navigation" [ref=f18e4]:
+      - link "ERP Home" [ref=f18e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f18e10]: ERP
+      - navigation "Main" [ref=f18e11]:
+        - link "Dashboard" [ref=f18e12] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f18e17] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f18e22] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f18e28] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f18e34] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f18e40] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f18e46] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f18e52] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f18e58] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f18e64] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f18e70] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f18e76] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f18e82] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f18e88] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f18e94] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f18e100]:
+        - generic [ref=f18e101]:
+          - generic [ref=f18e102]: Company
+          - combobox "Company" [ref=f18e105]: US001 - US Operations
+        - generic [ref=f18e106]:
+          - generic [ref=f18e107]: Period
+          - combobox "Period" [ref=f18e110]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f18e111] [cursor=pointer]:
+          - generic [ref=f18e114]: Dark Mode
+        - button [ref=f18e116] [cursor=pointer]:
+          - generic [ref=f18e121]:
+            - paragraph [ref=f18e122]: John Doe
+            - paragraph [ref=f18e123]: US Operations
+        - button "Logout" [ref=f18e124] [cursor=pointer]
+    - main [ref=f18e129]:
+      - generic [ref=f18e131]:
+        - heading "Cash Management" [level=1] [ref=f18e133]
+        - generic [ref=f18e134]:
+          - searchbox "Global search" [ref=f18e139]
+          - button "Help" [ref=f18e140] [cursor=pointer]
+          - button "Notifications" [ref=f18e144] [cursor=pointer]:
+            - generic [ref=f18e147]: "3"
+      - generic [ref=f18e149]:
+        - generic [ref=f18e150]:
+          - heading "Cash Management" [level=1] [ref=f18e151]
+          - paragraph [ref=f18e152]: Track cash position, import bank statements, and reconcile accounts to the bank.
+        - navigation "Cash Management sections" [ref=f18e153]:
+          - link "Bank Accounts" [ref=f18e154] [cursor=pointer]:
+            - /url: /cash/bank-accounts
+          - link "Deposits" [ref=f18e155] [cursor=pointer]:
+            - /url: /cash/deposits
+          - link "Bank Statements" [ref=f18e156] [cursor=pointer]:
+            - /url: /cash/bank-statements
+          - link "Reconciliations" [ref=f18e157] [cursor=pointer]:
+            - /url: /cash/reconciliations
+          - link "Transfers" [ref=f18e158] [cursor=pointer]:
+            - /url: /cash/transfers
+          - link "Bank Fees" [ref=f18e159] [cursor=pointer]:
+            - /url: /cash/bank-fees
+          - link "NSF" [ref=f18e160] [cursor=pointer]:
+            - /url: /cash/nsf
+          - link "Reports" [ref=f18e161] [cursor=pointer]:
+            - /url: /cash/reports
+        - generic [ref=f18e163]:
+          - generic [ref=f18e164]:
+            - generic [ref=f18e165]:
+              - heading "Deposits" [level=3] [ref=f18e166]
+              - paragraph [ref=f18e167]: 0 deposit(s) on file
+            - generic [ref=f18e169]:
+              - button "From AR Receipt" [ref=f18e170] [cursor=pointer]
+              - button "New Deposit" [ref=f18e176] [cursor=pointer]
+          - generic [ref=f18e179]:
+            - textbox "Search deposits" [ref=f18e183]:
+              - /placeholder: Search by deposit number or reference...
+            - table [ref=f18e185]:
+              - rowgroup [ref=f18e186]:
+                - row [ref=f18e187]:
+                  - columnheader [ref=f18e188]
+                  - columnheader [ref=f18e190]
+                  - columnheader [ref=f18e192]
+                  - columnheader [ref=f18e194]
+                  - columnheader [ref=f18e196]
+                  - columnheader [ref=f18e198]
+                  - columnheader [ref=f18e200]
+              - rowgroup [ref=f18e202]:
+                - row [ref=f18e203]:
+                  - cell [ref=f18e204]
+                  - cell [ref=f18e206]
+                  - cell [ref=f18e208]
+                  - cell [ref=f18e210]
+                  - cell [ref=f18e212]
+                  - cell [ref=f18e214]
+                  - cell [ref=f18e216]
+                - row [ref=f18e218]:
+                  - cell [ref=f18e219]
+                  - cell [ref=f18e221]
+                  - cell [ref=f18e223]
+                  - cell [ref=f18e225]
+                  - cell [ref=f18e227]
+                  - cell [ref=f18e229]
+                  - cell [ref=f18e231]
+                - row [ref=f18e233]:
+                  - cell [ref=f18e234]
+                  - cell [ref=f18e236]
+                  - cell [ref=f18e238]
+                  - cell [ref=f18e240]
+                  - cell [ref=f18e242]
+                  - cell [ref=f18e244]
+                  - cell [ref=f18e246]
+                - row [ref=f18e248]:
+                  - cell [ref=f18e249]
+                  - cell [ref=f18e251]
+                  - cell [ref=f18e253]
+                  - cell [ref=f18e255]
+                  - cell [ref=f18e257]
+                  - cell [ref=f18e259]
+                  - cell [ref=f18e261]
+                - row [ref=f18e263]:
+                  - cell [ref=f18e264]
+                  - cell [ref=f18e266]
+                  - cell [ref=f18e268]
+                  - cell [ref=f18e270]
+                  - cell [ref=f18e272]
+                  - cell [ref=f18e274]
+                  - cell [ref=f18e276]
+  - button "Open Tanstack query devtools" [ref=f18e328] [cursor=pointer]

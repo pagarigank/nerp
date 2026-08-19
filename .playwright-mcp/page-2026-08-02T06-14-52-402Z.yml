@@ -1,0 +1,141 @@
+- generic [ref=f19e2]:
+  - generic [ref=f19e3]:
+    - complementary "Main navigation" [ref=f19e4]:
+      - link "ERP Home" [ref=f19e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f19e10]: ERP
+      - navigation "Main" [ref=f19e11]:
+        - link "Dashboard" [ref=f19e12] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f19e17] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f19e22] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f19e28] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f19e34] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f19e40] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f19e46] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f19e52] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f19e58] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f19e64] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f19e70] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f19e76] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f19e82] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f19e88] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f19e94] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f19e100]:
+        - generic [ref=f19e101]:
+          - generic [ref=f19e102]: Company
+          - combobox "Company" [ref=f19e105]: US001 - US Operations
+        - generic [ref=f19e106]:
+          - generic [ref=f19e107]: Period
+          - combobox "Period" [ref=f19e110]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f19e111] [cursor=pointer]:
+          - generic [ref=f19e114]: Dark Mode
+        - button [ref=f19e116] [cursor=pointer]:
+          - generic [ref=f19e121]:
+            - paragraph [ref=f19e122]: John Doe
+            - paragraph [ref=f19e123]: US Operations
+        - button "Logout" [ref=f19e124] [cursor=pointer]
+    - main [ref=f19e129]:
+      - generic [ref=f19e131]:
+        - heading "Cash Management" [level=1] [ref=f19e133]
+        - generic [ref=f19e134]:
+          - searchbox "Global search" [ref=f19e139]
+          - button "Help" [ref=f19e140] [cursor=pointer]
+          - button "Notifications" [ref=f19e144] [cursor=pointer]:
+            - generic [ref=f19e147]: "3"
+      - generic [ref=f19e149]:
+        - generic [ref=f19e150]:
+          - heading "Cash Management" [level=1] [ref=f19e151]
+          - paragraph [ref=f19e152]: Track cash position, import bank statements, and reconcile accounts to the bank.
+        - navigation "Cash Management sections" [ref=f19e153]:
+          - link "Bank Accounts" [ref=f19e154] [cursor=pointer]:
+            - /url: /cash/bank-accounts
+          - link "Deposits" [ref=f19e155] [cursor=pointer]:
+            - /url: /cash/deposits
+          - link "Bank Statements" [ref=f19e156] [cursor=pointer]:
+            - /url: /cash/bank-statements
+          - link "Reconciliations" [ref=f19e157] [cursor=pointer]:
+            - /url: /cash/reconciliations
+          - link "Transfers" [ref=f19e158] [cursor=pointer]:
+            - /url: /cash/transfers
+          - link "Bank Fees" [ref=f19e159] [cursor=pointer]:
+            - /url: /cash/bank-fees
+          - link "NSF" [ref=f19e160] [cursor=pointer]:
+            - /url: /cash/nsf
+          - link "Reports" [ref=f19e161] [cursor=pointer]:
+            - /url: /cash/reports
+        - generic [ref=f19e163]:
+          - generic [ref=f19e164]:
+            - generic [ref=f19e165]:
+              - heading "Bank Statements" [level=3] [ref=f19e166]
+              - paragraph [ref=f19e167]: 0 statement(s) on file
+            - button "Import Statement" [ref=f19e169] [cursor=pointer]
+          - generic [ref=f19e174]:
+            - textbox "Search bank statements" [ref=f19e178]:
+              - /placeholder: Search by statement number...
+            - table [ref=f19e180]:
+              - rowgroup [ref=f19e181]:
+                - row [ref=f19e182]:
+                  - columnheader [ref=f19e183]
+                  - columnheader [ref=f19e185]
+                  - columnheader [ref=f19e187]
+                  - columnheader [ref=f19e189]
+                  - columnheader [ref=f19e191]
+                  - columnheader [ref=f19e193]
+                  - columnheader [ref=f19e195]
+              - rowgroup [ref=f19e197]:
+                - row [ref=f19e198]:
+                  - cell [ref=f19e199]
+                  - cell [ref=f19e201]
+                  - cell [ref=f19e203]
+                  - cell [ref=f19e205]
+                  - cell [ref=f19e207]
+                  - cell [ref=f19e209]
+                  - cell [ref=f19e211]
+                - row [ref=f19e213]:
+                  - cell [ref=f19e214]
+                  - cell [ref=f19e216]
+                  - cell [ref=f19e218]
+                  - cell [ref=f19e220]
+                  - cell [ref=f19e222]
+                  - cell [ref=f19e224]
+                  - cell [ref=f19e226]
+                - row [ref=f19e228]:
+                  - cell [ref=f19e229]
+                  - cell [ref=f19e231]
+                  - cell [ref=f19e233]
+                  - cell [ref=f19e235]
+                  - cell [ref=f19e237]
+                  - cell [ref=f19e239]
+                  - cell [ref=f19e241]
+                - row [ref=f19e243]:
+                  - cell [ref=f19e244]
+                  - cell [ref=f19e246]
+                  - cell [ref=f19e248]
+                  - cell [ref=f19e250]
+                  - cell [ref=f19e252]
+                  - cell [ref=f19e254]
+                  - cell [ref=f19e256]
+                - row [ref=f19e258]:
+                  - cell [ref=f19e259]
+                  - cell [ref=f19e261]
+                  - cell [ref=f19e263]
+                  - cell [ref=f19e265]
+                  - cell [ref=f19e267]
+                  - cell [ref=f19e269]
+                  - cell [ref=f19e271]
+  - button "Open Tanstack query devtools" [ref=f19e323] [cursor=pointer]

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ERP.Modules.Integration</AssemblyName>
+    <RootNamespace>ERP.Modules.Integration</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
+    <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Purchasing\ERP.Modules.Purchasing.csproj" />
+    <ProjectReference Include="..\ERP.Modules.AccountsPayable\ERP.Modules.AccountsPayable.csproj" />
+    <ProjectReference Include="..\ERP.Modules.AccountsReceivable\ERP.Modules.AccountsReceivable.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.8" />
+    <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,60 @@
+- generic [ref=f16e2]:
+  - generic [ref=f16e3]:
+    - complementary "Main navigation" [ref=f16e4]:
+      - link "ERP Home" [ref=f16e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f16e10]: ERP
+      - navigation "Main" [ref=f16e11]:
+        - link "Dashboard" [ref=f16e12] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f16e17] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f16e22] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f16e28] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f16e34] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f16e40] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f16e46] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f16e52] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f16e58] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f16e64] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f16e70] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f16e76] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f16e82] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f16e88] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f16e94] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f16e100]:
+        - generic [ref=f16e101]:
+          - generic [ref=f16e102]: Company
+          - combobox "Company" [ref=f16e105]: US001 - US Operations
+        - generic [ref=f16e106]:
+          - generic [ref=f16e107]: Period
+          - combobox "Period" [ref=f16e110]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f16e111] [cursor=pointer]:
+          - generic [ref=f16e114]: Dark Mode
+        - button [ref=f16e116] [cursor=pointer]:
+          - generic [ref=f16e121]:
+            - paragraph [ref=f16e122]: John Doe
+            - paragraph [ref=f16e123]: US Operations
+        - button "Logout" [ref=f16e124] [cursor=pointer]
+    - main [ref=f16e129]:
+      - generic [ref=f16e131]:
+        - heading "Dashboard" [level=1] [ref=f16e133]
+        - generic [ref=f16e134]:
+          - searchbox "Global search" [ref=f16e139]
+          - button "Help" [ref=f16e140] [cursor=pointer]
+          - button "Notifications" [ref=f16e144] [cursor=pointer]:
+            - generic [ref=f16e147]: "3"
+  - button "Open Tanstack query devtools" [ref=f16e199] [cursor=pointer]

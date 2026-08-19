@@ -1,0 +1,145 @@
+- generic [ref=f15e1]:
+  - generic [ref=f15e2]:
+    - generic [ref=f15e3]:
+      - complementary "Main navigation" [ref=f15e4]:
+        - link "ERP Home" [ref=f15e6] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=f15e10]: ERP
+        - navigation "Main" [ref=f15e11]:
+          - link "Dashboard" [ref=f15e12] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Platform" [ref=f15e17] [cursor=pointer]:
+            - /url: /platform
+          - link "General Ledger" [ref=f15e22] [cursor=pointer]:
+            - /url: /gl
+          - link "Accounts Payable" [ref=f15e28] [cursor=pointer]:
+            - /url: /ap
+          - link "Accounts Receivable" [ref=f15e34] [cursor=pointer]:
+            - /url: /ar
+          - link "Cash Management" [ref=f15e40] [cursor=pointer]:
+            - /url: /cash
+          - link "Purchasing" [ref=f15e46] [cursor=pointer]:
+            - /url: /purchasing
+          - link "Inventory" [ref=f15e52] [cursor=pointer]:
+            - /url: /inventory
+          - link "Order Management" [ref=f15e58] [cursor=pointer]:
+            - /url: /orders
+          - link "Bill of Materials" [ref=f15e64] [cursor=pointer]:
+            - /url: /bom
+          - link "Project Accounting" [ref=f15e70] [cursor=pointer]:
+            - /url: /projects
+          - link "Payroll" [ref=f15e76] [cursor=pointer]:
+            - /url: /payroll
+          - link "Field Service" [ref=f15e82] [cursor=pointer]:
+            - /url: /field-service
+          - link "Reporting" [ref=f15e88] [cursor=pointer]:
+            - /url: /reporting
+          - link "Integration" [ref=f15e94] [cursor=pointer]:
+            - /url: /integration
+        - generic [ref=f15e100]:
+          - generic [ref=f15e101]:
+            - generic [ref=f15e102]: Company
+            - combobox "Company" [ref=f15e105]: US001 - US Operations
+          - generic [ref=f15e106]:
+            - generic [ref=f15e107]: Period
+            - combobox "Period" [ref=f15e110]: Jul 2026 (2026 P7)
+          - button "Switch to dark mode" [ref=f15e111] [cursor=pointer]:
+            - generic [ref=f15e114]: Dark Mode
+          - button [ref=f15e116] [cursor=pointer]:
+            - generic [ref=f15e121]:
+              - paragraph [ref=f15e122]: John Doe
+              - paragraph [ref=f15e123]: US Operations
+          - button "Logout" [ref=f15e124] [cursor=pointer]
+      - main [ref=f15e129]:
+        - generic [ref=f15e131]:
+          - heading "Cash Management" [level=1] [ref=f15e133]
+          - generic [ref=f15e134]:
+            - searchbox "Global search" [ref=f15e139]
+            - button "Help" [ref=f15e140] [cursor=pointer]
+            - button "Notifications" [ref=f15e144] [cursor=pointer]:
+              - generic [ref=f15e147]: "3"
+        - generic [ref=f15e149]:
+          - generic [ref=f15e150]:
+            - heading "Cash Management" [level=1] [ref=f15e151]
+            - paragraph [ref=f15e152]: Track cash position, import bank statements, and reconcile accounts to the bank.
+          - navigation "Cash Management sections" [ref=f15e153]:
+            - link "Bank Accounts" [ref=f15e154] [cursor=pointer]:
+              - /url: /cash/bank-accounts
+            - link "Deposits" [ref=f15e155] [cursor=pointer]:
+              - /url: /cash/deposits
+            - link "Bank Statements" [ref=f15e156] [cursor=pointer]:
+              - /url: /cash/bank-statements
+            - link "Reconciliations" [ref=f15e157] [cursor=pointer]:
+              - /url: /cash/reconciliations
+            - link "Transfers" [ref=f15e158] [cursor=pointer]:
+              - /url: /cash/transfers
+            - link "Bank Fees" [ref=f15e159] [cursor=pointer]:
+              - /url: /cash/bank-fees
+            - link "NSF" [ref=f15e160] [cursor=pointer]:
+              - /url: /cash/nsf
+            - link "Reports" [ref=f15e161] [cursor=pointer]:
+              - /url: /cash/reports
+          - generic [ref=f15e163]:
+            - generic [ref=f15e164]:
+              - generic [ref=f15e165]:
+                - heading "Bank Accounts" [level=3] [ref=f15e166]
+                - paragraph [ref=f15e167]: 0 account(s) on file
+              - button "New Bank Account" [active] [ref=f15e169] [cursor=pointer]
+            - generic [ref=f15e172]:
+              - textbox "Search bank accounts" [ref=f15e176]:
+                - /placeholder: Search by code, name, or account number...
+              - paragraph [ref=f15e382]: No bank accounts yet. Create your first account.
+    - button "Open Tanstack query devtools" [ref=f15e333] [cursor=pointer]
+  - dialog [ref=f15e383]:
+    - generic [ref=f15e385]:
+      - generic [ref=f15e386]:
+        - generic [ref=f15e387]:
+          - heading "New Bank Account" [level=2] [ref=f15e388]
+          - paragraph [ref=f15e389]: Add a new bank account to track cash
+        - button "Close modal" [ref=f15e390] [cursor=pointer]
+      - generic [ref=f15e396]:
+        - generic [ref=f15e397]:
+          - generic [ref=f15e398]: Account Code*
+          - textbox "Account Code" [ref=f15e400]:
+            - /placeholder: e.g. BNK-CHK-001
+        - generic [ref=f15e401]:
+          - generic [ref=f15e402]: Account Name*
+          - textbox "Account Name" [ref=f15e404]:
+            - /placeholder: e.g. Operating Checking
+        - generic [ref=f15e405]:
+          - generic [ref=f15e406]: Account Number*
+          - textbox "Account Number" [ref=f15e408]:
+            - /placeholder: Bank account number
+        - generic [ref=f15e409]:
+          - generic [ref=f15e410]: Routing Number
+          - textbox "Routing Number" [ref=f15e412]:
+            - /placeholder: ABA routing number
+        - generic [ref=f15e413]:
+          - generic [ref=f15e414]: Bank Name
+          - textbox "Bank Name" [ref=f15e416]:
+            - /placeholder: e.g. First National Bank
+        - generic [ref=f15e417]:
+          - generic [ref=f15e418]: Currency
+          - combobox "Currency" [ref=f15e419]:
+            - option "USD" [selected]
+            - option "CAD"
+            - option "EUR"
+            - option "GBP"
+            - option "MXN"
+        - generic [ref=f15e420]:
+          - generic [ref=f15e421]: Account Type
+          - combobox "Account Type" [ref=f15e422]:
+            - option "Checking" [selected]
+            - option "Savings"
+            - option "Money Market"
+            - option "Petty Cash"
+            - option "Investment"
+        - generic [ref=f15e423]:
+          - generic [ref=f15e424]: Opening Balance
+          - spinbutton "Opening Balance" [ref=f15e426]: "0"
+        - generic [ref=f15e428]:
+          - generic [ref=f15e429]: GL Account (Cash)
+          - combobox "GL Account (Cash)" [ref=f15e432]
+      - generic [ref=f15e433]:
+        - button "Cancel" [ref=f15e434] [cursor=pointer]
+        - button "Create Account" [ref=f15e435] [cursor=pointer]

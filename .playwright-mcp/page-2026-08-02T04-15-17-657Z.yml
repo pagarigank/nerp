@@ -1,0 +1,37 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - link "ERP Home" [ref=f3e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f3e12]: ERP
+      - paragraph [ref=f3e13]: Sign in to your account
+    - generic [ref=f3e14]:
+      - generic [ref=f3e15]:
+        - generic [ref=f3e17]:
+          - generic [ref=f3e18]: Email*
+          - textbox "Email" [ref=f3e20]:
+            - /placeholder: you@company.com
+            - text: demo@erp.com
+        - generic [ref=f3e22]:
+          - generic [ref=f3e23]: Password*
+          - generic [ref=f3e24]:
+            - textbox "Password" [ref=f3e25]:
+              - /placeholder: Enter your password
+              - text: password123
+            - generic:
+              - button "Show password"
+        - generic [ref=f3e26]:
+          - generic [ref=f3e27] [cursor=pointer]:
+            - checkbox "Remember me" [ref=f3e28]
+            - generic [ref=f3e29]: Remember me
+          - link "Forgot password?" [ref=f3e30] [cursor=pointer]:
+            - /url: /forgot-password
+        - button [disabled] [ref=f3e155]
+        - paragraph [ref=f3e37]:
+          - strong [ref=f3e38]: "Demo Credentials:"
+          - text: "Email: demo@erp.comPassword: password123"
+      - generic [ref=f3e39]: Or continue with
+      - generic [ref=f3e44]:
+        - button "Azure AD" [ref=f3e45] [cursor=pointer]
+        - button "Google" [ref=f3e49] [cursor=pointer]
+  - button "Open Tanstack query devtools" [ref=f3e106] [cursor=pointer]

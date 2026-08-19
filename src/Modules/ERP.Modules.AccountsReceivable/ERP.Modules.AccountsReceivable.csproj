@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ERP.Modules.AccountsReceivable</AssemblyName>
+    <RootNamespace>ERP.Modules.AccountsReceivable</RootNamespace>
+    <NoWarn>SA1000;CA1848;CA1031;CA1812;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;CA2007;CA1861;SA0001;S6960;S2325;CA1822;S3267</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
+    <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
+    <ProjectReference Include="..\ERP.Modules.OrderManagement\ERP.Modules.OrderManagement.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>ERP.Modules.AccountsReceivable.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Hangfire" Version="1.8.14" />
+  </ItemGroup>
+</Project>

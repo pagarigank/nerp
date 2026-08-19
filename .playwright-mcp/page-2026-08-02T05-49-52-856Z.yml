@@ -1,0 +1,135 @@
+- generic [ref=f11e2]:
+  - generic [ref=f11e3]:
+    - complementary "Main navigation" [ref=f11e4]:
+      - link "ERP Home" [ref=f11e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f11e10]: ERP
+      - navigation "Main" [ref=f11e11]:
+        - link "Dashboard" [ref=f11e12] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Platform" [ref=f11e17] [cursor=pointer]:
+          - /url: /platform
+        - link "General Ledger" [ref=f11e22] [cursor=pointer]:
+          - /url: /gl
+        - link "Accounts Payable" [ref=f11e28] [cursor=pointer]:
+          - /url: /ap
+        - link "Accounts Receivable" [ref=f11e34] [cursor=pointer]:
+          - /url: /ar
+        - link "Cash Management" [ref=f11e40] [cursor=pointer]:
+          - /url: /cash
+        - link "Purchasing" [ref=f11e46] [cursor=pointer]:
+          - /url: /purchasing
+        - link "Inventory" [ref=f11e52] [cursor=pointer]:
+          - /url: /inventory
+        - link "Order Management" [ref=f11e58] [cursor=pointer]:
+          - /url: /orders
+        - link "Bill of Materials" [ref=f11e64] [cursor=pointer]:
+          - /url: /bom
+        - link "Project Accounting" [ref=f11e70] [cursor=pointer]:
+          - /url: /projects
+        - link "Payroll" [ref=f11e76] [cursor=pointer]:
+          - /url: /payroll
+        - link "Field Service" [ref=f11e82] [cursor=pointer]:
+          - /url: /field-service
+        - link "Reporting" [ref=f11e88] [cursor=pointer]:
+          - /url: /reporting
+        - link "Integration" [ref=f11e94] [cursor=pointer]:
+          - /url: /integration
+      - generic [ref=f11e100]:
+        - generic [ref=f11e101]:
+          - generic [ref=f11e102]: Company
+          - combobox "Company" [ref=f11e105]: US001 - US Operations
+        - generic [ref=f11e106]:
+          - generic [ref=f11e107]: Period
+          - combobox "Period" [ref=f11e110]: Jul 2026 (2026 P7)
+        - button "Switch to dark mode" [ref=f11e111] [cursor=pointer]:
+          - generic [ref=f11e114]: Dark Mode
+        - button [ref=f11e116] [cursor=pointer]:
+          - generic [ref=f11e121]:
+            - paragraph [ref=f11e122]: John Doe
+            - paragraph [ref=f11e123]: US Operations
+        - button "Logout" [ref=f11e124] [cursor=pointer]
+    - main [ref=f11e129]:
+      - generic [ref=f11e131]:
+        - heading "Accounts Receivable" [level=1] [ref=f11e133]
+        - generic [ref=f11e134]:
+          - searchbox "Global search" [ref=f11e139]
+          - button "Help" [ref=f11e140] [cursor=pointer]
+          - button "Notifications" [ref=f11e144] [cursor=pointer]:
+            - generic [ref=f11e147]: "3"
+      - generic [ref=f11e149]:
+        - generic [ref=f11e150]:
+          - heading "Accounts Receivable" [level=1] [ref=f11e151]
+          - paragraph [ref=f11e152]: Manage customers, invoice batches, cash receipts, and customer statements.
+        - navigation "Accounts Receivable sections" [ref=f11e153]:
+          - link "Customers" [ref=f11e154] [cursor=pointer]:
+            - /url: /ar/customers
+          - link "Invoice Batches" [ref=f11e155] [cursor=pointer]:
+            - /url: /ar/invoice-batches
+          - link "Cash Receipts" [ref=f11e156] [cursor=pointer]:
+            - /url: /ar/cash-receipts
+          - link "Statements" [ref=f11e157] [cursor=pointer]:
+            - /url: /ar/statements
+          - link "Finance Charges" [ref=f11e158] [cursor=pointer]:
+            - /url: /ar/finance-charges
+        - generic [ref=f11e160]:
+          - generic [ref=f11e161]:
+            - generic [ref=f11e162]:
+              - heading "Customers" [level=3] [ref=f11e163]
+              - paragraph [ref=f11e164]: 0 customer(s) on file
+            - button "New Customer" [ref=f11e166] [cursor=pointer]
+          - generic [ref=f11e169]:
+            - textbox "Search customers" [ref=f11e173]:
+              - /placeholder: Search by name or code...
+            - table [ref=f11e175]:
+              - rowgroup [ref=f11e176]:
+                - row [ref=f11e177]:
+                  - columnheader [ref=f11e178]
+                  - columnheader [ref=f11e180]
+                  - columnheader [ref=f11e182]
+                  - columnheader [ref=f11e184]
+                  - columnheader [ref=f11e186]
+                  - columnheader [ref=f11e188]
+                  - columnheader [ref=f11e190]
+              - rowgroup [ref=f11e192]:
+                - row [ref=f11e193]:
+                  - cell [ref=f11e194]
+                  - cell [ref=f11e196]
+                  - cell [ref=f11e198]
+                  - cell [ref=f11e200]
+                  - cell [ref=f11e202]
+                  - cell [ref=f11e204]
+                  - cell [ref=f11e206]
+                - row [ref=f11e208]:
+                  - cell [ref=f11e209]
+                  - cell [ref=f11e211]
+                  - cell [ref=f11e213]
+                  - cell [ref=f11e215]
+                  - cell [ref=f11e217]
+                  - cell [ref=f11e219]
+                  - cell [ref=f11e221]
+                - row [ref=f11e223]:
+                  - cell [ref=f11e224]
+                  - cell [ref=f11e226]
+                  - cell [ref=f11e228]
+                  - cell [ref=f11e230]
+                  - cell [ref=f11e232]
+                  - cell [ref=f11e234]
+                  - cell [ref=f11e236]
+                - row [ref=f11e238]:
+                  - cell [ref=f11e239]
+                  - cell [ref=f11e241]
+                  - cell [ref=f11e243]
+                  - cell [ref=f11e245]
+                  - cell [ref=f11e247]
+                  - cell [ref=f11e249]
+                  - cell [ref=f11e251]
+                - row [ref=f11e253]:
+                  - cell [ref=f11e254]
+                  - cell [ref=f11e256]
+                  - cell [ref=f11e258]
+                  - cell [ref=f11e260]
+                  - cell [ref=f11e262]
+                  - cell [ref=f11e264]
+                  - cell [ref=f11e266]
+  - button "Open Tanstack query devtools" [ref=f11e318] [cursor=pointer]

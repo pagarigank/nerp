@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ERP.Modules.Purchasing</AssemblyName>
+    <RootNamespace>ERP.Modules.Purchasing</RootNamespace>
+    <NoWarn>SA1000;CA1848;CA1031;CA1812;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001;CA1002;S4487;SA1009;S6603;SA1519;CA2227;S101</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
+    <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
+    <ProjectReference Include="..\ERP.Modules.OrderManagement\ERP.Modules.OrderManagement.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+  </ItemGroup>
+</Project>
