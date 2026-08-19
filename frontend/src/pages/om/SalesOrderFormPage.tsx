@@ -9,11 +9,14 @@ import { Button } from '@components/ui/Button'
 import { Input, Select, Textarea } from '@components/ui/Input'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { getErrorMessage } from '@api/client'
-import { createSalesOrder, DEMO_COMPANY_ID, getShippingMethods, getSalesReps } from '@api/orderManagement'
+import { createSalesOrder, DEMO_COMPANY_ID, getShippingMethods, getSalesOrderTypes, evaluatePrice, getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
-import { getItems } from '@api/inventory'
+import { getItems, getItemUomConversions } from '@api/inventory'
+import { getPaymentTerms } from '@api/ap'
 import type { ArCustomer } from '@/types/ar'
-import type { ItemSummary } from '@/types/inventory'
+import type { ItemSummary, UomConversionDto } from '@/types/inventory'
+import type { PaymentTerm } from '@/types/ap'
+import type { PricingResult, SalesRepSummary, TaxCodeSummary, TaxExemptionCertificateSummary } from '@/types/orderManagement'
 
 const lineSchema = z.object({
   lineNumber: z.number(),
@@ -27,6 +30,7 @@ const lineSchema = z.object({
   warehouseId: z.string().optional(),
   projectId: z.string().optional(),
   accountId: z.string().optional(),
+  itemCategoryId: z.string().optional(),
 })
 
 const orderSchema = z.object({
@@ -39,6 +43,9 @@ const orderSchema = z.object({
   salesRepId: z.string().optional(),
   shippingMethod: z.string().optional(),
   customerPoNumber: z.string().optional(),
+  salesOrderTypeId: z.string().optional(),
+  taxCodeId: z.string().optional(),
+  taxExemptionCertificateId: z.string().optional(),
   lines: z.array(lineSchema).min(1, 'At least one line is required'),
 })
 
@@ -58,6 +65,7 @@ export function SalesOrderFormPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
 
   const {
     register,
@@ -78,6 +86,9 @@ export function SalesOrderFormPage() {
       salesRepId: '',
       shippingMethod: '',
       customerPoNumber: '',
+      salesOrderTypeId: '',
+      taxCodeId: '',
+      taxExemptionCertificateId: '',
       lines: [
         {
           lineNumber: 1,
@@ -112,9 +123,29 @@ export function SalesOrderFormPage() {
     queryFn: () => getShippingMethods(),
   })
 
+  const { data: salesOrderTypes = [] } = useQuery({
+    queryKey: ['om', 'sales-order-types'],
+    queryFn: () => getSalesOrderTypes(),
+  })
+
+  const { data: paymentTerms = [] } = useQuery({
+    queryKey: ['ap', 'paymentTerms'],
+    queryFn: () => getPaymentTerms(true),
+  })
+
   const { data: salesReps = [] } = useQuery({
-    queryKey: ['om', 'sales-reps'],
+    queryKey: ['om', 'salesReps'],
     queryFn: () => getSalesReps(),
+  })
+
+  const { data: taxCodes = [] } = useQuery({
+    queryKey: ['om', 'taxCodes'],
+    queryFn: () => getTaxCodes(),
+  })
+
+  const { data: taxExemptions = [] } = useQuery({
+    queryKey: ['om', 'taxExemptions'],
+    queryFn: () => getTaxExemptions(),
   })
 
   const filteredCustomers = useMemo(() => {
@@ -157,9 +188,31 @@ export function SalesOrderFormPage() {
     [shippingMethods]
   )
 
+  const salesOrderTypeOptions = useMemo(
+    () => salesOrderTypes.map((t) => ({ value: t.id, label: `${t.code} - ${t.description}` })),
+    [salesOrderTypes]
+  )
+
+  const paymentTermOptions = useMemo(
+    () => paymentTerms.map((t: PaymentTerm) => ({ value: t.id, label: `${t.name} (${t.dueDays}d, ${t.discountPercent}% disc/${t.discountDays}d)` })),
+    [paymentTerms]
+  )
+
   const salesRepOptions = useMemo(
-    () => salesReps.map((r) => ({ value: r.id, label: `${r.code} - ${r.name}` })),
+    () => salesReps.map((r: SalesRepSummary) => ({ value: r.id, label: `${r.code} - ${r.name}` })),
     [salesReps]
+  )
+
+  const taxCodeOptions = useMemo(
+    () => taxCodes.map((t: TaxCodeSummary) => ({ value: t.id, label: `${t.code} - ${t.description} (${t.rate}%)` })),
+    [taxCodes]
+  )
+
+  const taxExemptionOptions = useMemo(
+    () => taxExemptions
+      .filter((e: TaxExemptionCertificateSummary) => e.isActive)
+      .map((e: TaxExemptionCertificateSummary) => ({ value: e.id, label: `${e.certificateNumber} - ${e.jurisdiction}` })),
+    [taxExemptions]
   )
 
   function selectCustomer(customer: ArCustomer) {
@@ -168,11 +221,57 @@ export function SalesOrderFormPage() {
     setShowCustomerDropdown(false)
   }
 
-  function selectItem(index: number, itemId: string) {
-    const item = items.find((i: ItemSummary) => i.id === itemId)
-    if (item) {
-      setValue(`lines.${index}.itemId`, itemId, { shouldValidate: true })
-      setValue(`lines.${index}.description`, item.description)
+  function selectItem(index: number, selectedItemId: string) {
+    const item = items.find((i: ItemSummary) => i.id === selectedItemId)
+    if (!item) return
+    setValue(`lines.${index}.itemId`, selectedItemId, { shouldValidate: true })
+    setValue(`lines.${index}.description`, item.description)
+    setValue(`lines.${index}.itemCategoryId`, item.itemCategoryId || null, { shouldValidate: false })
+    // Load UOM conversions and build options for this line
+    const baseUom = item.baseUnitOfMeasure || 'EA'
+    setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+    void getItemUomConversions(selectedItemId).then((convs: UomConversionDto[]) => {
+      const opts = [{ value: baseUom, label: baseUom + ' (base)' }]
+      for (const c of convs) {
+        if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` })
+      }
+      setLineUomOptions(prev => ({ ...prev, [index]: opts }))
+    }).catch(() => {
+      setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+    })
+    // Auto-apply pricing rules for the selected item / customer / quantity.
+    void autoApplyPricing(index, {
+      itemId: item.id,
+      itemCategoryId: item.itemCategoryId || null,
+      quantity: Number(watch(`lines.${index}.quantity`)) || 1,
+      baseUnitPrice: item.standardCost ?? 0,
+    })
+  }
+
+  async function autoApplyPricing(
+    index: number,
+    ctx: { itemId: string; itemCategoryId: string; quantity: number; baseUnitPrice: number }
+  ) {
+    const customerId = watch('customerId')
+    const orderDate = watch('orderDate')
+    if (!customerId) return // customer must be chosen first
+    try {
+      const res = await evaluatePrice({
+        companyId: DEMO_COMPANY_ID,
+        baseUnitPrice: ctx.baseUnitPrice,
+        customerId,
+        itemId: ctx.itemId,
+        itemCategoryId: ctx.itemCategoryId || null,
+        quantity: ctx.quantity,
+        asOf: orderDate || new Date().toISOString(),
+      })
+      const result: PricingResult = res
+      if (result) {
+        setValue(`lines.${index}.unitPrice`, result.unitPrice, { shouldValidate: false })
+        setValue(`lines.${index}.discountPercent`, result.discountPercent, { shouldValidate: false })
+      }
+    } catch {
+      // leave manual entry as-is if pricing service unavailable
     }
   }
 
@@ -187,6 +286,7 @@ export function SalesOrderFormPage() {
       unitOfMeasure: 'EA',
       discountPercent: 0,
       taxPercent: 0,
+      itemCategoryId: null,
     })
   }
 
@@ -204,12 +304,16 @@ export function SalesOrderFormPage() {
         salesRepId: data.salesRepId || null,
         shippingMethod: data.shippingMethod || null,
         customerPoNumber: data.customerPoNumber || null,
+        salesOrderTypeId: data.salesOrderTypeId || null,
+        taxCodeId: data.taxCodeId || null,
+        taxExemptionCertificateId: data.taxExemptionCertificateId || null,
         lines: data.lines.map((l, i) => ({
           ...l,
           lineNumber: i + 1,
           warehouseId: l.warehouseId || null,
           projectId: l.projectId || null,
           accountId: l.accountId || null,
+          itemCategoryId: l.itemCategoryId || null,
         })),
       }
       const id = await createSalesOrder(payload)
@@ -314,21 +418,42 @@ export function SalesOrderFormPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Select
+                {...register('shippingMethod')}
+                label="Shipping Method"
+                placeholder="Select shipping method..."
+                options={shippingOptions}
+              />
+              <Select
+                {...register('salesOrderTypeId')}
+                label="Order Type"
+                placeholder="Select order type..."
+                options={salesOrderTypeOptions}
+              />
+              <Select
+                {...register('paymentTermId')}
+                label="Payment Terms"
+                placeholder="Select payment terms..."
+                options={paymentTermOptions}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Select
                 {...register('salesRepId')}
                 label="Sales Rep"
                 placeholder="Select sales rep..."
                 options={salesRepOptions}
               />
               <Select
-                {...register('shippingMethod')}
-                label="Shipping Method"
-                placeholder="Select shipping method..."
-                options={shippingOptions}
+                {...register('taxCodeId')}
+                label="Tax Code"
+                placeholder="Select tax code..."
+                options={taxCodeOptions}
               />
-              <Input
-                {...register('paymentTermId')}
-                label="Payment Terms"
-                placeholder="Payment terms ID"
+              <Select
+                {...register('taxExemptionCertificateId')}
+                label="Tax Exemption"
+                placeholder="Select exemption certificate..."
+                options={taxExemptionOptions}
               />
             </div>
           </CardContent>
@@ -398,6 +523,18 @@ export function SalesOrderFormPage() {
                             type="number"
                             step="0.01"
                             {...register(`lines.${index}.quantity`)}
+                            onChange={(e) => {
+                              register(`lines.${index}.quantity`).onChange(e)
+                              const item = items.find((i: ItemSummary) => i.id === line?.itemId)
+                              if (item) {
+                                void autoApplyPricing(index, {
+                                  itemId: item.id,
+                                  itemCategoryId: item.itemCategoryId || null,
+                                  quantity: Number(e.target.value) || 1,
+                                  baseUnitPrice: item.standardCost ?? 0,
+                                })
+                              }
+                            }}
                             className="w-20 text-sm text-right rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 tabular-nums"
                           />
                         </td>
@@ -410,10 +547,14 @@ export function SalesOrderFormPage() {
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <input
+                          <select
                             {...register(`lines.${index}.unitOfMeasure`)}
-                            className="w-16 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
-                          />
+                            className="w-20 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1.5"
+                          >
+                            {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-3 py-2">
                           <input

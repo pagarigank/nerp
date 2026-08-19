@@ -15,7 +15,7 @@ user directly the sql server as the backend and dont start with sqlite
 2. **Purchasing (Ph.6)** - 90% complete (verified 2026-08-02) - remaining: PO printing/email, PO cancellation, blanket-PO release, receipt-without-PO, over-receipt exception approval, reorder automation (needs Phase 7), advanced reports (PO Status, Price Variance, Over-receipt Exception, Purchase Analysis, Vendor Performance)
 3. **Inventory (Ph.7)** - 75% complete (verified 2026-08-04) - **All 6 Background Jobs complete** ✅; remaining: cycle/physical counts + variance posting, landed cost, revaluation, FIFO/LIFO cost layers + costing engine, reorder suggestions, item reservation, lot/serial enforcement, quarantine, all 14 reports
 4. **Order Management (Ph.8)** - 0% complete - blocking order-to-cash flow
-5. **Bill of Materials (Ph.9)** - 0% complete - blocking manufacturing operations
+5. **Bill of Materials (Ph.9)** - 50% complete (core CRUD + build/disassemble + reports + frontend done)
 6. **Project Accounting (Ph.10)** - 0% complete - **HIGHEST PRIORITY** - core differentiator
 7. **Payroll (Ph.11)** - 0% complete - blocking labor cost distribution
 8. **Field Service (Ph.12)** - 0% complete - blocking service operations
@@ -544,6 +544,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 ### CRUD
 - [x] Pricing/Discount Rule master (by customer, by item, by quantity break, by date range, priority sequence) — `PricingRule` entity + `PricingRulesController` (CRUD + `/evaluate` pricing engine) + `PricingEngine` (2026-08-17)
 - [x] Customer pricing exceptions (customer-specific item pricing, overrides standard pricing) — covered by `PricingRule` scope `CustomerSpecific` (2026-08-17)
+- [x] **Automatic pricing-rule application on sales order entry** (pricing rules evaluated automatically per line by customer / item / item-category / quantity-break / date-range in priority order; winning discount % or unit-price override is stamped onto the line at creation, transparent via `SalesOrderLine.AppliedPricingRuleId`; category scope added to `PricingRule.ItemCategoryId`; `/pricing-rules/evaluate` accepts `itemCategoryId`) [built 2026-08-19 — PricingRule.ItemCategoryId + PricingEngine category match + SalesOrderController.CreateAsync auto-apply + SalesOrderLine.AppliedPricingRuleId + frontend SalesOrderFormPage auto-fills price/discount on item/customer/qty change + migration PricingRuleCategoryAndLinePricing; verified live (customer 15% auto-applied, unit price 100 / discount 15 / net 85)]
 - [x] Sales Territory master (territory code, sales rep assignment, commission %) — `SalesTerritory` + `SalesTerritoriesController` (2026-08-17)
 - [x] Sales Rep master (rep code, name, commission structure, territory assignment) — `SalesRep` + `SalesRepsController` (2026-08-17)
 - [x] Shipping Method master (carrier, service level, cost, tracking URL template) — `ShippingMethod` + `ShippingMethodsController` (2026-08-17)
@@ -646,28 +647,28 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 
 ---
 
-## Phase 9 — Bill of Materials ⚠️ GAP (plan expanded 2026-08-18 with web-researched BOM/ECN items)
-**Spec Compliance:** 0/15 items complete | Blocks Manufacturing Operations | 20+ `[GAP-2026-08-18]` additions inserted below
+## Phase 9 — Bill of Materials ✅ CORE COMPLETE (2026-08-19)
+**Spec Compliance:** 15/30+ items complete | Core BOM CRUD + Build/Disassemble + Reports + Frontend
 
 ### CRUD
-- [ ] BOM Header CRUD (parent item, effective dates, revision, status: active/pending/obsolete)
-- [ ] BOM Component Line CRUD (component item, qty per parent, scrap factor, operation sequence)
-- [ ] BOM revision history (track changes, effectivity dates, reason for change)
+- [x] BOM Header CRUD (parent item, effective dates, revision, status: active/pending/obsolete) [built 2026-08-19]
+- [x] BOM Component Line CRUD (component item, qty per parent, scrap factor, operation sequence) [built 2026-08-19]
+- [x] BOM revision history (track changes, effectivity dates, reason for change) [built 2026-08-19]
 - [ ] Operation/Routing master (operation code, description, work center, standard time)
-- [ ] Work Center master (code, name, department, capacity, efficiency, cost rate per hour — needed for labor/overhead in cost roll-up) [GAP-2026-08-18]
-- [ ] Phantom/transient BOM type (component consumed directly into parent, not stocked or planned separately) [GAP-2026-08-18]
+- [x] Work Center master (code, name, department, capacity, efficiency, cost rate per hour — needed for labor/overhead in cost roll-up) [GAP-2026-08-18] [built 2026-08-19]
+- [x] Phantom/transient BOM type (component consumed directly into parent, not stocked or planned separately) [GAP-2026-08-18] [built 2026-08-19]
 - [ ] Alternate BOM / effectivity by date-range (A vs B design, customer-specific BOM) [GAP-2026-08-18]
 
 ### Transactional
-- [ ] **Build/assemble transaction** (qty to build, component consumption with lot/serial tracking, yield %)
-- [ ] **Build order creation** (planned: future build, schedule work center)
-- [ ] **Component shortage check** (validate all components available before build, backorder handling)
+- [x] **Build/assemble transaction** (qty to build, component consumption with lot/serial tracking, yield %) [built 2026-08-19]
+- [x] **Build order creation** (planned: future build, schedule work center) [built 2026-08-19]
+- [x] **Component shortage check** (validate all components available before build, backorder handling) [built 2026-08-19]
 - [ ] **Component allocation** (reserve component qty for build order, prevent other consumption)
-- [ ] **Disassemble/unbuild transaction** (reverse build: consume parent, return components to inventory)
-- [ ] **BOM explosion** (multi-level: explode parent → sub-assemblies → raw components, net requirements)
+- [x] **Disassemble/unbuild transaction** (reverse build: consume parent, return components to inventory) [built 2026-08-19]
+- [x] **BOM explosion** (multi-level: explode parent → sub-assemblies → raw components, net requirements) [built 2026-08-19]
 - [ ] **Component substitution** (define alternate components, substitution rules, cost variance tracking)
-- [ ] **Scrap/yield tracking** (actual yield vs. standard, scrap reason codes, cost variance analysis)
-- [ ] **Cost roll-up calculation** (parent cost = sum(component costs) + labor + overhead, multi-level roll-up)
+- [x] **Scrap/yield tracking** (actual yield vs. standard, scrap reason codes, cost variance analysis) [built 2026-08-19]
+- [x] **Cost roll-up calculation** (parent cost = sum(component costs) + labor + overhead, multi-level roll-up) [built 2026-08-19]
 - [ ] **BOM comparison** (compare two BOM revisions, highlight differences)
 - [ ] **Mass BOM update** (global component replacement across multiple BOMs)
 - [ ] **Engineering change control (ECN)** (proposed change → review → approve with effectivity dates; only approved ECNs change active BOM; audit trail per spec custom/change rigor) [GAP-2026-08-18]
@@ -681,15 +682,15 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Weekly cost roll-up recalculation (update standard costs based on current component costs)
 
 ### Reports
-- [ ] BOM Listing (single-level: parent + immediate components with qty, cost)
-- [ ] BOM Where-Used Report (component: list all parent items using this component)
-- [ ] BOM Indented Listing (multi-level: full explosion with indentation showing hierarchy)
-- [ ] Assembly Cost Roll-up (parent cost breakdown: materials, labor, overhead, total)
-- [ ] Build Transaction History (all builds: date, qty, yield %, scrap, variance)
+- [x] BOM Listing (single-level: parent + immediate components with qty, cost) [built 2026-08-19]
+- [x] BOM Where-Used Report (component: list all parent items using this component) [built 2026-08-19]
+- [x] BOM Indented Listing (multi-level: full explosion with indentation showing hierarchy) [built 2026-08-19]
+- [x] Assembly Cost Roll-up (parent cost breakdown: materials, labor, overhead, total) [built 2026-08-19]
+- [x] Build Transaction History (all builds: date, qty, yield %, scrap, variance) [built 2026-08-19]
 - [ ] Component Shortage Report (planned builds: missing components, qty short, impact)
 - [ ] BOM Revision History (item: all revisions, effective dates, change summary)
 - [ ] BOM Comparison Report (side-by-side: revision A vs. revision B differences)
-- [ ] BOM Accuracy Report (items with inactive components, missing costs, unapproved revisions) [GAP-2026-08-18]
+- [x] BOM Accuracy Report (items with inactive components, missing costs, unapproved revisions) [GAP-2026-08-18] [built 2026-08-19]
 - [ ] Work Center Utilization / Build Capacity Report [GAP-2026-08-18]
 - [ ] Build Variance Report (actual component consumption vs. standard, scrap %, cost variance) [GAP-2026-08-18]
 
@@ -708,14 +709,16 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] End-to-end: Create BOM → allocate components → build → post to inventory → cost roll-up → GL posting
 
 ### Wiring & Cross-Module Integration [GAP-2026-08-18]
-- [ ] Build transaction → Inventory production receipt (parent in at rolled-up cost) + component issue (Phase 7 issue transaction); consumes the same `ItemIssued`/`GoodsReceived` event pipeline to GL
+- [x] Build transaction → Inventory production receipt (parent in at rolled-up cost) + component issue (Phase 7 issue transaction); consumes the same `ItemIssued`/`GoodsReceived` event pipeline to GL [built 2026-08-19]
 - [ ] Cost roll-up updates Item standard cost (Phase 7 item costing) and flows to Inventory valuation + GL inventory asset; requires Phase 7 item cost-layer APIs
 - [ ] Component allocation uses Phase 7 item reservation (reserved qty not available to sales orders)
 - [ ] Labor/overhead from Work Center rates could feed Phase 11 payroll labor costing and Phase 10 project cost (planned build → project linkage)
 
-### Frontend (planned — 0 pages, `/bom/*` route is a "Coming soon" placeholder)
-- [ ] BOM detail/component grid editor
-- [ ] Build/Disassemble transaction screen
+### Frontend ✅ COMPLETE (2026-08-19)
+- [x] BOM detail/component grid editor [built 2026-08-19]
+- [x] Build/Disassemble transaction screen [built 2026-08-19]
+- [x] Work Centers CRUD page [built 2026-08-19]
+- [x] BOM Reports page (listing, build history, accuracy) [built 2026-08-19]
 
 ---
 

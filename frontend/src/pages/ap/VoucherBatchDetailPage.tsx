@@ -18,9 +18,10 @@ import {
   postVoucherBatch,
   reverseVoucherBatch,
   getVendors,
+  getPaymentTerms,
 } from '@api/ap'
 import { getAccounts } from '@api/platform'
-import type { Voucher } from '@/types/ap'
+import type { Voucher, PaymentTerm } from '@/types/ap'
 import { voucherBatchStatusMap, voucherTypeMap } from './statusMaps'
 
 interface DistributionDraft {
@@ -57,10 +58,20 @@ function AddVoucherModal({ isOpen, onClose, onSave, isSaving, error }: AddVouche
     queryFn: () => getVendors(),
   })
 
+  const { data: paymentTerms = [] } = useQuery({
+    queryKey: ['ap', 'paymentTerms'],
+    queryFn: () => getPaymentTerms(true),
+  })
+
   const { data: accounts = [] } = useQuery({
     queryKey: ['platform', 'accounts'],
     queryFn: () => getAccounts(),
   })
+
+  const paymentTermOptions = useMemo(
+    () => paymentTerms.map((t: PaymentTerm) => ({ value: t.id, label: `${t.name} (${t.dueDays}d)` })),
+    [paymentTerms]
+  )
 
   const vendorOptions = useMemo(
     () =>
@@ -289,9 +300,10 @@ function AddVoucherModal({ isOpen, onClose, onSave, isSaving, error }: AddVouche
             placeholder="0.00"
             className="text-right tabular-nums"
           />
-          <Input
+          <Select
             label="Payment Term"
-            placeholder="Optional term id"
+            placeholder="Select payment terms..."
+            options={paymentTermOptions}
             value={paymentTermId}
             onChange={e => setPaymentTermId(e.target.value)}
           />

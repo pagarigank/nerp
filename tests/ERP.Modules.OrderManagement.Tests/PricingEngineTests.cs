@@ -13,8 +13,8 @@ namespace ERP.Modules.OrderManagement.Tests;
 
 public class PricingEngineTests
 {
-    private static PricingRule Rule(string code, PricingRuleScope scope, int priority, decimal discount, Guid? customer = null, Guid? item = null, decimal? minQty = null) =>
-        new(Guid.NewGuid(), code, code, scope, priority, discount, null, customer, item, minQty, null, null);
+    private static PricingRule Rule(string code, PricingRuleScope scope, int priority, decimal discount, Guid? customer = null, Guid? item = null, Guid? itemCategory = null, decimal? minQty = null) =>
+        new(Guid.NewGuid(), code, code, scope, priority, discount, null, customer, item, itemCategory, minQty, null, null);
 
     [Fact]
     public void QuantityBreak_Wins_OverStandard_ByPriority()
@@ -26,10 +26,10 @@ public class PricingEngineTests
             Rule("QTY", PricingRuleScope.QuantityBreak, 10, 10m, minQty: 5),
         };
 
-        var result = PricingEngine.CalculatePrice(basePrice, null, null, 10, rules, DateTime.UtcNow);
+        var result = PricingEngine.CalculatePrice(basePrice, null, null, null, 10, rules, DateTime.UtcNow);
 
         result.DiscountPercent.Should().Be(10m);
-        result.UnitPrice.Should().Be(90m);
+        result.NetUnitPrice.Should().Be(90m);
     }
 
     [Fact]
@@ -43,10 +43,10 @@ public class PricingEngineTests
             Rule("CUST", PricingRuleScope.CustomerSpecific, 5, 25m, customer: customerId),
         };
 
-        var result = PricingEngine.CalculatePrice(basePrice, customerId, null, 10, rules, DateTime.UtcNow);
+        var result = PricingEngine.CalculatePrice(basePrice, customerId, null, null, 10, rules, DateTime.UtcNow);
 
         result.DiscountPercent.Should().Be(25m);
-        result.UnitPrice.Should().Be(75m);
+        result.NetUnitPrice.Should().Be(75m);
     }
 
     [Fact]
@@ -58,10 +58,11 @@ public class PricingEngineTests
             Rule("PROMO", PricingRuleScope.Promotional, 1, 0m).SetOverride(80m),
         };
 
-        var result = PricingEngine.CalculatePrice(basePrice, null, null, 1, rules, DateTime.UtcNow);
+        var result = PricingEngine.CalculatePrice(basePrice, null, null, null, 1, rules, DateTime.UtcNow);
 
         result.UnitPrice.Should().Be(80m);
-        result.DiscountPercent.Should().Be(20m);
+        result.DiscountPercent.Should().Be(0m);
+        result.NetUnitPrice.Should().Be(80m);
     }
 
     [Fact]
@@ -72,9 +73,9 @@ public class PricingEngineTests
             Rule("CUST", PricingRuleScope.CustomerSpecific, 1, 25m, customer: Guid.NewGuid()),
         };
 
-        var result = PricingEngine.CalculatePrice(100m, Guid.NewGuid(), null, 1, rules, DateTime.UtcNow);
+        var result = PricingEngine.CalculatePrice(100m, Guid.NewGuid(), null, null, 1, rules, DateTime.UtcNow);
 
-        result.UnitPrice.Should().Be(100m);
+        result.NetUnitPrice.Should().Be(100m);
         result.DiscountPercent.Should().Be(0m);
         result.AppliedRuleId.Should().BeNull();
     }
@@ -84,5 +85,5 @@ public class PricingEngineTests
 internal static class PricingRuleExtensions
 {
     public static PricingRule SetOverride(this PricingRule rule, decimal overridePrice) =>
-        new(rule.CompanyId, rule.Code, rule.Description, rule.Scope, rule.PrioritySequence, rule.DiscountPercent, overridePrice, rule.CustomerId, rule.ItemId, rule.MinimumQuantity, rule.EffectiveFrom, rule.EffectiveTo);
+        new(rule.CompanyId, rule.Code, rule.Description, rule.Scope, rule.PrioritySequence, rule.DiscountPercent, overridePrice, rule.CustomerId, rule.ItemId, rule.ItemCategoryId, rule.MinimumQuantity, rule.EffectiveFrom, rule.EffectiveTo);
 }

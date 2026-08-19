@@ -5,7 +5,9 @@
 using System.Threading;
 using System.Threading.Tasks;
 using ERP.Core.Domain.Common;
+using ERP.Core.Domain.Events;
 using ERP.Modules.Inventory.Domain.Entities;
+using ERP.Modules.Inventory.Domain.Events;
 using ERP.Modules.Inventory.Infrastructure;
 using ERP.Modules.OrderManagement.Domain.Events;
 using Microsoft.EntityFrameworkCore;
@@ -22,10 +24,12 @@ namespace ERP.Modules.Inventory.Infrastructure.Handlers;
 public sealed class ReturnConfirmedToInventoryHandler : IDomainEventHandler<ReturnConfirmedEvent>
 {
     private readonly InventoryDbContext _inventoryContext;
+    private readonly IDomainEventDispatcher _eventDispatcher;
 
-    public ReturnConfirmedToInventoryHandler(InventoryDbContext inventoryContext)
+    public ReturnConfirmedToInventoryHandler(InventoryDbContext inventoryContext, IDomainEventDispatcher eventDispatcher)
     {
         _inventoryContext = inventoryContext ?? throw new ArgumentNullException(nameof(inventoryContext));
+        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
     }
 
     public async Task HandleAsync(ReturnConfirmedEvent domainEvent, CancellationToken cancellationToken = default)
@@ -75,6 +79,33 @@ public sealed class ReturnConfirmedToInventoryHandler : IDomainEventHandler<Retu
 
         if (_inventoryContext.ChangeTracker.HasChanges())
             await _inventoryContext.SaveChangesAsync(cancellationToken);
+
+        // Dispatch InventoryTransactionPostedEvent for each receipt transaction
+        // so the GL posting handler generates inventory asset / credit-memo entries.
+        foreach (var line in domainEvent.Lines)
+        {
+            var item = await _inventoryContext.Items.FirstOrDefaultAsync(i => i.Id == line.ItemId, cancellationToken);
+            if (item is null)
+                continue;
+
+            var warehouseId = line.WarehouseId
+                ?? (await _inventoryContext.Warehouses
+                    .Where(w => w.CompanyId == domainEvent.CompanyId)
+                    .OrderBy(w => w.WarehouseCode)
+                    .FirstOrDefaultAsync(cancellationToken))?.Id;
+            if (warehouseId is null)
+                continue;
+
+            var txn = await _inventoryContext.InventoryTransactions
+                .FirstOrDefaultAsync(t => t.ReferenceNumber == domainEvent.ReturnNumber && t.ItemId == line.ItemId, cancellationToken);
+            if (txn is not null)
+            {
+                await _eventDispatcher.DispatchAsync(new InventoryTransactionPostedEvent(
+                    txn.Id, domainEvent.CompanyId, line.ItemId, warehouseId.Value,
+                    TransactionType.Receipt.ToString(), txn.Quantity, txn.UnitCost,
+                    txn.ExtendedCost, domainEvent.ReturnDate, line.SalesOrderLineId), cancellationToken);
+            }
+        }
     }
 
     private async Task<decimal> GetAverageCostAsync(Guid itemId, Guid warehouseId, CancellationToken cancellationToken)

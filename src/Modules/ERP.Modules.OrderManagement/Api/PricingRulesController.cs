@@ -32,7 +32,7 @@ public class PricingRulesController : ControllerBase
         q = companyId is not null ? q.Where(x => x.CompanyId == companyId) : q;
 
         var list = await q.OrderBy(x => x.PrioritySequence).ThenBy(x => x.Code)
-            .Select(x => new PricingRuleSummary(x.Id, x.Code, x.Description, x.Scope, x.PrioritySequence, x.DiscountPercent, x.UnitPriceOverride, x.CustomerId, x.ItemId, x.MinimumQuantity, x.IsActive))
+            .Select(x => new PricingRuleSummary(x.Id, x.Code, x.Description, x.Scope, x.PrioritySequence, x.DiscountPercent, x.UnitPriceOverride, x.CustomerId, x.ItemId, x.ItemCategoryId, x.MinimumQuantity, x.IsActive))
             .ToListAsync(cancellationToken);
 
         return Ok(ApiResponse<List<PricingRuleSummary>>.Success(list));
@@ -41,7 +41,7 @@ public class PricingRulesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<Guid>>> CreateAsync([FromBody] CreatePricingRuleRequest r, CancellationToken cancellationToken)
     {
-        var e = new PricingRule(r.CompanyId, r.Code, r.Description, r.Scope, r.PrioritySequence, r.DiscountPercent, r.UnitPriceOverride, r.CustomerId, r.ItemId, r.MinimumQuantity, r.EffectiveFrom, r.EffectiveTo);
+        var e = new PricingRule(r.CompanyId, r.Code, r.Description, r.Scope, r.PrioritySequence, r.DiscountPercent, r.UnitPriceOverride, r.CustomerId, r.ItemId, r.ItemCategoryId, r.MinimumQuantity, r.EffectiveFrom, r.EffectiveTo);
         _context.PricingRules.Add(e);
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse<Guid>.Success(e.Id));
@@ -56,7 +56,7 @@ public class PricingRulesController : ControllerBase
             return NotFound(ApiResponse<string>.Failure(new[] { $"Pricing rule {id} not found." }));
         }
 
-        e.Update(r.Description, r.PrioritySequence, r.DiscountPercent, r.UnitPriceOverride, r.MinimumQuantity, r.EffectiveFrom, r.EffectiveTo, r.IsActive);
+        e.Update(r.Description, r.PrioritySequence, r.DiscountPercent, r.UnitPriceOverride, r.ItemCategoryId, r.MinimumQuantity, r.EffectiveFrom, r.EffectiveTo, r.IsActive);
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse<string>.Success("Updated"));
     }
@@ -83,12 +83,12 @@ public class PricingRulesController : ControllerBase
             .Where(x => x.CompanyId == r.CompanyId)
             .ToListAsync(cancellationToken);
 
-        var result = PricingEngine.CalculatePrice(r.BaseUnitPrice, r.CustomerId, r.ItemId, r.Quantity, rules, r.AsOf);
+        var result = PricingEngine.CalculatePrice(r.BaseUnitPrice, r.CustomerId, r.ItemId, r.ItemCategoryId, r.Quantity, rules, r.AsOf);
         return Ok(ApiResponse<PricingResult>.Success(result));
     }
 }
 
-public record PricingRuleSummary(Guid Id, string Code, string Description, PricingRuleScope Scope, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, Guid? CustomerId, Guid? ItemId, decimal? MinimumQuantity, bool IsActive);
-public record CreatePricingRuleRequest(Guid CompanyId, string Code, string Description, PricingRuleScope Scope, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, Guid? CustomerId, Guid? ItemId, decimal? MinimumQuantity, DateTime? EffectiveFrom, DateTime? EffectiveTo);
-public record UpdatePricingRuleRequest(string Description, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, decimal? MinimumQuantity, DateTime? EffectiveFrom, DateTime? EffectiveTo, bool IsActive);
-public record EvaluatePriceRequest(Guid CompanyId, decimal BaseUnitPrice, Guid? CustomerId, Guid? ItemId, decimal Quantity, DateTime AsOf);
+public record PricingRuleSummary(Guid Id, string Code, string Description, PricingRuleScope Scope, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, Guid? CustomerId, Guid? ItemId, Guid? ItemCategoryId, decimal? MinimumQuantity, bool IsActive);
+public record CreatePricingRuleRequest(Guid CompanyId, string Code, string Description, PricingRuleScope Scope, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, Guid? CustomerId, Guid? ItemId, Guid? ItemCategoryId, decimal? MinimumQuantity, DateTime? EffectiveFrom, DateTime? EffectiveTo);
+public record UpdatePricingRuleRequest(string Description, int PrioritySequence, decimal DiscountPercent, decimal? UnitPriceOverride, Guid? ItemCategoryId, decimal? MinimumQuantity, DateTime? EffectiveFrom, DateTime? EffectiveTo, bool IsActive);
+public record EvaluatePriceRequest(Guid CompanyId, decimal BaseUnitPrice, Guid? CustomerId, Guid? ItemId, Guid? ItemCategoryId, decimal Quantity, DateTime AsOf);

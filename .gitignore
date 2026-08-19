@@ -95,3 +95,6 @@ secrets.json
 .AppleDouble
 .fseventsd
 ehthumbs.db
+
+# Screenshots (binary, not source)
+screenshots/

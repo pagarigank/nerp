@@ -189,6 +189,21 @@ export function SalesOrderDetailPage() {
         </p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-4">
+        <div>
+          <span className="text-gray-500">Order Type:</span>{' '}
+          <span className="font-medium">{order.salesOrderTypeId ?? '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Tax Code:</span>{' '}
+          <span className="font-medium">{order.taxCodeId ?? '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Tax Exemption:</span>{' '}
+          <span className="font-medium">{order.taxExemptionCertificateId ?? '—'}</span>
+        </div>
+      </div>
+
       {error && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
           {error}

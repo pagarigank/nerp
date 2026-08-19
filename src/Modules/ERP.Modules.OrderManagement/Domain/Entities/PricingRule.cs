@@ -33,6 +33,7 @@ public class PricingRule : AuditableEntity
         decimal? unitPriceOverride,
         Guid? customerId,
         Guid? itemId,
+        Guid? itemCategoryId,
         decimal? minimumQuantity,
         DateTime? effectiveFrom,
         DateTime? effectiveTo)
@@ -46,6 +47,7 @@ public class PricingRule : AuditableEntity
         UnitPriceOverride = unitPriceOverride;
         CustomerId = customerId;
         ItemId = itemId;
+        ItemCategoryId = itemCategoryId;
         MinimumQuantity = minimumQuantity;
         EffectiveFrom = effectiveFrom;
         EffectiveTo = effectiveTo;
@@ -60,6 +62,7 @@ public class PricingRule : AuditableEntity
     public decimal? UnitPriceOverride { get; private set; }
     public Guid? CustomerId { get; private set; }
     public Guid? ItemId { get; private set; }
+    public Guid? ItemCategoryId { get; private set; }
     public decimal? MinimumQuantity { get; private set; }
     public DateTime? EffectiveFrom { get; private set; }
     public DateTime? EffectiveTo { get; private set; }
@@ -70,6 +73,7 @@ public class PricingRule : AuditableEntity
         int prioritySequence,
         decimal discountPercent,
         decimal? unitPriceOverride,
+        Guid? itemCategoryId,
         decimal? minimumQuantity,
         DateTime? effectiveFrom,
         DateTime? effectiveTo,
@@ -79,6 +83,7 @@ public class PricingRule : AuditableEntity
         PrioritySequence = prioritySequence;
         DiscountPercent = discountPercent;
         UnitPriceOverride = unitPriceOverride;
+        ItemCategoryId = itemCategoryId;
         MinimumQuantity = minimumQuantity;
         EffectiveFrom = effectiveFrom;
         EffectiveTo = effectiveTo;
@@ -89,10 +94,11 @@ public class PricingRule : AuditableEntity
         (!EffectiveFrom.HasValue || EffectiveFrom.Value <= asOf) &&
         (!EffectiveTo.HasValue || EffectiveTo.Value >= asOf);
 
-    public bool Matches(Guid? customerId, Guid? itemId, decimal quantity, DateTime asOf) =>
+    public bool Matches(Guid? customerId, Guid? itemId, Guid? itemCategoryId, decimal quantity, DateTime asOf) =>
         IsActive &&
         IsEffectiveOn(asOf) &&
         (CustomerId == null || CustomerId == customerId) &&
         (ItemId == null || ItemId == itemId) &&
+        (ItemCategoryId == null || ItemCategoryId == itemCategoryId) &&
         (MinimumQuantity == null || quantity >= MinimumQuantity.Value);
 }

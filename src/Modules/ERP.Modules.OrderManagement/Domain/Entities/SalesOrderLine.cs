@@ -23,6 +23,7 @@ public class SalesOrderLine : AuditableEntity
         Guid? warehouseId = null,
         Guid? projectId = null,
         Guid? accountId = null,
+        Guid? itemCategoryId = null,
         bool isDropShip = false,
         Guid? dropShipVendorId = null)
         : base(Guid.NewGuid())
@@ -33,6 +34,7 @@ public class SalesOrderLine : AuditableEntity
         SalesOrderId = salesOrderId;
         LineNumber = lineNumber;
         ItemId = itemId;
+        ItemCategoryId = itemCategoryId;
         Description = description ?? string.Empty;
         Quantity = quantity;
         UnitPrice = unitPrice;
@@ -62,6 +64,8 @@ public class SalesOrderLine : AuditableEntity
     public Guid? WarehouseId { get; private set; }
     public Guid? ProjectId { get; private set; }
     public Guid? AccountId { get; private set; }
+    public Guid? ItemCategoryId { get; private set; }
+    public Guid? AppliedPricingRuleId { get; private set; }
     public bool IsDropShip { get; private set; }
     public Guid? DropShipVendorId { get; private set; }
     public decimal ShippedQuantity { get; private set; }
@@ -84,6 +88,18 @@ public class SalesOrderLine : AuditableEntity
         AllocatedFreight = amount;
     }
 
+    /// <summary>
+    /// Stamps the automatically-computed price/discount and the winning rule id onto the line.
+    /// When a unit-price override rule wins, unitPrice is replaced; otherwise the entered unit
+    /// price is kept and only the discount percent is set. Transparent for audit (AppliedPricingRuleId).
+    /// </summary>
+    public void SetPricingApplied(decimal unitPrice, decimal discountPercent, Guid? appliedRuleId)
+    {
+        UnitPrice = unitPrice;
+        DiscountPercent = discountPercent;
+        AppliedPricingRuleId = appliedRuleId;
+    }
+
     public void Update(
         decimal quantity,
         decimal unitPrice,
@@ -92,6 +108,7 @@ public class SalesOrderLine : AuditableEntity
         Guid? warehouseId,
         Guid? projectId,
         Guid? accountId,
+        Guid? itemCategoryId,
         string? description)
     {
         if (quantity <= 0)
@@ -104,6 +121,7 @@ public class SalesOrderLine : AuditableEntity
         WarehouseId = warehouseId;
         ProjectId = projectId;
         AccountId = accountId;
+        ItemCategoryId = itemCategoryId;
         Description = description ?? string.Empty;
     }
 

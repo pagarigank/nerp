@@ -13,6 +13,7 @@ using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsPayable;
 using ERP.Modules.AccountsReceivable;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.BillOfMaterials;
 using ERP.Modules.CashManagement;
 using ERP.Modules.CashManagement.Infrastructure;
 using ERP.Modules.GeneralLedger;
@@ -289,6 +290,7 @@ public class Program
         builder.Services.AddPurchasingModule(builder.Configuration);
         builder.Services.AddInventoryModule(builder.Configuration);
         builder.Services.AddOrderManagementModule(builder.Configuration);
+        builder.Services.AddBillOfMaterialsModule(builder.Configuration);
 
         var app = builder.Build();
 

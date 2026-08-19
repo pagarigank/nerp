@@ -20,7 +20,8 @@ import {
   companyId,
 } from '@api/purchasing'
 import { getVendors } from '@api/ap'
-import { getItems } from '@api/inventory'
+import { getItems, getItemUomConversions } from '@api/inventory'
+import type { UomConversionDto } from '@/types/inventory'
 import type { CreateVendorQuoteLineRequest } from '@/types/purchasing'
 
 function statusBadge(status: string) {
@@ -42,6 +43,7 @@ export function VendorQuotesPage() {
   const [lines, setLines] = useState<CreateVendorQuoteLineRequest[]>([
     { itemId: '', description: '', quantity: 1, unitOfMeasure: 'EA', unitPrice: 0 },
   ])
+  const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ['purchasing', 'vendor-quotes'],
@@ -166,7 +168,9 @@ export function VendorQuotesPage() {
                 <Select options={itemOptions} value={l.itemId ?? ''} onChange={e => selectItem(i, e.target.value)} label={i === 0 ? 'Item' : undefined} />
                 <Input value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="Description" label={i === 0 ? 'Description' : undefined} />
                 <Input type="number" step="0.01" min="0.01" value={String(l.quantity)} onChange={e => updateLine(i, 'quantity', Number(e.target.value))} label={i === 0 ? 'Qty' : undefined} />
-                <Input value={l.unitOfMeasure} onChange={e => updateLine(i, 'unitOfMeasure', e.target.value)} placeholder="UOM" label={i === 0 ? 'UOM' : undefined} />
+                <select value={l.unitOfMeasure} onChange={(e) => { updateLine(i, 'unitOfMeasure', e.target.value); const itemId = l.itemId; if (itemId) { const item = items.find((x: any) => x.id === itemId); const baseUom = item?.baseUnitOfMeasure || 'EA'; setLineUomOptions(prev => ({ ...prev, [i]: [{ value: baseUom, label: baseUom + ' (base)' }] })); void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => { const opts = [{ value: baseUom, label: baseUom + ' (base)' }]; for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }); } setLineUomOptions(prev => ({ ...prev, [i]: opts })); }).catch(() => {}); } }} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+                  {(lineUomOptions[i] ?? [{ value: 'EA', label: 'EA' }]).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
                 <Input type="number" step="0.01" min="0" value={String(l.unitPrice)} onChange={e => updateLine(i, 'unitPrice', Number(e.target.value))} label={i === 0 ? 'Unit Price' : undefined} />
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-gray-500 tabular-nums">${(l.quantity * l.unitPrice).toFixed(2)}</span>

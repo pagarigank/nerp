@@ -147,6 +147,20 @@ export interface CycleCountSummaryRow {
   totalVarianceValue: number
 }
 
+export interface StockCardRow {
+  transactionId: string
+  transactionDate: string
+  transactionType: string
+  referenceNumber?: string | null
+  description?: string | null
+  quantityIn: number
+  quantityOut: number
+  unitCost: number
+  extendedCost: number
+  runningBalance: number
+  runningValue: number
+}
+
 // --- Items (list + create) ---
 export interface ItemSummary {
   id: string
@@ -660,6 +674,22 @@ export interface ItemGlAccountDefaultsDto {
   salesRevenueAccountId?: string | null
   inventoryAdjustmentAccountId?: string | null
   landedCostClearingAccountId?: string | null
+}
+
+// Item UOM conversions
+export interface UomConversionDto {
+  id: string
+  itemId: string
+  fromUOM: string
+  toUOM: string
+  conversionFactor: number
+}
+
+export interface UomConvertResult {
+  convertedQuantity: number
+  conversionFactor: number
+  fromUOM: string
+  toUOM: string
 }
 
 // --- Landed Cost Allocations ---

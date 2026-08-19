@@ -101,6 +101,70 @@ export function getTaxCodes(companyIdParam?: string): Promise<import('@/types/or
   return get('/om/tax-codes', { companyId: companyIdParam ?? companyId() })
 }
 
+// Reference masters — create / update / delete (full CRUD)
+export function createShippingMethod(data: import('@/types/orderManagement').CreateShippingMethodRequest): Promise<string> {
+  return post('/om/shipping-methods', data)
+}
+export function updateShippingMethod(id: string, data: import('@/types/orderManagement').UpdateShippingMethodRequest): Promise<string> {
+  return put(`/om/shipping-methods/${id}`, data)
+}
+export function deleteShippingMethod(id: string): Promise<string> {
+  return del(`/om/shipping-methods/${id}`)
+}
+
+export function createSalesRep(data: import('@/types/orderManagement').CreateSalesRepRequest): Promise<string> {
+  return post('/om/sales-reps', data)
+}
+export function updateSalesRep(id: string, data: import('@/types/orderManagement').UpdateSalesRepRequest): Promise<string> {
+  return put(`/om/sales-reps/${id}`, data)
+}
+export function deleteSalesRep(id: string): Promise<string> {
+  return del(`/om/sales-reps/${id}`)
+}
+
+export function createSalesTerritory(data: import('@/types/orderManagement').CreateSalesTerritoryRequest): Promise<string> {
+  return post('/om/sales-territories', data)
+}
+export function updateSalesTerritory(id: string, data: import('@/types/orderManagement').UpdateSalesTerritoryRequest): Promise<string> {
+  return put(`/om/sales-territories/${id}`, data)
+}
+export function deleteSalesTerritory(id: string): Promise<string> {
+  return del(`/om/sales-territories/${id}`)
+}
+
+export function createSalesOrderType(data: import('@/types/orderManagement').CreateSalesOrderTypeRequest): Promise<string> {
+  return post('/om/sales-order-types', data)
+}
+export function updateSalesOrderType(id: string, data: import('@/types/orderManagement').UpdateSalesOrderTypeRequest): Promise<string> {
+  return put(`/om/sales-order-types/${id}`, data)
+}
+export function deleteSalesOrderType(id: string): Promise<string> {
+  return del(`/om/sales-order-types/${id}`)
+}
+
+export function createPricingRule(data: import('@/types/orderManagement').CreatePricingRuleRequest): Promise<string> {
+  return post('/om/pricing-rules', data)
+}
+export function updatePricingRule(id: string, data: import('@/types/orderManagement').UpdatePricingRuleRequest): Promise<string> {
+  return put(`/om/pricing-rules/${id}`, data)
+}
+export function deletePricingRule(id: string): Promise<string> {
+  return del(`/om/pricing-rules/${id}`)
+}
+export function evaluatePrice(data: import('@/types/orderManagement').EvaluatePriceRequest): Promise<import('@/types/orderManagement').PricingResult> {
+  return post('/om/pricing-rules/evaluate', data)
+}
+
+export function createTaxCode(data: import('@/types/orderManagement').CreateTaxCodeRequest): Promise<string> {
+  return post('/om/tax-codes', data)
+}
+export function updateTaxCode(id: string, data: import('@/types/orderManagement').UpdateTaxCodeRequest): Promise<string> {
+  return put(`/om/tax-codes/${id}`, data)
+}
+export function deleteTaxCode(id: string): Promise<string> {
+  return del(`/om/tax-codes/${id}`)
+}
+
 // Sales reports
 export function getOpenOrdersReport(): Promise<import('@/types/orderManagement').OpenOrderRow[]> {
   return get('/om/reports/open-orders', { companyId: companyId() })

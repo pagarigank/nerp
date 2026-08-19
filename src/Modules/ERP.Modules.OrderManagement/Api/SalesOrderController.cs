@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Core.Common;
 using ERP.Modules.OrderManagement.Domain.Entities;
+using ERP.Modules.OrderManagement.Domain.Services;
 using ERP.Modules.OrderManagement.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +80,9 @@ public class SalesOrderController : ControllerBase
             order.SalesRepId,
             order.ShippingMethod,
             order.CustomerPoNumber,
+            order.SalesOrderTypeId,
+            order.TaxCodeId,
+            order.TaxExemptionCertificateId,
             order.Status,
             order.IsOnCreditHold,
             order.RequiresDiscountApproval,
@@ -96,10 +100,12 @@ public class SalesOrderController : ControllerBase
                 l.WarehouseId,
                 l.ProjectId,
                 l.AccountId,
+                l.ItemCategoryId,
                 l.IsDropShip,
                 l.DropShipVendorId,
                 l.ShippedQuantity,
-                l.LineTotal)).ToList());
+                l.LineTotal,
+                l.AppliedPricingRuleId)).ToList());
 
         return Ok(ApiResponse<SalesOrderDetail>.Success(detail));
     }
@@ -109,6 +115,38 @@ public class SalesOrderController : ControllerBase
         [FromBody] CreateSalesOrderRequest request,
         CancellationToken cancellationToken)
     {
+        // Sales person, tax code and tax-exemption are maintained on the Customer
+        // master; inherit them onto the order unless explicitly overridden here.
+        // Pricing is applied per-line automatically from the pricing-rule master,
+        // so there is intentionally no pricing-rule field on the order header.
+        // (AR owns the Customer entity; we read only the three defaults via a
+        // lightweight SQL projection to avoid a cross-module project reference.)
+        string? salesRepId = request.SalesRepId;
+        Guid? taxCodeId = request.TaxCodeId;
+        Guid? taxExemptionCertificateId = request.TaxExemptionCertificateId;
+        if (salesRepId is null || taxCodeId is null || taxExemptionCertificateId is null)
+        {
+            var conn = _context.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open)
+                await conn.OpenAsync(cancellationToken);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT SalesRepId, TaxCodeId, TaxExemptionCertificateId FROM ar.Customers WHERE Id = @cid";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "@cid";
+            p.Value = request.CustomerId;
+            cmd.Parameters.Add(p);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                if (salesRepId is null && !await reader.IsDBNullAsync(0, cancellationToken))
+                    salesRepId = reader.GetGuid(0).ToString();
+                if (taxCodeId is null && !await reader.IsDBNullAsync(1, cancellationToken))
+                    taxCodeId = reader.GetGuid(1);
+                if (taxExemptionCertificateId is null && !await reader.IsDBNullAsync(2, cancellationToken))
+                    taxExemptionCertificateId = reader.GetGuid(2);
+            }
+        }
+
         var order = new SalesOrder(
             request.OrderNumber,
             request.CompanyId,
@@ -117,13 +155,23 @@ public class SalesOrderController : ControllerBase
             request.ShipToAddress,
             request.BillToAddress,
             request.PaymentTermId,
-            request.SalesRepId,
+            salesRepId,
             request.ShippingMethod,
-            request.CustomerPoNumber);
+            request.CustomerPoNumber,
+            request.SalesOrderTypeId,
+            taxCodeId,
+            taxExemptionCertificateId);
+
+        // Load the company's active pricing rules once and auto-apply the winning
+        // rule to each line (by customer / item / item-category / quantity / date).
+        var pricingRules = await _context.PricingRules
+            .AsNoTracking()
+            .Where(r => r.CompanyId == request.CompanyId)
+            .ToListAsync(cancellationToken);
 
         foreach (var line in request.Lines)
         {
-            order.AddLine(new SalesOrderLine(
+            var lineEntity = new SalesOrderLine(
                 order.Id,
                 line.LineNumber,
                 line.ItemId,
@@ -135,7 +183,20 @@ public class SalesOrderController : ControllerBase
                 line.TaxPercent,
                 line.WarehouseId,
                 line.ProjectId,
-                line.AccountId));
+                line.AccountId,
+                line.ItemCategoryId);
+
+            var result = PricingEngine.CalculatePrice(
+                line.UnitPrice,
+                request.CustomerId,
+                line.ItemId,
+                line.ItemCategoryId,
+                line.Quantity,
+                pricingRules,
+                request.OrderDate);
+            lineEntity.SetPricingApplied(result.UnitPrice, result.DiscountPercent, result.AppliedRuleId);
+
+            order.AddLine(lineEntity);
         }
 
         _context.SalesOrders.Add(order);
@@ -282,6 +343,7 @@ public class SalesOrderController : ControllerBase
                 request.WarehouseId,
                 request.ProjectId,
                 request.AccountId,
+                request.ItemCategoryId,
                 request.Description);
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -305,6 +367,9 @@ public record CreateSalesOrderRequest(
     string? SalesRepId,
     string? ShippingMethod,
     string? CustomerPoNumber,
+    Guid? SalesOrderTypeId,
+    Guid? TaxCodeId,
+    Guid? TaxExemptionCertificateId,
     List<CreateSalesOrderLineRequest> Lines);
 
 public record CreateSalesOrderLineRequest(
@@ -318,7 +383,10 @@ public record CreateSalesOrderLineRequest(
     decimal TaxPercent,
     Guid? WarehouseId,
     Guid? ProjectId,
-    Guid? AccountId);
+    Guid? AccountId,
+    Guid? ItemCategoryId,
+    bool IsDropShip,
+    Guid? DropShipVendorId);
 
 public record UpdateSalesOrderLineRequest(
     decimal Quantity,
@@ -328,6 +396,7 @@ public record UpdateSalesOrderLineRequest(
     Guid? WarehouseId,
     Guid? ProjectId,
     Guid? AccountId,
+    Guid? ItemCategoryId,
     string? Description);
 
 public record CreditHoldRequest(string Reason);
@@ -356,10 +425,12 @@ public record SalesOrderLineSummary(
     Guid? WarehouseId,
     Guid? ProjectId,
     Guid? AccountId,
+    Guid? ItemCategoryId,
     bool IsDropShip,
     Guid? DropShipVendorId,
     decimal ShippedQuantity,
-    decimal LineTotal);
+    decimal LineTotal,
+    Guid? AppliedPricingRuleId);
 
 public record SalesOrderDetail(
     Guid Id,
@@ -373,6 +444,9 @@ public record SalesOrderDetail(
     string? SalesRepId,
     string? ShippingMethod,
     string? CustomerPoNumber,
+    Guid? SalesOrderTypeId,
+    Guid? TaxCodeId,
+    Guid? TaxExemptionCertificateId,
     SalesOrderStatus Status,
     bool IsOnCreditHold,
     bool RequiresDiscountApproval,

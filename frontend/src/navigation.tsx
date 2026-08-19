@@ -211,6 +211,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Cycle Count Schedule', to: '/inventory/cycle-count-schedule' },
       { label: 'Scrap / Disposal', to: '/inventory/scrap' },
       { label: 'GL Tie-Out', to: '/inventory/gl-tie-out' },
+      { label: 'Stock Card', to: '/inventory/stock-card' },
       { label: 'Reports', to: '/inventory/reports' },
     ],
   },
@@ -242,7 +243,12 @@ export const mainNavigation: NavModule[] = [
     href: '/bom',
     icon: Layers,
     roles: ['*'],
-    sub: [],
+    sub: [
+      { label: 'BOMs', to: '/bom' },
+      { label: 'Work Centers', to: '/bom/work-centers' },
+      { label: 'Build Orders', to: '/bom/build-orders' },
+      { label: 'Reports', to: '/bom/reports' },
+    ],
   },
   {
     name: 'Project Accounting',

@@ -132,6 +132,7 @@ import { PutAwayPickingPage } from '@pages/inventory/PutAwayPickingPage'
 import { StockByLocationPage } from '@pages/inventory/StockByLocationPage'
 import { CycleCountSchedulePage } from '@pages/inventory/CycleCountSchedulePage'
 import { ScrapPage } from '@pages/inventory/ScrapPage'
+import { StockCardPage } from '@pages/inventory/StockCardPage'
 import { GlTieOutPage } from '@pages/inventory/GlTieOutPage'
 import { OmLayout } from '@pages/om/OmLayout'
 import { SalesOrdersPage } from '@pages/om/SalesOrdersPage'
@@ -153,6 +154,10 @@ import { SalesAnalysisPage } from '@pages/om/SalesAnalysisPage'
 import { AtpPage } from '@pages/om/AtpPage'
 import { FreightAllocationPage } from '@pages/om/FreightAllocationPage'
 import { PickPackShipPage } from '@pages/om/PickPackShipPage'
+import { BomsPage } from '@pages/bom/BomsPage'
+import { BuildOrdersPage } from '@pages/bom/BuildOrdersPage'
+import { WorkCentersPage } from '@pages/bom/WorkCentersPage'
+import { BomReportsPage } from '@pages/bom/BomReportsPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -322,6 +327,7 @@ function App() {
           <Route path="put-away-picking" element={<PutAwayPickingPage />} />
           <Route path="stock-by-location" element={<StockByLocationPage />} />
           <Route path="cycle-count-schedule" element={<CycleCountSchedulePage />} />
+          <Route path="stock-card" element={<StockCardPage />} />
           <Route path="scrap" element={<ScrapPage />} />
           <Route path="gl-tie-out" element={<GlTieOutPage />} />
         </Route>
@@ -349,7 +355,12 @@ function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="masters" element={<MastersPage />} />
         </Route>
-        <Route path="bom/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Bill of Materials</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
+        <Route path="bom/*">
+          <Route index element={<BomsPage />} />
+          <Route path="work-centers" element={<WorkCentersPage />} />
+          <Route path="build-orders" element={<BuildOrdersPage />} />
+          <Route path="reports" element={<BomReportsPage />} />
+        </Route>
         <Route path="projects/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Project Accounting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="payroll/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Payroll</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="field-service/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Field Service</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />

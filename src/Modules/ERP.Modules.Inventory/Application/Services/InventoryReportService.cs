@@ -406,6 +406,63 @@ public class InventoryReportService
         rows.Add(new InventoryGlTieOutRow(Guid.Empty, "TOTAL", grandTotal));
         return rows;
     }
+
+    /// <summary>
+    /// Stock Card: item-centric transaction history with running balance.
+    /// Returns transactions in chronological order (oldest first) with separate
+    /// qty-in / qty-out columns and a running balance after each movement.
+    /// </summary>
+    public async Task<List<StockCardRow>> GetStockCardAsync(
+        Guid companyId, Guid itemId, Guid? warehouseId = null,
+        DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    {
+        var q = _context.InventoryTransactions
+            .Where(t => t.CompanyId == companyId && t.ItemId == itemId);
+        if (warehouseId.HasValue) q = q.Where(t => t.WarehouseId == warehouseId.Value);
+        if (from.HasValue) q = q.Where(t => t.TransactionDate >= from.Value);
+        if (to.HasValue) q = q.Where(t => t.TransactionDate <= to.Value);
+
+        var txns = await q.OrderBy(t => t.TransactionDate)
+            .Select(t => new
+            {
+                t.Id,
+                t.TransactionDate,
+                Type = t.TransactionType.ToString(),
+                t.ReferenceNumber,
+                t.Quantity,
+                t.UnitCost,
+                t.ExtendedCost,
+                t.Notes,
+            })
+            .ToListAsync(ct);
+
+        var rows = new List<StockCardRow>();
+        decimal runningBalance = 0m;
+        decimal runningValue = 0m;
+
+        foreach (var t in txns)
+        {
+            decimal qtyIn = t.Quantity > 0 ? t.Quantity : 0m;
+            decimal qtyOut = t.Quantity < 0 ? Math.Abs(t.Quantity) : 0m;
+            runningBalance += t.Quantity;
+            runningValue += t.ExtendedCost;
+
+            rows.Add(new StockCardRow(
+                t.Id,
+                t.TransactionDate,
+                t.Type,
+                t.ReferenceNumber,
+                t.Notes,
+                qtyIn,
+                qtyOut,
+                t.UnitCost,
+                t.ExtendedCost,
+                runningBalance,
+                runningValue));
+        }
+
+        return rows;
+    }
 }
 
 public record InventoryValuationRow(
@@ -466,3 +523,16 @@ public record CycleCountSummaryRow(
 
 public record InventoryGlTieOutRow(
     Guid ItemCategoryId, string GlAccountNumber, decimal SubLedgerValue);
+
+public record StockCardRow(
+    Guid TransactionId,
+    DateTime TransactionDate,
+    string TransactionType,
+    string? ReferenceNumber,
+    string? Description,
+    decimal QuantityIn,
+    decimal QuantityOut,
+    decimal UnitCost,
+    decimal ExtendedCost,
+    decimal RunningBalance,
+    decimal RunningValue);

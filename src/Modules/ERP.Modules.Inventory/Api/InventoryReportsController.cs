@@ -87,4 +87,11 @@ public class InventoryReportsController : ControllerBase
     public async Task<ActionResult<ApiResponse<List<InventoryGlTieOutRow>>>> GlTieOut(
         [FromQuery] Guid companyId, CancellationToken ct)
         => Ok(ApiResponse<List<InventoryGlTieOutRow>>.Success(await _reports.GetGlTieOutAsync(companyId, ct)));
+
+    [HttpGet("stock-card")]
+    public async Task<ActionResult<ApiResponse<List<StockCardRow>>>> StockCard(
+        [FromQuery] Guid companyId, [FromQuery] Guid itemId,
+        [FromQuery] Guid? warehouseId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+        => Ok(ApiResponse<List<StockCardRow>>.Success(
+            await _reports.GetStockCardAsync(companyId, itemId, warehouseId, from, to, ct)));
 }

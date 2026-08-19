@@ -25,7 +25,8 @@ import {
   newRequisitionDefaults,
 } from '@api/purchasing'
 import { getVendors } from '@api/ap'
-import { getItems } from '@api/inventory'
+import { getItems, getItemUomConversions } from '@api/inventory'
+import type { UomConversionDto } from '@/types/inventory'
 
 const lineSchema = z.object({
   lineNumber: z.number(),
@@ -62,6 +63,7 @@ export function RequisitionsPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -104,6 +106,13 @@ export function RequisitionsPage() {
       if (!watch(`lines.${index}.description`)) {
         setValue(`lines.${index}.description`, item.description)
       }
+      const baseUom = item.baseUnitOfMeasure || 'EA'
+      setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+      void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => {
+        const opts = [{ value: baseUom, label: baseUom + ' (base)' }]
+        for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }) }
+        setLineUomOptions(prev => ({ ...prev, [index]: opts }))
+      }).catch(() => {})
     }
   }
 
@@ -282,7 +291,11 @@ export function RequisitionsPage() {
                           <input type="number" step="0.01" {...register(`lines.${index}.quantity`)} className="w-20 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <input {...register(`lines.${index}.unitOfMeasure`)} className="w-16 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" />
+                          <select {...register(`lines.${index}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1">
+                            {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-2 py-1.5">
                           <input type="number" step="0.01" {...register(`lines.${index}.estimatedUnitPrice`)} className="w-24 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />

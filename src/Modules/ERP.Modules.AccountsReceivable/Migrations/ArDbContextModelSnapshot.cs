@@ -350,12 +350,24 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("SalesRepId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("SalesRepId");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("TaxCodeId");
+
                     b.Property<bool>("TaxExempt")
                         .HasColumnType("bit");
 
                     b.Property<string>("TaxExemptCertificate")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("TaxExemptionCertificateId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("TaxExemptionCertificateId");
 
                     b.Property<string>("TaxId")
                         .HasMaxLength(50)
@@ -367,6 +379,12 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                         .IsUnique();
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("SalesRepId");
+
+                    b.HasIndex("TaxCodeId");
+
+                    b.HasIndex("TaxExemptionCertificateId");
 
                     b.ToTable("Customers", "ar");
                 });

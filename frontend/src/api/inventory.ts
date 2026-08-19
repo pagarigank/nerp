@@ -251,6 +251,9 @@ export function getCycleCountVariance(): Promise<import('@/types/inventory').Cyc
 export function getCycleCountSummary(): Promise<import('@/types/inventory').CycleCountSummaryRow[]> {
   return get('/inventory/reports/cycle-count-summary', { companyId: companyId() })
 }
+export function getStockCard(itemId: string, warehouseId?: string, from?: string, to?: string): Promise<import('@/types/inventory').StockCardRow[]> {
+  return get('/inventory/reports/stock-card', { companyId: companyId(), itemId, warehouseId, from, to })
+}
 
 // --- Item vendor assignments ---
 export function getItemVendors(itemId: string): Promise<import('@/types/inventory').ItemVendorAssignmentDto[]> {
@@ -272,6 +275,23 @@ export function getItemGlAccounts(itemId: string): Promise<import('@/types/inven
 }
 export function upsertItemGlAccounts(itemId: string, body: Record<string, unknown>): Promise<string> {
   return post(`/inventory/items/${itemId}/gl-accounts`, body)
+}
+
+// --- Item UOM Conversions ---
+export function getItemUomConversions(itemId: string): Promise<import('@/types/inventory').UomConversionDto[]> {
+  return get(`/inventory/items/${itemId}/uom-conversions`)
+}
+export function createItemUomConversion(itemId: string, body: { fromUOM: string; toUOM: string; conversionFactor: number }): Promise<import('@/types/inventory').UomConversionDto> {
+  return post(`/inventory/items/${itemId}/uom-conversions`, body)
+}
+export function updateItemUomConversion(itemId: string, id: string, body: { conversionFactor: number }): Promise<string> {
+  return put(`/inventory/items/${itemId}/uom-conversions/${id}`, body)
+}
+export function deleteItemUomConversion(itemId: string, id: string): Promise<string> {
+  return del(`/inventory/items/${itemId}/uom-conversions/${id}`)
+}
+export function convertUom(itemId: string, body: { fromUOM: string; toUOM: string; quantity: number }): Promise<import('@/types/inventory').UomConvertResult> {
+  return post(`/inventory/items/${itemId}/uom-conversions/convert`, body)
 }
 
 // --- Landed Cost Allocations ---

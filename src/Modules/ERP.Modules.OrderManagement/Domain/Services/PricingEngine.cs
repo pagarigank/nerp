@@ -19,12 +19,13 @@ public static class PricingEngine
         decimal baseUnitPrice,
         Guid? customerId,
         Guid? itemId,
+        Guid? itemCategoryId,
         decimal quantity,
         IReadOnlyList<PricingRule> rules,
         DateTime asOf)
     {
         var winning = rules
-            .Where(r => r.Matches(customerId, itemId, quantity, asOf))
+            .Where(r => r.Matches(customerId, itemId, itemCategoryId, quantity, asOf))
             .OrderBy(r => r.PrioritySequence)
             .ThenBy(r => r.Scope == PricingRuleScope.CustomerSpecific ? 0 : 1)
             .FirstOrDefault();
@@ -39,17 +40,16 @@ public static class PricingEngine
         if (winning.UnitPriceOverride.HasValue)
         {
             unitPrice = winning.UnitPriceOverride.Value;
-            discountPercent = baseUnitPrice == 0m
-                ? 0m
-                : ((1m - (winning.UnitPriceOverride.Value / baseUnitPrice)) * 100m);
+            discountPercent = winning.DiscountPercent;
         }
         else
         {
             discountPercent = winning.DiscountPercent;
-            unitPrice = baseUnitPrice * (1m - (winning.DiscountPercent / 100m));
+            unitPrice = baseUnitPrice;
         }
 
-        return new PricingResult(unitPrice, discountPercent, unitPrice, winning.Id);
+        var netUnitPrice = unitPrice * (1m - (discountPercent / 100m));
+        return new PricingResult(unitPrice, discountPercent, netUnitPrice, winning.Id);
     }
 }
 

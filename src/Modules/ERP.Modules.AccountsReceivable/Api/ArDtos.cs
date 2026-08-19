@@ -14,7 +14,10 @@ public record CreateCustomerRequest(
     Guid? DefaultPaymentTermId,
     bool TaxExempt,
     string? TaxExemptCertificate,
-    string? CurrencyCode);
+    string? CurrencyCode,
+    Guid? SalesRepId,
+    Guid? TaxCodeId,
+    Guid? TaxExemptionCertificateId);
 
 public record UpdateCustomerRequest(
     string Name,
@@ -25,7 +28,10 @@ public record UpdateCustomerRequest(
     Guid? DefaultPaymentTermId,
     bool TaxExempt,
     string? TaxExemptCertificate,
-    string? CurrencyCode);
+    string? CurrencyCode,
+    Guid? SalesRepId,
+    Guid? TaxCodeId,
+    Guid? TaxExemptionCertificateId);
 
 public record CustomerResponse(
     Guid Id,
@@ -39,7 +45,10 @@ public record CustomerResponse(
     bool TaxExempt,
     string? TaxExemptCertificate,
     string CurrencyCode,
-    bool IsActive);
+    bool IsActive,
+    Guid? SalesRepId,
+    Guid? TaxCodeId,
+    Guid? TaxExemptionCertificateId);
 
 public record CreateInvoiceBatchRequest(
     Guid CompanyId,

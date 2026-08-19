@@ -13,8 +13,10 @@ import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '@api/ar'
 import { getPaymentTerms } from '@api/ap'
+import { getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
 import type { ArCustomer, UpdateArCustomerRequest } from '@/types/ar'
 import type { PaymentTerm } from '@/types/ap'
+import type { SalesRepSummary, TaxCodeSummary, TaxExemptionCertificateSummary } from '@/types/orderManagement'
 
 const customerSchema = z.object({
   customerId: z.string().trim().min(1, 'Customer code is required'),
@@ -27,6 +29,9 @@ const customerSchema = z.object({
   taxExemptCertificate: z.string().optional(),
   currencyCode: z.string().min(1, 'Currency is required'),
   defaultPaymentTermId: z.string().optional(),
+  salesRepId: z.string().optional(),
+  taxCodeId: z.string().optional(),
+  taxExemptionCertificateId: z.string().optional(),
   // Contact / address fields (for future backend support)
   address: z.string().optional(),
   city: z.string().optional(),
@@ -52,6 +57,9 @@ const defaultValues: CustomerForm = {
   taxExemptCertificate: '',
   currencyCode: 'USD',
   defaultPaymentTermId: '',
+  salesRepId: '',
+  taxCodeId: '',
+  taxExemptionCertificateId: '',
   address: '',
   city: '',
   state: '',
@@ -111,6 +119,23 @@ export function CustomersPage() {
     [paymentTerms]
   )
 
+  const { data: salesReps = [] } = useQuery({ queryKey: ['om', 'salesReps'], queryFn: getSalesReps })
+  const { data: taxCodes = [] } = useQuery({ queryKey: ['om', 'taxCodes'], queryFn: getTaxCodes })
+  const { data: taxExemptions = [] } = useQuery({ queryKey: ['om', 'taxExemptions'], queryFn: getTaxExemptions })
+
+  const salesRepOptions = useMemo(
+    () => salesReps.map((r: SalesRepSummary) => ({ value: r.id, label: `${r.code} - ${r.name}` })),
+    [salesReps]
+  )
+  const taxCodeOptions = useMemo(
+    () => taxCodes.map((t: TaxCodeSummary) => ({ value: t.id, label: `${t.code} - ${t.description} (${t.rate}%)` })),
+    [taxCodes]
+  )
+  const taxExemptionOptions = useMemo(
+    () => taxExemptions.filter((e: TaxExemptionCertificateSummary) => e.isActive).map((e: TaxExemptionCertificateSummary) => ({ value: e.id, label: `${e.certificateNumber} - ${e.jurisdiction}` })),
+    [taxExemptions]
+  )
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['ar', 'customers'] })
   }
@@ -154,6 +179,9 @@ export function CustomersPage() {
       taxExemptCertificate: customer.taxExemptCertificate ?? '',
       currencyCode: customer.currencyCode || 'USD',
       defaultPaymentTermId: customer.defaultPaymentTermId ?? '',
+      salesRepId: customer.salesRepId ?? '',
+      taxCodeId: customer.taxCodeId ?? '',
+      taxExemptionCertificateId: customer.taxExemptionCertificateId ?? '',
       address: '',
       city: '',
       state: '',
@@ -188,6 +216,9 @@ export function CustomersPage() {
           taxExempt: data.taxExempt,
           taxExemptCertificate: data.taxExemptCertificate || null,
           currencyCode: data.currencyCode || null,
+          salesRepId: data.salesRepId || null,
+          taxCodeId: data.taxCodeId || null,
+          taxExemptionCertificateId: data.taxExemptionCertificateId || null,
         },
       })
       return
@@ -203,6 +234,9 @@ export function CustomersPage() {
       taxExempt: data.taxExempt,
       taxExemptCertificate: data.taxExemptCertificate || null,
       currencyCode: data.currencyCode || null,
+      salesRepId: data.salesRepId || null,
+      taxCodeId: data.taxCodeId || null,
+      taxExemptionCertificateId: data.taxExemptionCertificateId || null,
     })
   }
 
@@ -412,6 +446,24 @@ export function CustomersPage() {
                   placeholder="Certificate number"
                 />
               )}
+              <Select
+                {...register('salesRepId')}
+                label="Sales Rep"
+                placeholder="Assign a sales person..."
+                options={salesRepOptions}
+              />
+              <Select
+                {...register('taxCodeId')}
+                label="Default Tax Code"
+                placeholder="Select tax code..."
+                options={taxCodeOptions}
+              />
+              <Select
+                {...register('taxExemptionCertificateId')}
+                label="Default Tax Exemption"
+                placeholder="Select exemption certificate..."
+                options={taxExemptionOptions}
+              />
             </div>
           </div>
 

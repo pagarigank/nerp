@@ -10,9 +10,10 @@ import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getItems, createItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts } from '@api/inventory'
+import { getItems, createItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts, getItemUomConversions, createItemUomConversion, deleteItemUomConversion } from '@api/inventory'
 import { getVendors } from '@api/ap'
-import type { ItemSummary, CreateItemRequest, ItemCategorySummary, ItemVendorAssignmentDto, ItemGlAccountDefaultsDto } from '@/types/inventory'
+import { getAccounts } from '@api/platform'
+import type { ItemSummary, CreateItemRequest, ItemCategorySummary, ItemVendorAssignmentDto, ItemGlAccountDefaultsDto, UomConversionDto } from '@/types/inventory'
 
 const itemTypeOptions = [
   { value: '1', label: 'Inventory' },
@@ -93,10 +94,23 @@ export function ItemsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [selected, setSelected] = useState<ItemSummary | null>(null)
-  const [detailTab, setDetailTab] = useState<'vendors' | 'gl'>('vendors')
+  const [detailTab, setDetailTab] = useState<'vendors' | 'gl' | 'uom'>('vendors')
   const [detailError, setDetailError] = useState<string | null>(null)
   const [vendorForm, setVendorForm] = useState({ vendorId: '', vendorItemCode: '', vendorCost: 0, leadTimeDays: 0, isPrimaryVendor: false })
   const [glForm, setGlForm] = useState<Record<string, string>>({})
+  const [uomConversions, setUomConversions] = useState<UomConversionDto[]>([])
+  const [uomForm, setUomForm] = useState({ fromUOM: '', toUOM: '', conversionFactor: 1 })
+  const { data: glAccounts = [] } = useQuery({ queryKey: ['platform', 'accounts'], queryFn: () => getAccounts() })
+  const glAccountOptions = useMemo(() => glAccounts.map((a) => ({ value: a.id, label: `${a.accountNumber} - ${a.description}` })), [glAccounts])
+
+  async function loadUomConversions(itemId: string) {
+    try {
+      const data = await getItemUomConversions(itemId)
+      setUomConversions(data)
+    } catch {
+      setUomConversions([])
+    }
+  }
 
   const {
     register,
@@ -469,6 +483,7 @@ export function ItemsPage() {
         <div className="flex gap-2 mb-4">
           <Button size="sm" variant={detailTab === 'vendors' ? 'primary' : 'outline'} onClick={() => setDetailTab('vendors')}>Vendor Assignments</Button>
           <Button size="sm" variant={detailTab === 'gl' ? 'primary' : 'outline'} onClick={() => setDetailTab('gl')}>GL Account Defaults</Button>
+          <Button size="sm" variant={detailTab === 'uom' ? 'primary' : 'outline'} onClick={() => { setDetailTab('uom'); if (selected) void loadUomConversions(selected.id) }}>UOM Conversions</Button>
         </div>
 
         {detailTab === 'vendors' && (
@@ -506,15 +521,57 @@ export function ItemsPage() {
               ['inventoryAdjustmentAccountId', 'Inventory Adjustment'],
               ['landedCostClearingAccountId', 'Landed Cost Clearing'],
             ] as [keyof ItemGlAccountDefaultsDto, string][]).map(([k, label]) => (
-              <Input
+              <Select
                 key={k}
                 value={(gl?.[k] as string) ?? glForm[k as string] ?? ''}
                 onChange={e => setGlForm(f => ({ ...f, [k]: e.target.value }))}
                 label={label}
-                placeholder="Account Guid"
+                placeholder="Select account..."
+                options={[{ value: '', label: '— None —' }, ...glAccountOptions]}
               />
             ))}
             <Button size="sm" variant="primary" onClick={() => saveGlMut.mutate()} disabled={saveGlMut.isPending}>Save GL Defaults</Button>
+          </div>
+        )}
+
+        {detailTab === 'uom' && selected && (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500">
+              Base UOM: <strong>{selected.baseUnitOfMeasure}</strong> — Define conversions so quantities are automatically converted when ordering/receiving in different UOMs.
+            </p>
+            <div className="border rounded-lg divide-y divide-gray-100 dark:divide-gray-700/60">
+              {uomConversions.length === 0 ? (
+                <p className="p-4 text-sm text-gray-500">No UOM conversions defined.</p>
+              ) : (
+                uomConversions.map((c: UomConversionDto) => (
+                  <div key={c.id} className="p-3 flex justify-between items-center text-sm">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      1 {c.fromUOM} = {c.conversionFactor} {c.toUOM}
+                    </span>
+                    <button
+                      onClick={() => void deleteItemUomConversion(selected.id, c.id).then(() => loadUomConversions(selected.id))}
+                      className="text-red-500 hover:text-red-700 text-xs"
+                    >Delete</button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2 items-end">
+              <Input value={uomForm.fromUOM} onChange={e => setUomForm(f => ({ ...f, fromUOM: e.target.value.toUpperCase() }))} label="From UOM" placeholder="e.g. CS" />
+              <Input value={uomForm.toUOM} onChange={e => setUomForm(f => ({ ...f, toUOM: e.target.value.toUpperCase() }))} label="To UOM" placeholder="e.g. EA" />
+              <Input type="number" step="0.0001" min="0.0001" value={String(uomForm.conversionFactor)} onChange={e => setUomForm(f => ({ ...f, conversionFactor: Number(e.target.value) }))} label="Factor" />
+            </div>
+            <Button
+              size="sm" variant="primary"
+              onClick={() => {
+                if (!selected || !uomForm.fromUOM || !uomForm.toUOM) return
+                createItemUomConversion(selected.id, uomForm).then(() => {
+                  setUomForm({ fromUOM: '', toUOM: '', conversionFactor: 1 })
+                  void loadUomConversions(selected.id)
+                })
+              }}
+              disabled={!uomForm.fromUOM || !uomForm.toUOM || uomForm.conversionFactor <= 0}
+            >Add Conversion</Button>
           </div>
         )}
       </Modal>

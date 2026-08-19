@@ -11,7 +11,9 @@ import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { Skeleton } from '@components/ui/LoadingSpinner'
 import { getErrorMessage } from '@api/client'
 import { getInvoiceBatch, addInvoiceBatchLines, releaseInvoiceBatch, postInvoiceBatch, getCustomers } from '@api/ar'
+import { getAccounts } from '@api/platform'
 import type { ArCustomer, ArInvoiceBatchLineItem } from '@/types/ar'
+import type { Account } from '@/types/platform'
 import { batchStatusMap, invoiceStatusMap } from './statusMaps'
 import { ArStatusBadge } from './ArStatusBadge'
 
@@ -231,22 +233,15 @@ function AddInvoiceModal({ isOpen, onClose, customers, onSave, isSaving, error }
                 {rows.map((row, index) => (
                   <tr key={index}>
                     <td className="px-2 py-1.5">
-                      <div className="flex gap-1">
-                        <Input
-                          value={row.accountId}
-                          onChange={e => updateRow(index, { accountId: e.target.value })}
-                          placeholder="Account GUID"
-                          className="font-mono text-xs"
-                          aria-label={`Line ${index + 1} account`}
-                        />
-                        <IconButton
-                          size="sm"
-                          aria-label={`Generate account GUID for line ${index + 1}`}
-                          onClick={() => fillRandomAccount(index)}
-                        >
-                          <Wand2 className="h-4 w-4" aria-hidden="true" />
-                        </IconButton>
-                      </div>
+                      <select
+                        value={row.accountId}
+                        onChange={e => updateRow(index, { accountId: e.target.value })}
+                        className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1"
+                        aria-label={`Line ${index + 1} account`}
+                      >
+                        <option value="">Select account...</option>
+                        {accountOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
                     </td>
                     <td className="px-2 py-1.5">
                       <Input
@@ -355,6 +350,16 @@ export function InvoiceBatchDetailPage() {
     queryKey: ['ar', 'customers'],
     queryFn: getCustomers,
   })
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['platform', 'accounts'],
+    queryFn: getAccounts,
+  })
+
+  const accountOptions = useMemo(
+    () => accounts.map((a: Account) => ({ value: a.id, label: `${a.accountNumber} - ${a.description}` })),
+    [accounts]
+  )
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['ar', 'invoiceBatch', batchId] })

@@ -22,11 +22,11 @@ import {
   emailPurchaseOrderToVendor,
   newPurchaseOrderDefaults,
 } from '@api/purchasing'
-import { getVendors } from '@api/ap'
-import { getItems } from '@api/inventory'
+import { getVendors, getPaymentTerms } from '@api/ap'
+import { getItems, getItemUomConversions } from '@api/inventory'
 import type { PurchaseOrderSummary } from '@/types/purchasing'
-import type { Vendor } from '@/types/ap'
-import type { ItemSummary } from '@/types/inventory'
+import type { Vendor, PaymentTerm } from '@/types/ap'
+import type { ItemSummary, UomConversionDto } from '@/types/inventory'
 
 const lineSchema = z.object({
   lineNumber: z.number(),
@@ -95,6 +95,7 @@ export function PurchaseOrdersPage() {
   const [releaseAmount, setReleaseAmount] = useState('')
   const [vendorSearch, setVendorSearch] = useState('')
   const [showVendorDropdown, setShowVendorDropdown] = useState(false)
+  const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
 
   const defaults = useMemo(() => newPurchaseOrderDefaults(), [open])
 
@@ -114,6 +115,7 @@ export function PurchaseOrdersPage() {
   const { data: rows = [], isLoading } = useQuery({ queryKey: ['purchasing', 'purchase-orders'], queryFn: () => getPurchaseOrders() })
   const { data: vendors = [] } = useQuery({ queryKey: ['ap', 'vendors'], queryFn: () => getVendors() })
   const { data: items = [] } = useQuery({ queryKey: ['inventory', 'items'], queryFn: () => getItems() })
+  const { data: paymentTerms = [] } = useQuery({ queryKey: ['ap', 'paymentTerms'], queryFn: () => getPaymentTerms(true) })
 
   const filteredVendors = useMemo(() => {
     const q = vendorSearch.trim().toLowerCase()
@@ -126,6 +128,11 @@ export function PurchaseOrdersPage() {
   const itemOptions = useMemo(
     () => items.map((i: ItemSummary) => ({ value: i.id, label: `${i.itemCode} - ${i.description}` })),
     [items]
+  )
+
+  const paymentTermOptions = useMemo(
+    () => paymentTerms.map((t: PaymentTerm) => ({ value: t.id, label: `${t.name} (${t.dueDays}d)` })),
+    [paymentTerms]
   )
 
   // Running totals
@@ -156,6 +163,18 @@ export function PurchaseOrdersPage() {
       if (!watch(`lines.${index}.description`)) {
         setValue(`lines.${index}.description`, item.description)
       }
+      // Load UOM conversions
+      const baseUom = item.baseUnitOfMeasure || 'EA'
+      setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+      void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => {
+        const opts = [{ value: baseUom, label: baseUom + ' (base)' }]
+        for (const c of convs) {
+          if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` })
+        }
+        setLineUomOptions(prev => ({ ...prev, [index]: opts }))
+      }).catch(() => {
+        setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+      })
     }
   }
 
@@ -341,8 +360,8 @@ export function PurchaseOrdersPage() {
           <div className="grid grid-cols-2 gap-3">
             <Input {...register('shipToName')} label="Ship To Name" placeholder="Attention / Department" />
             <Input {...register('vendorReference')} label="Vendor Reference" placeholder="Vendor's reference #" />
-            <Input {...register('buyerId')} label="Buyer ID" placeholder="Buyer GUID" />
-            <Input {...register('paymentTermId')} label="Payment Terms" placeholder="Terms GUID" />
+            <Input {...register('buyerId')} label="Buyer ID" placeholder="Buyer user ID" />
+            <Select {...register('paymentTermId')} label="Payment Terms" placeholder="Select payment terms..." options={paymentTermOptions} />
           </div>
 
           <Textarea {...register('shipToAddress')} label="Ship To Address" placeholder="Full shipping address..." rows={2} />
@@ -391,7 +410,11 @@ export function PurchaseOrdersPage() {
                           <input type="number" step="0.01" {...register(`lines.${index}.quantity`)} className="w-20 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <input {...register(`lines.${index}.unitOfMeasure`)} className="w-16 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" />
+                          <select {...register(`lines.${index}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1">
+                            {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-2 py-1.5">
                           <input type="number" step="0.01" {...register(`lines.${index}.unitPrice`)} className="w-24 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />

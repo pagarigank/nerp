@@ -40,7 +40,10 @@ public class CustomersController : ControllerBase
                 c.TaxExempt,
                 c.TaxExemptCertificate,
                 c.CurrencyCode,
-                c.IsActive))
+                c.IsActive,
+                c.SalesRepId,
+                c.TaxCodeId,
+                c.TaxExemptionCertificateId))
             .ToListAsync(cancellationToken);
 
         return Ok(customers);
@@ -67,7 +70,10 @@ public class CustomersController : ControllerBase
             customer.TaxExempt,
             customer.TaxExemptCertificate,
             customer.CurrencyCode,
-            customer.IsActive));
+            customer.IsActive,
+            customer.SalesRepId,
+            customer.TaxCodeId,
+            customer.TaxExemptionCertificateId));
     }
 
     [HttpPost]
@@ -85,7 +91,10 @@ public class CustomersController : ControllerBase
             request.DefaultPaymentTermId,
             request.TaxExempt,
             request.TaxExemptCertificate,
-            request.CurrencyCode);
+            request.CurrencyCode,
+            request.SalesRepId,
+            request.TaxCodeId,
+            request.TaxExemptionCertificateId);
 
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
@@ -102,7 +111,10 @@ public class CustomersController : ControllerBase
             customer.TaxExempt,
             customer.TaxExemptCertificate,
             customer.CurrencyCode,
-            customer.IsActive));
+            customer.IsActive,
+            customer.SalesRepId,
+            customer.TaxCodeId,
+            customer.TaxExemptionCertificateId));
     }
 
     [HttpPut("{id:guid}")]
@@ -126,7 +138,10 @@ public class CustomersController : ControllerBase
             request.DefaultPaymentTermId,
             request.TaxExempt,
             request.TaxExemptCertificate,
-            request.CurrencyCode);
+            request.CurrencyCode,
+            request.SalesRepId,
+            request.TaxCodeId,
+            request.TaxExemptionCertificateId);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -142,7 +157,10 @@ public class CustomersController : ControllerBase
             customer.TaxExempt,
             customer.TaxExemptCertificate,
             customer.CurrencyCode,
-            customer.IsActive));
+            customer.IsActive,
+            customer.SalesRepId,
+            customer.TaxCodeId,
+            customer.TaxExemptionCertificateId));
     }
 
     [HttpDelete("{id:guid}")]

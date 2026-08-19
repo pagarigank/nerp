@@ -23,7 +23,8 @@ import {
 } from '@api/purchasing'
 import { getPurchaseOrders } from '@api/purchasing'
 import { getVendors } from '@api/ap'
-import { getItems, getWarehouses } from '@api/inventory'
+import { getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
+import type { UomConversionDto } from '@/types/inventory'
 
 const lineSchema = z.object({
   lineNumber: z.number(),
@@ -69,6 +70,7 @@ export function ReceiptsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [reverseId, setReverseId] = useState<string | null>(null)
   const [reverseReason, setReverseReason] = useState('')
+  const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
 
   const defaults = useMemo(() => newReceiptDefaults(), [open])
 
@@ -262,7 +264,20 @@ export function ReceiptsPage() {
                     <tr key={field.id} className="bg-white dark:bg-gray-900">
                       <td className="px-2 py-1.5 text-sm text-gray-500">{index + 1}</td>
                       <td className="px-2 py-1.5">
-                        <select {...register(`lines.${index}.itemId`)} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+                        <select {...register(`lines.${index}.itemId`)} onChange={(e) => {
+                          register(`lines.${index}.itemId`).onChange(e)
+                          const itemId = e.target.value
+                          if (itemId) {
+                            const item = items.find((i: any) => i.id === itemId)
+                            const baseUom = item?.baseUnitOfMeasure || 'EA'
+                            setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
+                            void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => {
+                              const opts = [{ value: baseUom, label: baseUom + ' (base)' }]
+                              for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }) }
+                              setLineUomOptions(prev => ({ ...prev, [index]: opts }))
+                            }).catch(() => {})
+                          }
+                        }} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
                           <option value="">Select...</option>
                           {itemOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
@@ -274,7 +289,11 @@ export function ReceiptsPage() {
                         <input type="number" step="0.01" {...register(`lines.${index}.quantityReceived`)} className="w-20 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input {...register(`lines.${index}.unitOfMeasure`)} className="w-16 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" />
+                        <select {...register(`lines.${index}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1">
+                          {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-2 py-1.5">
                         <input {...register(`lines.${index}.lotNumber`)} className="w-24 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" placeholder="Lot" />

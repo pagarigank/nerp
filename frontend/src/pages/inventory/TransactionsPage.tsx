@@ -9,7 +9,8 @@ import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getTransactions, createReceipt, createIssue, createTransfer, createAdjustment, getItems, getWarehouses } from '@api/inventory'
+import { getTransactions, createReceipt, createIssue, createTransfer, createAdjustment, getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
+import type { UomConversionDto } from '@/types/inventory'
 
 const schema = z.object({
   transactionType: z.enum(['receipt', 'issue', 'transfer', 'adjustment']),
@@ -30,7 +31,8 @@ function fieldError(message?: string) { return message ? { error: message } : {}
 export function TransactionsPage() {
   const qc = useQueryClient()
   const [formError, setFormError] = useState<string | null>(null)
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: defaults })
+  const [uomOptions, setUomOptions] = useState<{ value: string; label: string }[]>([])
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: defaults })
 
   const { data: items = [] } = useQuery({ queryKey: ['inventory', 'items'], queryFn: () => getItems() })
   const { data: warehouses = [] } = useQuery({ queryKey: ['inventory', 'warehouses'], queryFn: () => getWarehouses() })
@@ -83,7 +85,7 @@ export function TransactionsPage() {
                   { value: 'transfer', label: 'Transfer' },
                   { value: 'adjustment', label: 'Adjustment' },
                 ]} required />
-              <Select {...register('itemId')} label="Item" options={itemOptions} {...fieldError(errors.itemId?.message)} required />
+              <Select {...register('itemId')} label="Item" options={itemOptions} {...fieldError(errors.itemId?.message)} required onChange={(e) => { register('itemId').onChange(e); const itemId = e.target.value; if (itemId) { const item = items.find((i: any) => i.id === itemId); const baseUom = item?.baseUnitOfMeasure || 'EA'; setUomOptions([{ value: baseUom, label: baseUom + ' (base)' }]); void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => { const opts = [{ value: baseUom, label: baseUom + ' (base)' }]; for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }); } setUomOptions(opts); }).catch(() => {}); } }} />
               <Select {...register('warehouseId')} label={selectedType === 'transfer' ? 'From Warehouse' : 'Warehouse'} options={whOptions} {...fieldError(errors.warehouseId?.message)} required />
               {selectedType === 'transfer' && (
                 <Select {...register('toWarehouseId')} label="To Warehouse" options={whOptions} required />
@@ -95,6 +97,7 @@ export function TransactionsPage() {
               {selectedType === 'adjustment' && (
                 <Input {...register('reasonCode')} label="Reason Code" placeholder="e.g. DAMAGE" />
               )}
+              <Select {...register('unitOfMeasure')} label="Unit of Measure" options={uomOptions.length > 0 ? uomOptions : [{ value: 'EA', label: 'EA' }]} />
               <Input {...register('referenceNumber')} label="Reference #" />
               <Input {...register('notes')} label="Notes" />
             </div>

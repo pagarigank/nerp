@@ -16,10 +16,12 @@ export interface SalesOrderLineSummary {
   warehouseId?: string | null
   projectId?: string | null
   accountId?: string | null
+  itemCategoryId?: string | null
   isDropShip: boolean
   dropShipVendorId?: string | null
   shippedQuantity: number
   lineTotal: number
+  appliedPricingRuleId?: string | null
 }
 
 export interface SalesOrderSummary {
@@ -44,6 +46,9 @@ export interface SalesOrderDetail {
   salesRepId?: string | null
   shippingMethod?: string | null
   customerPoNumber?: string | null
+  salesOrderTypeId?: string | null
+  taxCodeId?: string | null
+  taxExemptionCertificateId?: string | null
   status: SalesOrderStatus
   isOnCreditHold: boolean
   requiresDiscountApproval: boolean
@@ -63,6 +68,7 @@ export interface CreateSalesOrderLineRequest {
   warehouseId?: string | null
   projectId?: string | null
   accountId?: string | null
+  itemCategoryId?: string | null
   isDropShip?: boolean
   dropShipVendorId?: string | null
 }
@@ -78,6 +84,9 @@ export interface CreateSalesOrderRequest {
   salesRepId?: string | null
   shippingMethod?: string | null
   customerPoNumber?: string | null
+  salesOrderTypeId?: string | null
+  taxCodeId?: string | null
+  taxExemptionCertificateId?: string | null
   lines: CreateSalesOrderLineRequest[]
 }
 
@@ -246,12 +255,30 @@ export interface UpdateSalesOrderLineRequest {
   warehouseId?: string | null
   projectId?: string | null
   accountId?: string | null
+  itemCategoryId?: string | null
   description?: string | null
 }
 
 // ---- Phase 8 masters & pricing/tax ----
-export type PricingRuleScope = 'Standard' | 'CustomerSpecific' | 'ItemSpecific' | 'QuantityBreak' | 'Promotional'
-export type SalesOrderTypeCode = 'Standard' | 'Quote' | 'Blanket' | 'DropShip' | 'Service'
+export type PricingRuleScope = 'Standard' | 'CustomerSpecific' | 'QuantityBreak' | 'Promotional'
+export type SalesOrderTypeCode = 'Quote' | 'Order' | 'Return' | 'CreditOnly'
+
+export interface PricingResult {
+  unitPrice: number
+  discountPercent: number
+  appliedRuleId?: string | null
+  appliedScope?: string | null
+}
+
+export interface EvaluatePriceRequest {
+  companyId: string
+  baseUnitPrice: number
+  customerId?: string | null
+  itemId?: string | null
+  itemCategoryId?: string | null
+  quantity: number
+  asOf: string
+}
 
 export interface ShippingMethodSummary {
   id: string
@@ -296,6 +323,7 @@ export interface PricingRuleSummary {
   unitPriceOverride?: number | null
   customerId?: string | null
   itemId?: string | null
+  itemCategoryId?: string | null
   minimumQuantity?: number | null
   isActive: boolean
 }
@@ -306,6 +334,111 @@ export interface TaxCodeSummary {
   jurisdiction: string
   rate: number
   isTaxable: boolean
+  isActive: boolean
+}
+
+// ---- Masters CRUD request types ----
+export type SalesOrderTypeCodeValue = 'Quote' | 'Order' | 'Return' | 'CreditOnly'
+export type PricingRuleScopeValue = 'Standard' | 'CustomerSpecific' | 'QuantityBreak' | 'Promotional'
+
+export interface CreateShippingMethodRequest {
+  companyId: string
+  code: string
+  description: string
+  carrier?: string | null
+  baseCost: number
+  trackingUrlTemplate?: string | null
+}
+export interface UpdateShippingMethodRequest {
+  description: string
+  carrier?: string | null
+  baseCost: number
+  isActive: boolean
+  trackingUrlTemplate?: string | null
+}
+export interface CreateSalesRepRequest {
+  companyId: string
+  code: string
+  name: string
+  commissionRate: number
+  territoryId?: string | null
+  email?: string | null
+}
+export interface UpdateSalesRepRequest {
+  name: string
+  commissionRate: number
+  territoryId?: string | null
+  isActive: boolean
+  email?: string | null
+}
+export interface CreateSalesTerritoryRequest {
+  companyId: string
+  code: string
+  name: string
+  region?: string | null
+  defaultCommissionRate: number
+}
+export interface UpdateSalesTerritoryRequest {
+  name: string
+  region?: string | null
+  defaultCommissionRate: number
+  isActive: boolean
+}
+export interface CreateSalesOrderTypeRequest {
+  companyId: string
+  code: string
+  description: string
+  typeCode: SalesOrderTypeCodeValue
+  revenueAccountId?: string | null
+}
+export interface UpdateSalesOrderTypeRequest {
+  description: string
+  typeCode: SalesOrderTypeCodeValue
+  revenueAccountId?: string | null
+  isActive: boolean
+}
+export interface CreatePricingRuleRequest {
+  companyId: string
+  code: string
+  description: string
+  scope: PricingRuleScopeValue
+  prioritySequence: number
+  discountPercent: number
+  unitPriceOverride?: number | null
+  customerId?: string | null
+  itemId?: string | null
+  itemCategoryId?: string | null
+  minimumQuantity?: number | null
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
+}
+export interface UpdatePricingRuleRequest {
+  description: string
+  prioritySequence: number
+  discountPercent: number
+  unitPriceOverride?: number | null
+  itemCategoryId?: string | null
+  minimumQuantity?: number | null
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
+  isActive: boolean
+}
+export interface CreateTaxCodeRequest {
+  companyId: string
+  code: string
+  description: string
+  jurisdiction: string
+  rate: number
+  isTaxable: boolean
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
+}
+export interface UpdateTaxCodeRequest {
+  description: string
+  rate: number
+  isTaxable: boolean
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
   isActive: boolean
 }
 

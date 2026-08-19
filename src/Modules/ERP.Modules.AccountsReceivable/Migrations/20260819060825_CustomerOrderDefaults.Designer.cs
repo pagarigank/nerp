@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERP.Modules.AccountsReceivable.Migrations
 {
     [DbContext(typeof(ArDbContext))]
-    [Migration("20260818134742_Phase4ArGapsAllowanceCols")]
-    partial class Phase4ArGapsAllowanceCols
+    [Migration("20260819060825_CustomerOrderDefaults")]
+    partial class CustomerOrderDefaults
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -353,12 +353,24 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("SalesRepId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("SalesRepId");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("TaxCodeId");
+
                     b.Property<bool>("TaxExempt")
                         .HasColumnType("bit");
 
                     b.Property<string>("TaxExemptCertificate")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("TaxExemptionCertificateId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("TaxExemptionCertificateId");
 
                     b.Property<string>("TaxId")
                         .HasMaxLength(50)
@@ -370,6 +382,12 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                         .IsUnique();
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("SalesRepId");
+
+                    b.HasIndex("TaxCodeId");
+
+                    b.HasIndex("TaxExemptionCertificateId");
 
                     b.ToTable("Customers", "ar");
                 });

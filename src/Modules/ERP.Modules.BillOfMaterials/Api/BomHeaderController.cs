@@ -1,0 +1,566 @@
+// <copyright file="BomHeaderController.cs" company="ERP Project">
+// Copyright (c) ERP Project. All rights reserved.
+// </copyright>
+
+using ERP.Modules.BillOfMaterials.Domain.Entities;
+using ERP.Modules.BillOfMaterials.Infrastructure;
+using ERP.Modules.Inventory.Infrastructure;
+using ERP.Shared.Kernel.Api;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace ERP.Modules.BillOfMaterials.Api;
+
+#pragma warning disable S6960 // Controller actions should be grouped logically
+[ApiController]
+[Route("api/v1/bom/bom-headers")]
+public class BomHeaderController : ControllerBase
+{
+    private readonly BomDbContext _context;
+    private readonly InventoryDbContext _invContext;
+    private readonly IBomUnitOfWork _unitOfWork;
+
+    public BomHeaderController(BomDbContext context, InventoryDbContext invContext, IBomUnitOfWork unitOfWork)
+    {
+        _context = context;
+        _invContext = invContext;
+        _unitOfWork = unitOfWork;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<List<BomHeaderDto>>>> GetAll(
+        [FromQuery] Guid? companyId,
+        [FromQuery] BomStatus? status,
+        CancellationToken cancellationToken)
+    {
+        var query = _context.BomHeaders
+            .Include(h => h.Components)
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(h => h.CompanyId == companyId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(h => h.Status == status.Value);
+        }
+
+        var headers = await query.OrderByDescending(h => h.CreatedOn).ToListAsync(cancellationToken);
+        var dtos = headers.Select(MapToDto).ToList();
+        return Ok(ApiResponse<List<BomHeaderDto>>.Success(dtos));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<BomHeaderDto>>> GetById(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.Components)
+            .Include(h => h.Revisions)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+
+        if (header is null)
+        {
+            return NotFound(ApiResponse<BomHeaderDto>.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        var dto = MapToDto(header);
+        return Ok(ApiResponse<BomHeaderDto>.Success(dto));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<Guid>>> Create(
+        [FromBody] CreateBomHeaderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var bomType = Enum.TryParse<BomType>(request.BomType, true, out var parsed) ? parsed : BomType.Standard;
+
+        var header = new BomHeader(
+            request.CompanyId,
+            request.ParentItemId,
+            request.Revision,
+            bomType,
+            BomStatus.Draft,
+            request.EffectiveFrom,
+            request.EffectiveTo,
+            request.Description,
+            request.YieldPercentage);
+
+        _context.BomHeaders.Add(header);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Add revision history entry
+        var revision = new BomRevisionHistory(
+            header.Id, header.Revision, "Initial BOM creation", null, header.EffectiveFrom);
+        _context.BomRevisionHistories.Add(revision);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<Guid>.Success(header.Id));
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ApiResponse>> Update(
+        Guid id,
+        [FromBody] UpdateBomHeaderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        var updateBomType = request.BomType is not null && Enum.TryParse<BomType>(request.BomType, true, out var bt) ? bt : (BomType?)null;
+        var updateStatus = request.Status is not null && Enum.TryParse<BomStatus>(request.Status, true, out var st) ? st : (BomStatus?)null;
+
+        header.Update(
+            request.Description,
+            updateBomType,
+            updateStatus,
+            request.EffectiveFrom,
+            request.EffectiveTo,
+            request.YieldPercentage);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse>> Delete(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        if (header.Status == BomStatus.Active)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { "Cannot delete an active BOM. Set it to Obsolete first." }));
+        }
+
+        _context.BomHeaders.Remove(header);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Component Lines ---
+    [HttpGet("{id:guid}/components")]
+    public async Task<ActionResult<ApiResponse<List<BomComponentLineDto>>>> GetComponents(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var lines = await _context.BomComponentLines
+            .Where(c => c.BomHeaderId == id)
+            .OrderBy(c => c.OperationSequence)
+            .ToListAsync(cancellationToken);
+
+        var dtos = lines.Select(MapComponentToDto).ToList();
+        return Ok(ApiResponse<List<BomComponentLineDto>>.Success(dtos));
+    }
+
+    [HttpPost("{id:guid}/components")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AddComponent(
+        Guid id,
+        [FromBody] AddComponentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        var line = header.AddComponent(
+            request.ComponentItemId,
+            request.QuantityPerParent,
+            request.UnitOfMeasure,
+            request.ScrapFactor,
+            request.OperationSequence,
+            request.WorkCenterId,
+            request.IsPhantom,
+            request.IsCritical,
+            request.Notes);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(line.Id));
+    }
+
+    [HttpPut("{id:guid}/components/{lineId:guid}")]
+    public async Task<ActionResult<ApiResponse>> UpdateComponent(
+        Guid id,
+        Guid lineId,
+        [FromBody] UpdateComponentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var line = await _context.BomComponentLines
+            .FirstOrDefaultAsync(c => c.Id == lineId && c.BomHeaderId == id, cancellationToken);
+
+        if (line is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "Component line not found." }, 404));
+        }
+
+        line.Update(
+            request.QuantityPerParent,
+            request.UnitOfMeasure,
+            request.ScrapFactor,
+            request.OperationSequence,
+            request.WorkCenterId,
+            request.IsPhantom,
+            request.IsCritical,
+            request.Notes);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpDelete("{id:guid}/components/{lineId:guid}")]
+    public async Task<ActionResult<ApiResponse>> DeleteComponent(
+        Guid id,
+        Guid lineId,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        header.RemoveComponent(lineId);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- BOM Explosion ---
+    [HttpGet("{id:guid}/explode")]
+    public async Task<ActionResult<ApiResponse<List<BomExplosionDto>>>> Explode(
+        Guid id,
+        [FromQuery] decimal quantity = 1,
+        [FromQuery] int maxLevel = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new List<BomExplosionDto>();
+        await ExplodeLevel(id, quantity, 0, maxLevel, result, cancellationToken);
+        return Ok(ApiResponse<List<BomExplosionDto>>.Success(result));
+    }
+
+    private async Task ExplodeLevel(
+        Guid bomHeaderId,
+        decimal parentQty,
+        int currentLevel,
+        int maxLevel,
+        List<BomExplosionDto> result,
+        CancellationToken ct)
+    {
+        if (currentLevel >= maxLevel)
+        {
+            return;
+        }
+
+        var header = await _context.BomHeaders
+            .Include(h => h.Components)
+            .FirstOrDefaultAsync(h => h.Id == bomHeaderId, ct);
+
+        if (header is null)
+        {
+            return;
+        }
+
+        foreach (var comp in header.Components)
+        {
+            var netQty = comp.EffectiveQuantity * parentQty;
+            result.Add(new BomExplosionDto
+            {
+                Level = currentLevel,
+                ComponentItemId = comp.ComponentItemId,
+                QuantityPerParent = comp.QuantityPerParent,
+                NetQuantity = netQty,
+                UnitOfMeasure = comp.UnitOfMeasure,
+                ScrapFactor = comp.ScrapFactor,
+                IsPhantom = comp.IsPhantom,
+                IsCritical = comp.IsCritical,
+                OperationSequence = comp.OperationSequence,
+            });
+
+            // If component is a phantom, explode its sub-BOM too
+            if (comp.IsPhantom)
+            {
+                var subBom = await _context.BomHeaders
+                    .FirstOrDefaultAsync(
+                        h => h.ParentItemId == comp.ComponentItemId && h.Status == BomStatus.Active,
+                        ct);
+
+                if (subBom is not null)
+                {
+                    await ExplodeLevel(subBom.Id, netQty, currentLevel + 1, maxLevel, result, ct);
+                }
+            }
+        }
+    }
+
+    // --- Where Used ---
+    [HttpGet("where-used")]
+    public async Task<ActionResult<ApiResponse<List<BomWhereUsedDto>>>> WhereUsed(
+        [FromQuery] Guid componentItemId,
+        CancellationToken cancellationToken)
+    {
+        var results = await _context.BomComponentLines
+            .Where(c => c.ComponentItemId == componentItemId)
+            .Join(
+                _context.BomHeaders,
+                c => c.BomHeaderId,
+                h => h.Id,
+                (c, h) => new BomWhereUsedDto
+                {
+                    BomHeaderId = h.Id,
+                    ParentItemId = h.ParentItemId,
+                    Revision = h.Revision,
+                    QuantityPerParent = c.QuantityPerParent,
+                    UnitOfMeasure = c.UnitOfMeasure,
+                    IsPhantom = c.IsPhantom,
+                    OperationSequence = c.OperationSequence,
+                })
+            .ToListAsync(cancellationToken);
+
+        return Ok(ApiResponse<List<BomWhereUsedDto>>.Success(results));
+    }
+
+    // --- Cost Roll-Up ---
+    [HttpGet("{id:guid}/cost-rollup")]
+    public async Task<ActionResult<ApiResponse<BomCostRollupDto>>> CostRollup(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.Components)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+
+        if (header is null)
+        {
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+        }
+
+        var dto = new BomCostRollupDto
+        {
+            BomHeaderId = header.Id,
+            ParentItemId = header.ParentItemId,
+            Revision = header.Revision,
+            YieldPercentage = header.YieldPercentage,
+            Components = [],
+        };
+
+        decimal totalMaterialCost = 0;
+
+        foreach (var comp in header.Components)
+        {
+            // Look up item standard cost
+            var itemCost = await _invContext.Items
+                .Where(i => i.Id == comp.ComponentItemId)
+                .Select(i => i.StandardCost)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var unitCost = itemCost ?? 0;
+            var extCost = comp.EffectiveQuantity * unitCost;
+            totalMaterialCost += extCost;
+
+            dto.Components.Add(new BomCostRollupLineDto
+            {
+                ComponentItemId = comp.ComponentItemId,
+                QuantityPerParent = comp.QuantityPerParent,
+                EffectiveQuantity = comp.EffectiveQuantity,
+                UnitCost = unitCost,
+                ExtendedCost = extCost,
+                ScrapFactor = comp.ScrapFactor,
+            });
+        }
+
+        // Adjust for yield
+        if (header.YieldPercentage > 0 && header.YieldPercentage != 100)
+        {
+            totalMaterialCost = totalMaterialCost / (header.YieldPercentage / 100m);
+        }
+
+        dto.TotalMaterialCost = totalMaterialCost;
+        dto.TotalCost = totalMaterialCost;
+
+        // Update estimated costs on header
+        header.UpdateEstimatedCosts(totalMaterialCost, 0, 0);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<BomCostRollupDto>.Success(dto));
+    }
+
+    // --- Mapping Helpers ---
+    private static BomHeaderDto MapToDto(BomHeader h) => new ()
+    {
+        Id = h.Id,
+        CompanyId = h.CompanyId,
+        ParentItemId = h.ParentItemId,
+        Revision = h.Revision,
+        Description = h.Description,
+        BomType = h.BomType.ToString(),
+        Status = h.Status.ToString(),
+        EffectiveFrom = h.EffectiveFrom,
+        EffectiveTo = h.EffectiveTo,
+        YieldPercentage = h.YieldPercentage,
+        EstimatedMaterialCost = h.EstimatedMaterialCost,
+        EstimatedLaborCost = h.EstimatedLaborCost,
+        EstimatedOverheadCost = h.EstimatedOverheadCost,
+        ComponentCount = h.Components.Count,
+    };
+
+    private static BomComponentLineDto MapComponentToDto(BomComponentLine c) => new ()
+    {
+        Id = c.Id,
+        BomHeaderId = c.BomHeaderId,
+        ComponentItemId = c.ComponentItemId,
+        QuantityPerParent = c.QuantityPerParent,
+        EffectiveQuantity = c.EffectiveQuantity,
+        UnitOfMeasure = c.UnitOfMeasure,
+        ScrapFactor = c.ScrapFactor,
+        OperationSequence = c.OperationSequence,
+        WorkCenterId = c.WorkCenterId,
+        IsPhantom = c.IsPhantom,
+        IsCritical = c.IsCritical,
+        EstimatedUnitCost = c.EstimatedUnitCost,
+        Notes = c.Notes,
+    };
+}
+
+// --- DTOs ---
+#pragma warning disable S6960
+
+public class BomHeaderDto
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid ParentItemId { get; set; }
+    public string Revision { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string BomType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime? EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+    public decimal YieldPercentage { get; set; }
+    public decimal? EstimatedMaterialCost { get; set; }
+    public decimal? EstimatedLaborCost { get; set; }
+    public decimal? EstimatedOverheadCost { get; set; }
+    public int ComponentCount { get; set; }
+}
+
+public class BomComponentLineDto
+{
+    public Guid Id { get; set; }
+    public Guid BomHeaderId { get; set; }
+    public Guid ComponentItemId { get; set; }
+    public decimal QuantityPerParent { get; set; }
+    public decimal EffectiveQuantity { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public decimal ScrapFactor { get; set; }
+    public int OperationSequence { get; set; }
+    public Guid? WorkCenterId { get; set; }
+    public bool IsPhantom { get; set; }
+    public bool IsCritical { get; set; }
+    public decimal? EstimatedUnitCost { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CreateBomHeaderRequest
+{
+    public Guid CompanyId { get; set; }
+    public Guid ParentItemId { get; set; }
+    public string Revision { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string BomType { get; set; } = "Standard";
+    public DateTime? EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+    public decimal? YieldPercentage { get; set; }
+}
+
+public class UpdateBomHeaderRequest
+{
+    public string? Description { get; set; }
+    public string? BomType { get; set; }
+    public string? Status { get; set; }
+    public DateTime? EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+    public decimal? YieldPercentage { get; set; }
+}
+
+public class AddComponentRequest
+{
+    public Guid ComponentItemId { get; set; }
+    public decimal QuantityPerParent { get; set; }
+    public string UnitOfMeasure { get; set; } = "EA";
+    public decimal? ScrapFactor { get; set; }
+    public int? OperationSequence { get; set; }
+    public Guid? WorkCenterId { get; set; }
+    public bool IsPhantom { get; set; }
+    public bool IsCritical { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class UpdateComponentRequest
+{
+    public decimal? QuantityPerParent { get; set; }
+    public string? UnitOfMeasure { get; set; }
+    public decimal? ScrapFactor { get; set; }
+    public int? OperationSequence { get; set; }
+    public Guid? WorkCenterId { get; set; }
+    public bool? IsPhantom { get; set; }
+    public bool? IsCritical { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class BomExplosionDto
+{
+    public int Level { get; set; }
+    public Guid ComponentItemId { get; set; }
+    public decimal QuantityPerParent { get; set; }
+    public decimal NetQuantity { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public decimal ScrapFactor { get; set; }
+    public bool IsPhantom { get; set; }
+    public bool IsCritical { get; set; }
+    public int OperationSequence { get; set; }
+}
+
+public class BomWhereUsedDto
+{
+    public Guid BomHeaderId { get; set; }
+    public Guid ParentItemId { get; set; }
+    public string Revision { get; set; } = string.Empty;
+    public decimal QuantityPerParent { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public bool IsPhantom { get; set; }
+    public int OperationSequence { get; set; }
+}
+
+#pragma warning disable CA1002, CA2227
+public class BomCostRollupDto
+{
+    public Guid BomHeaderId { get; set; }
+    public Guid ParentItemId { get; set; }
+    public string Revision { get; set; } = string.Empty;
+    public decimal YieldPercentage { get; set; }
+    public decimal TotalMaterialCost { get; set; }
+    public decimal TotalCost { get; set; }
+    public List<BomCostRollupLineDto> Components { get; set; } = [];
+}
+#pragma warning restore CA1002, CA2227
+
+public class BomCostRollupLineDto
+{
+    public Guid ComponentItemId { get; set; }
+    public decimal QuantityPerParent { get; set; }
+    public decimal EffectiveQuantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal ExtendedCost { get; set; }
+    public decimal ScrapFactor { get; set; }
+}

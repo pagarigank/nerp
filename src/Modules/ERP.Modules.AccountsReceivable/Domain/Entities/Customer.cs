@@ -20,7 +20,10 @@ public class Customer : AuditableAggregateRoot
         Guid? defaultPaymentTermId,
         bool taxExempt,
         string? taxExemptCertificate,
-        string? currencyCode)
+        string? currencyCode,
+        Guid? salesRepId = null,
+        Guid? taxCodeId = null,
+        Guid? taxExemptionCertificateId = null)
         : base(Guid.NewGuid())
     {
         if (string.IsNullOrWhiteSpace(customerId))
@@ -38,6 +41,9 @@ public class Customer : AuditableAggregateRoot
         TaxExempt = taxExempt;
         TaxExemptCertificate = taxExemptCertificate;
         CurrencyCode = currencyCode ?? "USD";
+        SalesRepId = salesRepId;
+        TaxCodeId = taxCodeId;
+        TaxExemptionCertificateId = taxExemptionCertificateId;
         IsActive = true;
     }
 
@@ -61,6 +67,15 @@ public class Customer : AuditableAggregateRoot
 
     public string CurrencyCode { get; private set; } = "USD";
 
+    /// <summary>Default sales rep (salesperson) assigned to this customer.</summary>
+    public Guid? SalesRepId { get; private set; }
+
+    /// <summary>Default tax code applied to this customer's sales orders.</summary>
+    public Guid? TaxCodeId { get; private set; }
+
+    /// <summary>Default tax-exemption certificate applied to this customer's sales orders.</summary>
+    public Guid? TaxExemptionCertificateId { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public decimal CurrentBalance { get; internal set; }
@@ -74,7 +89,10 @@ public class Customer : AuditableAggregateRoot
         Guid? defaultPaymentTermId,
         bool taxExempt,
         string? taxExemptCertificate,
-        string? currencyCode)
+        string? currencyCode,
+        Guid? salesRepId,
+        Guid? taxCodeId,
+        Guid? taxExemptionCertificateId)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Customer name is required.", nameof(name));
@@ -88,6 +106,9 @@ public class Customer : AuditableAggregateRoot
         TaxExempt = taxExempt;
         TaxExemptCertificate = taxExemptCertificate;
         CurrencyCode = currencyCode ?? "USD";
+        SalesRepId = salesRepId;
+        TaxCodeId = taxCodeId;
+        TaxExemptionCertificateId = taxExemptionCertificateId;
     }
 
     public void Activate() => IsActive = true;

@@ -11,6 +11,9 @@ export interface ArCustomer {
   taxExemptCertificate?: string
   currencyCode: string
   isActive: boolean
+  salesRepId?: string | null
+  taxCodeId?: string | null
+  taxExemptionCertificateId?: string | null
 }
 
 export interface CreateArCustomerRequest {
@@ -24,6 +27,9 @@ export interface CreateArCustomerRequest {
   taxExempt: boolean
   taxExemptCertificate?: string | null
   currencyCode?: string | null
+  salesRepId?: string | null
+  taxCodeId?: string | null
+  taxExemptionCertificateId?: string | null
 }
 
 export type UpdateArCustomerRequest = Omit<CreateArCustomerRequest, 'customerId'>

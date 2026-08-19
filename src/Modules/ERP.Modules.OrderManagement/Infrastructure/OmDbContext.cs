@@ -54,6 +54,15 @@ public class OmDbContext : DispatchableDbContext
             e.Property(x => x.ShippingMethod).HasMaxLength(50);
             e.Property(x => x.CustomerPoNumber).HasMaxLength(50);
             e.HasMany(x => x.Lines).WithOne(l => l.SalesOrder).HasForeignKey(x => x.SalesOrderId).OnDelete(DeleteBehavior.Cascade);
+
+            // Reference-data links to OM masters (Phase 8 masters wiring).
+            e.HasOne<SalesOrderType>().WithMany().HasForeignKey(x => x.SalesOrderTypeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<TaxCode>().WithMany().HasForeignKey(x => x.TaxCodeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<TaxExemptionCertificate>().WithMany().HasForeignKey(x => x.TaxExemptionCertificateId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.SalesOrderTypeId);
+            e.HasIndex(x => x.TaxCodeId);
+            e.HasIndex(x => x.TaxExemptionCertificateId);
+
             e.HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
             e.HasIndex(x => x.CustomerId);
             e.HasIndex(x => x.Status);
@@ -202,6 +211,7 @@ public class OmDbContext : DispatchableDbContext
             e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
             e.HasIndex(x => x.CustomerId);
             e.HasIndex(x => x.ItemId);
+            e.HasIndex(x => x.ItemCategoryId);
         });
 
         modelBuilder.Entity<TaxCode>(e =>

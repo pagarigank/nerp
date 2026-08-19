@@ -52,6 +52,12 @@ public class ArDbContext : DispatchableDbContext
             e.Ignore(x => x.CurrentBalance);
             e.HasIndex(x => x.CustomerId).IsUnique();
             e.HasIndex(x => x.Name);
+            e.Property(x => x.SalesRepId).HasColumnName("SalesRepId");
+            e.Property(x => x.TaxCodeId).HasColumnName("TaxCodeId");
+            e.Property(x => x.TaxExemptionCertificateId).HasColumnName("TaxExemptionCertificateId");
+            e.HasIndex(x => x.SalesRepId);
+            e.HasIndex(x => x.TaxCodeId);
+            e.HasIndex(x => x.TaxExemptionCertificateId);
             e.HasQueryFilter(x => !x.DeletedOn.HasValue);
         });
 

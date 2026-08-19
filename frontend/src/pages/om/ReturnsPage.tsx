@@ -11,10 +11,10 @@ import { Input, Select, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getReturns, createReturn, confirmReturn, companyId } from '@api/orderManagement'
+import { getReturns, createReturn, confirmReturn, companyId, getSalesOrders, getShipments } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems, getWarehouses } from '@api/inventory'
-import type { ReturnSummary } from '@/types/orderManagement'
+import type { ReturnSummary, SalesOrderSummary, ShipmentSummary } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
 import type { ItemSummary, WarehouseSummary } from '@/types/inventory'
 
@@ -94,6 +94,11 @@ export function ReturnsPage() {
   const { data: returns = [], isLoading } = useQuery({ queryKey: ['om', 'returns'], queryFn: () => getReturns() })
   const { data: customers = [] } = useQuery({ queryKey: ['ar', 'customers'], queryFn: getCustomers })
   const { data: items = [] } = useQuery({ queryKey: ['inventory', 'items'], queryFn: () => getItems() })
+  const { data: salesOrders = [] } = useQuery({ queryKey: ['om', 'sales-orders'], queryFn: () => getSalesOrders() })
+  const { data: shipments = [] } = useQuery({ queryKey: ['om', 'shipments'], queryFn: () => getShipments() })
+
+  const soOptions = useMemo(() => salesOrders.map((o: SalesOrderSummary) => ({ value: o.id, label: `${o.orderNumber} (${o.status})` })), [salesOrders])
+  const shipmentOptions = useMemo(() => shipments.map((s: ShipmentSummary) => ({ value: s.id, label: `${s.shipmentNumber} (${s.status})` })), [shipments])
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.trim().toLowerCase()
@@ -195,8 +200,8 @@ export function ReturnsPage() {
             <Select {...register('reasonCode')} label="Reason Code" placeholder="Select reason..." options={reasonOptions} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input {...register('shipmentId')} label="Original Shipment ID (optional)" placeholder="Shipment GUID" />
-            <Input {...register('salesOrderId')} label="Original SO ID (optional)" placeholder="Sales Order GUID" />
+            <Select {...register('shipmentId')} label="Original Shipment (optional)" placeholder="Select shipment..." options={[{ value: '', label: '— None —' }, ...shipmentOptions]} />
+            <Select {...register('salesOrderId')} label="Original Sales Order (optional)" placeholder="Select sales order..." options={[{ value: '', label: '— None —' }, ...soOptions]} />
           </div>
 
           {/* Lines */}

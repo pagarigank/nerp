@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@components/ui/Button'
 import { Card } from '@components/ui/Card'
-import { Input } from '@components/ui/Input'
+import { Input, Select } from '@components/ui/Input'
 import { getErrorMessage } from '@api/client'
 import { createRtv, shipRtv, creditRtv, companyId } from '@api/orderManagement'
+import { getVendors } from '@api/ap'
 import type { CreateRtvRequest } from '@/types/orderManagement'
+import type { Vendor } from '@/types/ap'
 
 const empty = { returnId: '', returnLineId: '', vendorId: '', quantity: 0, unitCost: 0 }
 
@@ -12,6 +15,8 @@ export function RtvPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(empty)
+  const { data: vendors = [] } = useQuery({ queryKey: ['ap', 'vendors'], queryFn: getVendors })
+  const vendorOptions = useMemo(() => vendors.map((v: Vendor) => ({ value: v.id, label: `${v.vendorId} - ${v.name}` })), [vendors])
   const [lastId, setLastId] = useState<string | null>(null)
 
   async function create() {
@@ -35,7 +40,7 @@ export function RtvPage() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <Input value={form.returnId} onChange={(e) => setForm({ ...form, returnId: e.target.value })} placeholder="Return Id" />
           <Input value={form.returnLineId} onChange={(e) => setForm({ ...form, returnLineId: e.target.value })} placeholder="Return Line Id" />
-          <Input value={form.vendorId} onChange={(e) => setForm({ ...form, vendorId: e.target.value })} placeholder="Vendor Id" />
+          <Select value={form.vendorId} onChange={(e) => setForm({ ...form, vendorId: e.target.value })} placeholder="Select vendor..." options={vendorOptions} />
           <Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} placeholder="Qty" />
           <Input type="number" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: Number(e.target.value) })} placeholder="Unit Cost" />
           <Button variant="primary" disabled={loading} onClick={create}>Create RTV</Button>

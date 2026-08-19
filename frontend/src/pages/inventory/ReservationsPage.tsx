@@ -11,7 +11,7 @@ import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
 import { getReservations, createReservation, releaseReservation, cancelReservation, companyId, getItems, getWarehouses } from '@api/inventory'
-import type { ReservationSummary, ItemSummary, WarehouseSummary } from '@/types/inventory'
+import type { ReservationSummary, ItemSummary, WarehouseSummary, UomConversionDto } from '@/types/inventory'
 
 const schema = z.object({
   itemId: z.string().min(1, 'Item is required'),
@@ -37,8 +37,9 @@ export function ReservationsPage() {
   const qc = useQueryClient()
   const [err, setErr] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [uomOptions, setUomOptions] = useState<{ value: string; label: string }[]>([])
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Form>({
+  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { itemId: '', warehouseId: '', quantity: 1, unitOfMeasure: 'EA', sourceType: 'Manual', referenceId: '', notes: '' },
   })
@@ -67,10 +68,10 @@ export function ReservationsPage() {
           <Button variant="primary" onClick={handleSubmit(d => createMut.mutate(d))} isLoading={createMut.isPending}>Create Reservation</Button></>}>
         <form className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-4">
-            <Select {...register('itemId')} label="Item" options={itemOptions} placeholder="Select item..." {...fieldError(errors.itemId?.message)} required />
+            <Select {...register('itemId')} label="Item" options={itemOptions} placeholder="Select item..." {...fieldError(errors.itemId?.message)} required onChange={(e) => { register('itemId').onChange(e); const itemId = e.target.value; if (itemId) { const item = items.find((i: ItemSummary) => i.id === itemId); const baseUom = item?.baseUnitOfMeasure || 'EA'; setUomOptions([{ value: baseUom, label: baseUom + ' (base)' }]); void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => { const opts = [{ value: baseUom, label: baseUom + ' (base)' }]; for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }); } setUomOptions(opts); }).catch(() => {}); } }} />
             <Select {...register('warehouseId')} label="Warehouse" options={whOptions} placeholder="Select warehouse..." {...fieldError(errors.warehouseId?.message)} required />
             <Input {...register('quantity')} type="number" step="0.01" min="0.01" label="Quantity" {...fieldError(errors.quantity?.message)} required />
-            <Input {...register('unitOfMeasure')} label="Unit of Measure" placeholder="EA" {...fieldError(errors.unitOfMeasure?.message)} required />
+            <Select {...register('unitOfMeasure')} label="Unit of Measure" options={uomOptions.length > 0 ? uomOptions : [{ value: 'EA', label: 'EA' }]} {...fieldError(errors.unitOfMeasure?.message)} required />
             <Select {...register('sourceType')} label="Source Type" options={sourceOptions} {...fieldError(errors.sourceType?.message)} required />
             <Input {...register('referenceId')} label="Reference ID" placeholder="SO / Project GUID (optional)" />
           </div>

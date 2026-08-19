@@ -263,6 +263,9 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("ItemCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -288,6 +291,8 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("ItemCategoryId");
 
                     b.HasIndex("ItemId");
 
@@ -595,6 +600,9 @@ namespace ERP.Modules.OrderManagement.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid?>("PricingRuleId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("QuoteAcceptedDate")
                         .HasColumnType("datetime2");
 
@@ -613,6 +621,9 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.Property<int>("RevisionNumber")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SalesOrderTypeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("SalesRepId")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -628,11 +639,25 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TaxExemptionCertificateId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
 
+                    b.HasIndex("PricingRuleId");
+
+                    b.HasIndex("SalesOrderTypeId");
+
                     b.HasIndex("Status");
+
+                    b.HasIndex("TaxCodeId");
+
+                    b.HasIndex("TaxExemptionCertificateId");
 
                     b.HasIndex("CompanyId", "OrderNumber")
                         .IsUnique();
@@ -720,6 +745,9 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.Property<decimal>("AllocatedFreight")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("AppliedPricingRuleId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -748,6 +776,9 @@ namespace ERP.Modules.OrderManagement.Migrations
 
                     b.Property<bool>("IsDropShip")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("ItemCategoryId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier");
@@ -1403,6 +1434,29 @@ namespace ERP.Modules.OrderManagement.Migrations
                         .HasForeignKey("ReturnId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesOrder", b =>
+                {
+                    b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.PricingRule", null)
+                        .WithMany()
+                        .HasForeignKey("PricingRuleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.SalesOrderType", null)
+                        .WithMany()
+                        .HasForeignKey("SalesOrderTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.TaxCode", null)
+                        .WithMany()
+                        .HasForeignKey("TaxCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.TaxExemptionCertificate", null)
+                        .WithMany()
+                        .HasForeignKey("TaxExemptionCertificateId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesOrderLine", b =>

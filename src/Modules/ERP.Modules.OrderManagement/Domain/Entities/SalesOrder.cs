@@ -33,7 +33,10 @@ public class SalesOrder : AuditableAggregateRoot
         string? paymentTermId = null,
         string? salesRepId = null,
         string? shippingMethod = null,
-        string? customerPoNumber = null)
+        string? customerPoNumber = null,
+        Guid? salesOrderTypeId = null,
+        Guid? taxCodeId = null,
+        Guid? taxExemptionCertificateId = null)
         : base(Guid.NewGuid())
     {
         if (string.IsNullOrWhiteSpace(orderNumber))
@@ -49,6 +52,9 @@ public class SalesOrder : AuditableAggregateRoot
         SalesRepId = salesRepId;
         ShippingMethod = shippingMethod;
         CustomerPoNumber = customerPoNumber;
+        SalesOrderTypeId = salesOrderTypeId;
+        TaxCodeId = taxCodeId;
+        TaxExemptionCertificateId = taxExemptionCertificateId;
         Status = SalesOrderStatus.Draft;
     }
 
@@ -62,6 +68,12 @@ public class SalesOrder : AuditableAggregateRoot
     public string? SalesRepId { get; private set; }
     public string? ShippingMethod { get; private set; }
     public string? CustomerPoNumber { get; private set; }
+
+    /// <summary>Reference data links captured at order entry (Phase 8 masters wiring).</summary>
+    public Guid? SalesOrderTypeId { get; private set; }
+    public Guid? TaxCodeId { get; private set; }
+    public Guid? TaxExemptionCertificateId { get; private set; }
+
     public SalesOrderStatus Status { get; private set; }
     public DateTime? ConfirmedDate { get; private set; }
     public bool IsOnCreditHold { get; private set; }
@@ -132,6 +144,7 @@ public class SalesOrder : AuditableAggregateRoot
         Guid? warehouseId,
         Guid? projectId,
         Guid? accountId,
+        Guid? itemCategoryId,
         string? description)
     {
         if (Status != SalesOrderStatus.Draft)
@@ -139,7 +152,7 @@ public class SalesOrder : AuditableAggregateRoot
 
         var line = _lines.FirstOrDefault(l => l.Id == lineId)
             ?? throw new InvalidOperationException($"Line {lineId} not found on this sales order.");
-        line.Update(quantity, unitPrice, discountPercent, taxPercent, warehouseId, projectId, accountId, description);
+        line.Update(quantity, unitPrice, discountPercent, taxPercent, warehouseId, projectId, accountId, itemCategoryId, description);
         RecomputeDiscountApproval();
     }
 
@@ -261,7 +274,10 @@ public class SalesOrder : AuditableAggregateRoot
             PaymentTermId,
             SalesRepId,
             ShippingMethod,
-            CustomerPoNumber);
+            CustomerPoNumber,
+            SalesOrderTypeId,
+            TaxCodeId,
+            TaxExemptionCertificateId);
 
         foreach (var line in _lines)
         {
@@ -278,6 +294,7 @@ public class SalesOrder : AuditableAggregateRoot
                 line.WarehouseId,
                 line.ProjectId,
                 line.AccountId,
+                line.ItemCategoryId,
                 line.IsDropShip,
                 line.DropShipVendorId));
         }
