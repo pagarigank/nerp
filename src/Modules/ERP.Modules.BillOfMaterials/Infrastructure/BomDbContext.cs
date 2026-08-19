@@ -24,6 +24,7 @@ public class BomDbContext : DispatchableDbContext
     public DbSet<BomComponentSubstitution> BomComponentSubstitutions => Set<BomComponentSubstitution>();
     public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
     public DbSet<EngineeringChangeNotice> EngineeringChangeNotices => Set<EngineeringChangeNotice>();
+    public DbSet<BackflushRecord> BackflushRecords => Set<BackflushRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -187,6 +188,18 @@ public class BomDbContext : DispatchableDbContext
             entity.Property(e => e.RejectionReason).HasMaxLength(500);
             entity.HasIndex(e => e.BomHeaderId);
             entity.HasIndex(e => new { e.CompanyId, e.EcnNumber }).IsUnique();
+        });
+
+        // BackflushRecord
+        modelBuilder.Entity<BackflushRecord>(entity =>
+        {
+            entity.ToTable("BackflushRecords");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QuantityBuilt).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.StandardComponentCost).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ActualComponentCost).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.BuildOrderId);
+            entity.HasIndex(e => e.BomHeaderId);
         });
     }
 }

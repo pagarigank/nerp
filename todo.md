@@ -672,9 +672,9 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **BOM comparison** (compare two BOM revisions, highlight differences) [GAP-2026-08-18] [built 2026-08-19 — compare endpoint + verified]
 - [x] **Mass BOM update** (global component replacement across multiple BOMs) [GAP-2026-08-18] [built 2026-08-19 — mass-update endpoint + verified]
 - [x] **Engineering change control (ECN)** (proposed change → review → approve with effectivity dates; only approved ECNs change active BOM; audit trail per spec custom/change rigor) [GAP-2026-08-18] [built 2026-08-19 — EngineeringChangeNotice entity + transition flow + verified]
-- [ ] **What-if BOM cost simulation** (change component cost/qty, see parent cost impact before commit) [GAP-2026-08-18]
-- [ ] **BOM → requisition suggestion** (component shortage on planned builds → purchasing requisition for component items, reusing Phase 6 requisition API) [GAP-2026-08-18]
-- [ ] **Backflush component consumption** (post-production auto-consume standard component qty vs. manual issue; variance to standard) [GAP-2026-08-18]
+- [x] **What-if BOM cost simulation** (change component cost/qty, see parent cost impact before commit) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/bom-headers/{id}/what-if computes current vs simulated material cost with overrides; verified (cost 80 -> 1998 on override, delta +1918)]
+- [x] **BOM → requisition suggestion** (component shortage on planned builds → purchasing requisition for component items, reusing Phase 6 requisition API) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/bom-headers/{id}/suggest-requisitions; one-way BOM->Purchasing ref + RequisitionSuggester creates draft requisition for shortfall; verified (shortfall 173 -> pur.Requisitions BOM-... created)]
+- [x] **Backflush component consumption** (post-production auto-consume standard component qty vs. manual issue; variance to standard) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/build-orders/{id}/backflush issues standard qty via InventoryTransaction + dispatches dual-posting event, records BackflushRecord with standard/actual/variance; verified (built 10 -> issue -20, record persisted)]
 - [ ] **Co-product/by-product handling** (assembly produces parent + by-products with cost split) [GAP-2026-08-18]
 
 ### Background Jobs
@@ -705,7 +705,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Unit: ECN effectivity (test: change effective 01-Aug applies to builds on/after, not before; pending ECN has no effect) [GAP-2026-08-18]
 - [ ] Unit: multi-level cost roll-up with labor/overhead (test: components $60 + labor $15 + overhead $5 = $80 parent cost, standard cost updated) [GAP-2026-08-18]
 - [ ] Integration: build variance posts to GL (standard cost vs actual consumption variance account) [GAP-2026-08-18]
-- [ ] Integration: BOM component shortage generates requisition through Phase 6 API [GAP-2026-08-18]
+- [x] **Integration: BOM component shortage generates requisition through Phase 6 API** [GAP-2026-08-18] [built 2026-08-19 — same suggest-requisitions endpoint as 676; verified BOM shortfall -> pur.Requisitions]
 - [ ] End-to-end: Create BOM → allocate components → build → post to inventory → cost roll-up → GL posting
 
 ### Wiring & Cross-Module Integration [GAP-2026-08-18]

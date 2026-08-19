@@ -3,8 +3,10 @@
 // </copyright>
 
 using ERP.Modules.BillOfMaterials.Domain.Entities;
+using ERP.Modules.BillOfMaterials.Domain.Services;
 using ERP.Modules.BillOfMaterials.Infrastructure;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,12 +21,16 @@ public class BomHeaderController : ControllerBase
     private readonly BomDbContext _context;
     private readonly InventoryDbContext _invContext;
     private readonly IBomUnitOfWork _unitOfWork;
+    private readonly RequisitionSuggester _requisitionSuggester;
+    private readonly ICurrentUserService _currentUser;
 
-    public BomHeaderController(BomDbContext context, InventoryDbContext invContext, IBomUnitOfWork unitOfWork)
+    public BomHeaderController(BomDbContext context, InventoryDbContext invContext, IBomUnitOfWork unitOfWork, RequisitionSuggester requisitionSuggester, ICurrentUserService currentUser)
     {
         _context = context;
         _invContext = invContext;
         _unitOfWork = unitOfWork;
+        _requisitionSuggester = requisitionSuggester;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
@@ -431,6 +437,89 @@ public class BomHeaderController : ControllerBase
         await _invContext.SaveChangesAsync(cancellationToken);
 
         return Ok(ApiResponse<decimal>.Success(totalMaterialCost));
+    }
+
+    // --- What-if Cost Simulation (675) ---
+    [HttpPost("{id:guid}/what-if")]
+    public async Task<ActionResult<ApiResponse<WhatIfSimulationDto>>> WhatIfSimulation(
+        Guid id,
+        [FromBody] WhatIfRequest request,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.Components)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        // Current cost roll-up (using item standard costs).
+        decimal currentCost = 0;
+        foreach (var comp in header.Components)
+        {
+            var unitCost = await _invContext.Items
+                .Where(i => i.Id == comp.ComponentItemId)
+                .Select(i => i.StandardCost ?? 0)
+                .FirstOrDefaultAsync(cancellationToken);
+            currentCost += comp.EffectiveQuantity * unitCost;
+        }
+
+        // Apply overrides.
+        decimal simulatedCost = 0;
+        var overrideMap = request.Overrides?
+            .Where(o => o.ComponentLineId != Guid.Empty)
+            .ToDictionary(o => o.ComponentLineId) ?? new Dictionary<Guid, WhatIfComponentOverride>();
+
+        foreach (var comp in header.Components)
+        {
+            var qty = comp.QuantityPerParent;
+            var unit = comp.EstimatedUnitCost
+                ?? await _invContext.Items.Where(i => i.Id == comp.ComponentItemId)
+                    .Select(i => i.StandardCost ?? 0).FirstOrDefaultAsync(cancellationToken);
+
+            if (overrideMap.TryGetValue(comp.Id, out var ov))
+            {
+                if (ov.UnitCost.HasValue)
+                    unit = ov.UnitCost.Value;
+                if (ov.QuantityPerParent.HasValue)
+                    qty = ov.QuantityPerParent.Value;
+            }
+
+            var scrap = comp.ScrapFactor;
+            var effective = qty * (1m + (scrap / 100m));
+            simulatedCost += effective * unit;
+        }
+
+        if (header.YieldPercentage > 0 && header.YieldPercentage != 100)
+            simulatedCost = simulatedCost / (header.YieldPercentage / 100m);
+
+        return Ok(ApiResponse<WhatIfSimulationDto>.Success(new WhatIfSimulationDto
+        {
+            BomHeaderId = header.Id,
+            CurrentMaterialCost = currentCost,
+            SimulatedMaterialCost = simulatedCost,
+            Delta = simulatedCost - currentCost,
+            PercentChange = currentCost != 0 ? (simulatedCost - currentCost) / currentCost * 100 : null,
+            AppliedOverrides = overrideMap.Count,
+        }));
+    }
+
+    // --- BOM -> Requisition suggestion (676 / 708) ---
+    [HttpPost("{id:guid}/suggest-requisitions")]
+    public async Task<ActionResult<ApiResponse<RequisitionSuggestionResult>>> SuggestRequisitions(
+        Guid id,
+        [FromBody] SuggestRequisitionsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var requestorId = Guid.TryParse(_currentUser.UserId, out var uid) ? uid : Guid.Empty;
+        var result = await _requisitionSuggester.SuggestAsync(
+            id, request.PlannedQuantity, header.CompanyId, requestorId, cancellationToken);
+
+        return Ok(ApiResponse<RequisitionSuggestionResult>.Success(result));
     }
 
     // --- Component Substitutions ---
@@ -940,3 +1029,32 @@ public class BomMassUpdateResultDto
     public List<Guid> LineIds { get; set; } = [];
 }
 #pragma warning restore CA1002, CA2227
+
+#pragma warning disable CA1002, CA2227
+public class WhatIfRequest
+{
+    public List<WhatIfComponentOverride>? Overrides { get; set; }
+}
+#pragma warning restore CA1002, CA2227
+
+public class WhatIfComponentOverride
+{
+    public Guid ComponentLineId { get; set; }
+    public decimal? UnitCost { get; set; }
+    public decimal? QuantityPerParent { get; set; }
+}
+
+public class WhatIfSimulationDto
+{
+    public Guid BomHeaderId { get; set; }
+    public decimal CurrentMaterialCost { get; set; }
+    public decimal SimulatedMaterialCost { get; set; }
+    public decimal Delta { get; set; }
+    public decimal? PercentChange { get; set; }
+    public int AppliedOverrides { get; set; }
+}
+
+public class SuggestRequisitionsRequest
+{
+    public decimal PlannedQuantity { get; set; }
+}

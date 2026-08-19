@@ -413,6 +413,109 @@ public class BuildOrderController : ControllerBase
         return Ok(ApiResponse.Success("Disassembly complete. Parent consumed, components restocked."));
     }
 
+    // --- Backflush component consumption (677) ---
+    [HttpPost("{id:guid}/backflush")]
+    public async Task<ActionResult<ApiResponse<BackflushResultDto>>> Backflush(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var order = await _bomContext.BuildOrders
+            .Include(b => b.Lines)
+            .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+        if (order is null)
+            return NotFound(ApiResponse.Failure(new[] { "Build order not found." }, 404));
+
+        var bom = await _bomContext.BomHeaders
+            .Include(h => h.Components)
+            .FirstOrDefaultAsync(h => h.Id == order.BomHeaderId, cancellationToken);
+
+        if (bom is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        // Backflush: consume standard component qty for the built quantity.
+        decimal standardCost = 0;
+        decimal actualCost = 0;
+        var issued = new List<Guid>();
+
+        foreach (var comp in bom.Components)
+        {
+            var standardQty = order.QuantityToBuild * comp.EffectiveQuantity;
+            if (standardQty <= 0)
+                continue;
+
+            var unitCost = comp.EstimatedUnitCost
+                ?? await _invContext.Items.Where(i => i.Id == comp.ComponentItemId)
+                    .Select(i => i.StandardCost ?? 0).FirstOrDefaultAsync(cancellationToken);
+
+            // Actual previously-issued quantity for this component on this build (manual issues).
+            var previouslyIssued = await _invContext.InventoryTransactions
+                .Where(t => t.ItemId == comp.ComponentItemId
+                            && t.WarehouseId == order.WarehouseId
+                            && t.TransactionType == TransactionType.Issue
+                            && t.ReferenceNumber == order.BuildNumber)
+                .SumAsync(t => -t.Quantity, cancellationToken);
+
+            var varianceQty = standardQty - previouslyIssued;
+            standardCost += standardQty * unitCost;
+            actualCost += previouslyIssued * unitCost;
+
+            if (varianceQty > 0)
+            {
+                var issueTxn = new InventoryTransaction(
+                    order.CompanyId,
+                    comp.ComponentItemId,
+                    order.WarehouseId,
+                    TransactionType.Issue,
+                    -varianceQty,
+                    comp.UnitOfMeasure,
+                    unitCost,
+                    DateTime.UtcNow,
+                    referenceNumber: order.BuildNumber,
+                    notes: $"Backflush of {order.BuildNumber}");
+                _invContext.InventoryTransactions.Add(issueTxn);
+                issued.Add(issueTxn.Id);
+            }
+        }
+
+        var record = new BackflushRecord(order.CompanyId, order.Id, bom.Id, order.QuantityToBuild);
+        record.SetCosts(standardCost, actualCost);
+        record.MarkPosted();
+        _bomContext.BackflushRecords.Add(record);
+
+        await _bomUnitOfWork.SaveChangesAsync(cancellationToken);
+        await _invUnitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Dispatch inventory events so GL / project-ledger dual-posting fires.
+        foreach (var txn in _invContext.ChangeTracker.Entries<InventoryTransaction>()
+            .Where(e => e.State == EntityState.Added).Select(e => e.Entity))
+        {
+            await _eventDispatcher.DispatchAsync(
+                new InventoryTransactionPostedEvent(
+                    txn.Id,
+                    txn.CompanyId,
+                    txn.ItemId,
+                    txn.WarehouseId,
+                    txn.TransactionType.ToString(),
+                    txn.Quantity,
+                    txn.UnitCost,
+                    txn.ExtendedCost,
+                    txn.TransactionDate,
+                    null),
+                cancellationToken);
+        }
+
+        return Ok(ApiResponse<BackflushResultDto>.Success(new BackflushResultDto
+        {
+            BuildOrderId = order.Id,
+            QuantityBuilt = order.QuantityToBuild,
+            StandardComponentCost = standardCost,
+            ActualComponentCost = actualCost,
+            Variance = actualCost - standardCost,
+            TransactionsCreated = issued.Count,
+        }));
+    }
+
     // --- Mapping ---
     private static BuildOrderDto MapToDto(BuildOrder b) => new ()
     {
@@ -489,4 +592,14 @@ public class CompleteBuildRequest
 public class DisassembleRequest
 {
     public decimal? Quantity { get; set; }
+}
+
+public class BackflushResultDto
+{
+    public Guid BuildOrderId { get; set; }
+    public decimal QuantityBuilt { get; set; }
+    public decimal StandardComponentCost { get; set; }
+    public decimal ActualComponentCost { get; set; }
+    public decimal Variance { get; set; }
+    public int TransactionsCreated { get; set; }
 }

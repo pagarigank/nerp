@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.BillOfMaterials.Domain.Services;
 using ERP.Modules.BillOfMaterials.Infrastructure;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,18 @@ public static class ModuleExtensions
             options.AddInterceptors(new AuditSaveChangesInterceptor(
                 sp.GetRequiredService<ICurrentUserService>(), sp));
         });
+
+        // Reuse Purchasing's DbContext (one-way BOM -> Purchasing) for BOM-driven requisition creation.
+        services.AddDbContext<ERP.Modules.Purchasing.Infrastructure.PurchasingDbContext>((sp, options) =>
+        {
+            options.UseSqlServer(
+                configuration.GetConnectionString("DefaultConnection"),
+                b => b.MigrationsHistoryTable("__EFMigrationsHistory", "pur"));
+            options.AddInterceptors(new AuditSaveChangesInterceptor(
+                sp.GetRequiredService<ICurrentUserService>(), sp));
+        });
+
+        services.AddScoped<RequisitionSuggester>();
 
         services.AddScoped(typeof(IBomRepository<>), typeof(BomRepository<>));
         services.AddScoped<IBomUnitOfWork, BomUnitOfWork>();
