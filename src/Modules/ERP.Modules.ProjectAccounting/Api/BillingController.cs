@@ -17,11 +17,13 @@ public class BillingController : ControllerBase
 {
     private readonly ProjDbContext _context;
     private readonly IProjUnitOfWork _unitOfWork;
+    private readonly ArInvoiceCreator _arInvoiceCreator;
 
-    public BillingController(ProjDbContext context, IProjUnitOfWork unitOfWork)
+    public BillingController(ProjDbContext context, IProjUnitOfWork unitOfWork, ArInvoiceCreator arInvoiceCreator)
     {
         _context = context;
         _unitOfWork = unitOfWork;
+        _arInvoiceCreator = arInvoiceCreator;
     }
 
     // --- Contract Lines ---
@@ -157,6 +159,10 @@ public class BillingController : ControllerBase
         if (project is null)
             return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
 
+        // Billing hold: do not generate invoices while on hold (dispute, customer request, compliance).
+        if (project.BillingHold)
+            return BadRequest(ApiResponse.Failure(new[] { $"Billing is on hold: {project.BillingHoldReason ?? "no reason provided"}." }));
+
         decimal totalInvoiceAmount = 0;
         decimal totalRetainage = 0;
         var invoiceLines = new List<InvoiceLineDto>();
@@ -240,10 +246,9 @@ public class BillingController : ControllerBase
         }
 
         // Mark milestones as billed
-        foreach (var milestone in project.BillingSchedules.Where(b => !b.IsBilled && b.BillingMethod == BillingMethod.Milestone))
-        {
-            milestone.MarkBilled(Guid.Empty); // Placeholder invoice ID — will be set by AR integration
-        }
+        var milestonesBilled = project.BillingSchedules
+            .Where(b => !b.IsBilled && b.BillingMethod == BillingMethod.Milestone)
+            .ToList();
 
         // Update retainage held and revenue
         project.SetRetainage(project.RetainagePercentage);
@@ -252,11 +257,27 @@ public class BillingController : ControllerBase
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Billing-to-AR integration: create the AR invoice for the net billed amount (§7.2).
+        Guid? arInvoiceId = null;
+        if (totalInvoiceAmount > 0)
+        {
+            var invoiceNumber = $"PJ-{project.Id.ToString("N", System.Globalization.CultureInfo.InvariantCulture)[..8].ToUpperInvariant()}-{DateTime.UtcNow:yyyyMMddHHmm}";
+            arInvoiceId = await _arInvoiceCreator.CreateProjectInvoiceAsync(
+                project, invoiceNumber, totalInvoiceAmount, $"Progress billing - {project.Name}", DateTimeOffset.UtcNow, cancellationToken);
+            foreach (var m in milestonesBilled)
+            {
+                m.MarkBilled(arInvoiceId.Value);
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
         var result = new BillingResultDto
         {
             ProjectId = projectId,
             InvoiceAmount = totalInvoiceAmount,
             RetainageHeld = totalRetainage,
+            ArInvoiceId = arInvoiceId,
             Lines = invoiceLines,
         };
 
@@ -301,6 +322,7 @@ public class BillingResultDto
     public Guid ProjectId { get; set; }
     public decimal InvoiceAmount { get; set; }
     public decimal RetainageHeld { get; set; }
+    public Guid? ArInvoiceId { get; set; }
 #pragma warning disable CA1002, CA2227
     public List<InvoiceLineDto> Lines { get; set; } = [];
 #pragma warning restore CA1002, CA2227

@@ -779,10 +779,10 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Billing review/approval** (review unbilled amounts, adjust billing %, approve for invoice generation)
 - [ ] **Retainage management** (customer retainage: track retained amount, release trigger: % complete, final approval)
 - [ ] **Retention release** (release held retention to invoice, partial/full release, approval workflow)
-- [ ] **Invoice generation to AR** (call AR invoice API, pass project detail, update project ledger: relieve unbilled AR/revenue)
-- [ ] **Billing hold** (prevent invoicing on project: dispute, customer request, compliance issue)
+- [x] **Invoice generation to AR** (call AR invoice API, pass project detail, update project ledger: relieve unbilled AR/revenue) [built 2026-08-19 — BillingController.GenerateInvoice calls ArInvoiceCreator which creates+releases AR invoice via ArDbContext; 4100 Contract Revenue account auto-seeded; verified AR invoice created]
+- [x] **Billing hold** (prevent invoicing on project: dispute, customer request, compliance issue) [built 2026-08-19 — Project.SetBillingHold(BillingHold, Reason) + PUT /projects/{id}/billing-hold + GenerateInvoice enforces hold (returns 400 "Billing is on hold"); verified]
 - [ ] **ASC 606 five-step contract accounting** (identify contract/performance obligations, transaction price incl. variable consideration constraint on change orders, allocate, recognize as obligations satisfied — modernize the legacy %-complete engine) [GAP-2026-08-18]
-- [ ] **Contract asset vs. contract liability presentation** (unbilled revenue = contract asset; billings in excess of earned revenue = contract liability — WIP over/under billing mapped to the right balance-sheet side) [GAP-2026-08-18]
+- [x] **Contract asset vs. contract liability presentation** (unbilled revenue = contract asset; billings in excess of earned revenue = contract liability — WIP over/under billing mapped to the right balance-sheet side) [GAP-2026-08-18] [built 2026-08-19 — GET /projects/{id}/analysis/contract-position computes costsIncurred, billingsToDate, contractAsset (costs>billings), contractLiability (billings>costs); verified (costs 1900, billings 6840 -> liability 4940)]
 - [ ] **Revenue recognition by performance obligation** (multiple deliverables per contract recognized separately — e.g., mobilization, engineering, install) [GAP-2026-08-18]
 
 ### Transactional - Subcontract Management

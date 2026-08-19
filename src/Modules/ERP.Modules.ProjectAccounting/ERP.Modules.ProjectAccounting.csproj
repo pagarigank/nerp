@@ -9,6 +9,7 @@
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
     <ProjectReference Include="..\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\ERP.Modules.AccountsReceivable\ERP.Modules.AccountsReceivable.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />

@@ -306,6 +306,33 @@ public class ProjectAnalysisController : ControllerBase
             .Include(p => p.CostTransactions)
             .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
     }
+
+    /// <summary>Contract asset/liability position (ASC 606 / construction accounting): contract asset = costs incurred − billings (unbilled costs), contract liability = billings − costs (deferred revenue).</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Costs incurred, billings to date, contract asset, contract liability.</returns>
+    [HttpGet("contract-position")]
+    public async Task<ActionResult<ApiResponse<ContractPositionDto>>> GetContractPosition(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { projectId }, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var costsIncurred = project.CostsToDate;
+        var billingsToDate = project.RevenueToDate;
+        var net = costsIncurred - billingsToDate;
+        var contractAsset = net > 0 ? net : 0;      // unbilled costs -> asset
+        var contractLiability = net < 0 ? -net : 0;  // billings in excess of costs -> liability
+
+        return Ok(ApiResponse<ContractPositionDto>.Success(new ContractPositionDto
+        {
+            ProjectId = projectId,
+            CostsIncurred = costsIncurred,
+            BillingsToDate = billingsToDate,
+            ContractAsset = contractAsset,
+            ContractLiability = contractLiability,
+        }));
+    }
 }
 
 // --- DTOs ---
@@ -353,6 +380,15 @@ public class ProfitabilityDto
     public decimal MarginPercent { get; set; }
     public decimal ContractValue { get; set; }
     public decimal RetainageHeld { get; set; }
+}
+
+public class ContractPositionDto
+{
+    public Guid ProjectId { get; set; }
+    public decimal CostsIncurred { get; set; }
+    public decimal BillingsToDate { get; set; }
+    public decimal ContractAsset { get; set; }
+    public decimal ContractLiability { get; set; }
 }
 
 public class BudgetVsActualDto
