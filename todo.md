@@ -16,7 +16,7 @@ user directly the sql server as the backend and dont start with sqlite
 3. **Inventory (Ph.7)** - 75% complete (verified 2026-08-04) - **All 6 Background Jobs complete** ✅; remaining: cycle/physical counts + variance posting, landed cost, revaluation, FIFO/LIFO cost layers + costing engine, reorder suggestions, item reservation, lot/serial enforcement, quarantine, all 14 reports
 4. **Order Management (Ph.8)** - 0% complete - blocking order-to-cash flow
 5. **Bill of Materials (Ph.9)** - 50% complete (core CRUD + build/disassemble + reports + frontend done)
-6. **Project Accounting (Ph.10)** - 0% complete - **HIGHEST PRIORITY** - core differentiator
+6. **Project Accounting (Ph.10)** - 30% complete (core CRUD + budget + costs + change orders + billing + frontend done)
 7. **Payroll (Ph.11)** - 0% complete - blocking labor cost distribution
 8. **Field Service (Ph.12)** - 0% complete - blocking service operations
 9. **BI/Reporting (Ph.13)** - 0% complete - blocking business intelligence

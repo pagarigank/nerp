@@ -23,6 +23,7 @@ using ERP.Modules.Inventory.Application.BackgroundJobs;
 using ERP.Modules.OrderManagement;
 using ERP.Modules.Platform;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Modules.ProjectAccounting;
 using ERP.Modules.Purchasing;
 using ERP.Shared.Kernel.Api;
 using ERP.Shared.Kernel.Posting;
@@ -291,6 +292,7 @@ public class Program
         builder.Services.AddInventoryModule(builder.Configuration);
         builder.Services.AddOrderManagementModule(builder.Configuration);
         builder.Services.AddBillOfMaterialsModule(builder.Configuration);
+        builder.Services.AddProjectAccountingModule(builder.Configuration);
 
         var app = builder.Build();
 
