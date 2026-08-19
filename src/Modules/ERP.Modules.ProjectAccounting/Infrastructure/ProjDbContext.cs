@@ -24,6 +24,12 @@ public class ProjDbContext : DispatchableDbContext
     public DbSet<BillingSchedule> BillingSchedules => Set<BillingSchedule>();
     public DbSet<ProjectAllocationRule> ProjectAllocationRules => Set<ProjectAllocationRule>();
     public DbSet<ProjectCostCategoryMapping> ProjectCostCategoryMappings => Set<ProjectCostCategoryMapping>();
+    public DbSet<ProjectRoleRate> ProjectRoleRates => Set<ProjectRoleRate>();
+    public DbSet<BudgetTemplate> BudgetTemplates => Set<BudgetTemplate>();
+    public DbSet<EmployeeProjectAssignment> EmployeeProjectAssignments => Set<EmployeeProjectAssignment>();
+    public DbSet<CostAllocationBatch> CostAllocationBatches => Set<CostAllocationBatch>();
+    public DbSet<ProjectCommittedCost> ProjectCommittedCosts => Set<ProjectCommittedCost>();
+    public DbSet<CostAdjustment> CostAdjustments => Set<CostAdjustment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +54,11 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.PercentComplete).HasColumnType("decimal(5,2)");
             entity.Property(e => e.RetainagePercentage).HasColumnType("decimal(5,2)");
             entity.Property(e => e.RetainageHeld).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ContingencyAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ReleasedContingency).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ExchangeRate).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.CurrencyCode).HasMaxLength(10);
+            entity.Property(e => e.BillingHoldReason).HasMaxLength(500);
 
             entity.HasIndex(e => new { e.CompanyId, e.ProjectCode }).IsUnique();
             entity.HasIndex(e => e.Status);
@@ -186,6 +197,96 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.Description).HasMaxLength(500);
 
             entity.HasIndex(e => new { e.CompanyId, e.CostCategory }).IsUnique();
+        });
+
+        // ProjectRoleRate
+        modelBuilder.Entity<ProjectRoleRate>(entity =>
+        {
+            entity.ToTable("ProjectRoleRates");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RoleName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.CostRate).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.BillingRate).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.CompanyId);
+        });
+
+        // BudgetTemplate + lines
+        modelBuilder.Entity<BudgetTemplate>(entity =>
+        {
+            entity.ToTable("BudgetTemplates");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ProjectType).HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasMany(e => e.Lines).WithOne().HasForeignKey(l => l.TemplateId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BudgetTemplateLine>(entity =>
+        {
+            entity.ToTable("BudgetTemplateLines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.BudgetAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.BudgetedHours).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.TemplateId);
+        });
+
+        // EmployeeProjectAssignment
+        modelBuilder.Entity<EmployeeProjectAssignment>(entity =>
+        {
+            entity.ToTable("EmployeeProjectAssignments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EmployeeId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.RoleName).HasMaxLength(100);
+            entity.Property(e => e.AllocationPercentage).HasColumnType("decimal(5,2)");
+            entity.HasIndex(e => e.ProjectId);
+        });
+
+        // CostAllocationBatch + lines
+        modelBuilder.Entity<CostAllocationBatch>(entity =>
+        {
+            entity.ToTable("CostAllocationBatches");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.AllocationBase).HasMaxLength(50);
+            entity.Property(e => e.TotalAllocated).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasMany(e => e.Lines).WithOne().HasForeignKey(l => l.BatchId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CostAllocationLine>(entity =>
+        {
+            entity.ToTable("CostAllocationLines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.HasIndex(e => e.BatchId);
+            entity.HasIndex(e => e.ProjectId);
+        });
+
+        // ProjectCommittedCost
+        modelBuilder.Entity<ProjectCommittedCost>(entity =>
+        {
+            entity.ToTable("ProjectCommittedCosts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SourceType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.SourceReference).HasMaxLength(100);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.ProjectId);
+        });
+
+        // CostAdjustment
+        modelBuilder.Entity<CostAdjustment>(entity =>
+        {
+            entity.ToTable("CostAdjustments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.ApprovedBy).HasMaxLength(200);
+            entity.Property(e => e.AdjustmentAmount).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.SourceProjectId);
+            entity.HasIndex(e => e.Status);
         });
     }
 }

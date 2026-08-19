@@ -174,6 +174,46 @@ public class ProjectAnalysisController : ControllerBase
         return Ok(ApiResponse<List<BudgetVsActualDto>>.Success(rows));
     }
 
+    /// <summary>Budget vs. committed vs. actual three-way view per task/category (§5.7).</summary>
+    /// <param name="projectId">Project identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Three-way rows: budget - committed (open PO) - actual = remaining.</returns>
+    [HttpGet("budget-committed-actual")]
+    public async Task<ActionResult<ApiResponse<List<BudgetCommittedActualDto>>>> GetBudgetCommittedActual(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await LoadProject(projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var committed = await _context.ProjectCommittedCosts
+            .Where(c => c.ProjectId == projectId && !c.IsReleased)
+            .GroupBy(c => new { c.TaskId, c.Category })
+            .Select(g => new { g.Key.TaskId, g.Key.Category, Committed = g.Sum(c => c.Amount) })
+            .ToListAsync(cancellationToken);
+
+        var committedByKey = committed.ToDictionary(c => (c.TaskId, c.Category), c => c.Committed);
+
+        var rows = project.BudgetLines.Select(b =>
+        {
+            var key = (b.TaskId, b.Category);
+            var committedAmt = committedByKey.GetValueOrDefault(key, 0m);
+            var remaining = b.BudgetAmount - committedAmt - b.ActualAmount;
+            return new BudgetCommittedActualDto
+            {
+                TaskId = b.TaskId,
+                Category = b.Category.ToString(),
+                Description = b.Description,
+                BudgetAmount = b.BudgetAmount,
+                CommittedAmount = committedAmt,
+                ActualAmount = b.ActualAmount,
+                Remaining = remaining,
+            };
+        }).ToList();
+
+        return Ok(ApiResponse<List<BudgetCommittedActualDto>>.Success(rows));
+    }
+
     /// <summary>Unbilled AR / revenue report (earned but not invoiced).</summary>
     /// <param name="projectId">Project identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -357,4 +397,15 @@ public class CostDetailDto
     public string? Description { get; set; }
     public DateTime TransactionDate { get; set; }
     public string Status { get; set; } = string.Empty;
+}
+
+public class BudgetCommittedActualDto
+{
+    public Guid TaskId { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public decimal BudgetAmount { get; set; }
+    public decimal CommittedAmount { get; set; }
+    public decimal ActualAmount { get; set; }
+    public decimal Remaining { get; set; }
 }

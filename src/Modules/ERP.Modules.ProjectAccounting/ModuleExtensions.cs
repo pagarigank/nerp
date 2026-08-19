@@ -25,6 +25,7 @@ public static class ModuleExtensions
         });
 
         services.AddScoped<IProjUnitOfWork, ProjUnitOfWork>();
+        services.AddScoped<ERP.Modules.ProjectAccounting.Domain.Services.IProjectAllocator, ERP.Modules.ProjectAccounting.Domain.Services.ProjectAllocator>();
 
         // Dual-posting consumers: project cost -> GL, and inventory issue against a
         // project -> project ledger cost transaction. (Phase 10 critical gap.)

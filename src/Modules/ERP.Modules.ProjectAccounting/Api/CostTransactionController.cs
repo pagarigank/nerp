@@ -20,15 +20,18 @@ public class CostTransactionController : ControllerBase
     private readonly ProjDbContext _context;
     private readonly IProjUnitOfWork _unitOfWork;
     private readonly IDomainEventDispatcher _eventDispatcher;
+    private readonly ERP.Modules.ProjectAccounting.Domain.Services.IProjectAllocator _allocator;
 
     public CostTransactionController(
         ProjDbContext context,
         IProjUnitOfWork unitOfWork,
-        IDomainEventDispatcher eventDispatcher)
+        IDomainEventDispatcher eventDispatcher,
+        ERP.Modules.ProjectAccounting.Domain.Services.IProjectAllocator allocator)
     {
         _context = context;
         _unitOfWork = unitOfWork;
         _eventDispatcher = eventDispatcher;
+        _allocator = allocator;
     }
 
     [HttpGet]
@@ -105,6 +108,114 @@ public class CostTransactionController : ControllerBase
             cancellationToken);
 
         return Ok(ApiResponse<Guid>.Success(txn.Id));
+    }
+
+    /// <summary>Calculate burdened (billable) cost for a base amount using the project's allocation rules (Project Allocator - §7.3).</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="request">The base cost and category.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The computed overhead, markup, burden and billable cost.</returns>
+    [HttpPost("calculate-burden")]
+    public async Task<ActionResult<ApiResponse<object>>> CalculateBurden(
+        Guid projectId, [FromBody] CalculateBurdenRequest request, CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<CostCategory>(request.Category, true, out var category))
+            return BadRequest(ApiResponse.Failure(new[] { "Invalid cost category." }));
+
+        var result = await _allocator.CalculateAsync(projectId, category, request.BaseCost, cancellationToken);
+        return Ok(ApiResponse<object>.Success(new
+        {
+            baseCost = result.BaseCost,
+            overhead = result.Overhead,
+            markup = result.Markup,
+            burden = result.Burden,
+            billableCost = result.BillableCost,
+            markupPercentage = result.MarkupPercentage,
+            overheadPercentage = result.OverheadPercentage,
+        }));
+    }
+
+    /// <summary>Cost adjustment: correct a misposted cost (reversal) or transfer across projects. Requires approval.</summary>
+    /// <param name="projectId">The source project identifier.</param>
+    /// <param name="request">The adjustment request (source transaction, amount, reason, optional destination, approver).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The created adjustment id.</returns>
+    [HttpPost("adjust")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AdjustCost(
+        Guid projectId, [FromBody] AdjustCostRequest request, CancellationToken cancellationToken)
+    {
+        var sourceTxn = await _context.CostTransactions.FindAsync(new object[] { request.SourceCostTransactionId }, cancellationToken);
+        if (sourceTxn is null)
+            return NotFound(ApiResponse.Failure(new[] { "Source cost transaction not found." }, 404));
+
+        var project = await _context.Projects.FindAsync(new object[] { projectId }, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var adjustment = new CostAdjustment(
+            project.CompanyId,
+            projectId,
+            request.SourceCostTransactionId,
+            request.AdjustmentAmount,
+            request.Reason,
+            request.DestinationProjectId,
+            request.ApprovedBy);
+
+        // Auto-approve if approvedBy supplied (caller performed approval gate).
+        if (!string.IsNullOrWhiteSpace(request.ApprovedBy))
+        {
+            var reversing = new CostTransaction(
+                project.CompanyId,
+                projectId,
+                sourceTxn.TaskId,
+                sourceTxn.Category,
+                CostTransactionType.ManualAdjustment,
+                -request.AdjustmentAmount,
+                0,
+                $"Adj reversal: {request.Reason}",
+                null,
+                $"ADJ-{adjustment.Id:N}");
+            _context.CostTransactions.Add(reversing);
+
+            Guid? destTxnId = null;
+            if (request.DestinationProjectId.HasValue && request.DestinationProjectId != projectId)
+            {
+                var dest = await _context.Projects.FindAsync(new object[] { request.DestinationProjectId.Value }, cancellationToken);
+                if (dest is not null)
+                {
+                    var destTxn = new CostTransaction(
+                        dest.CompanyId,
+                        request.DestinationProjectId.Value,
+                        sourceTxn.TaskId,
+                        sourceTxn.Category,
+                        CostTransactionType.ManualAdjustment,
+                        request.AdjustmentAmount,
+                        0,
+                        $"Adj transfer: {request.Reason}",
+                        null,
+                        $"ADJ-{adjustment.Id:N}");
+                    _context.CostTransactions.Add(destTxn);
+                    destTxnId = destTxn.Id;
+                }
+            }
+
+            adjustment.Approve(request.ApprovedBy, reversing.Id, destTxnId);
+            project.RecalculateCosts();
+        }
+
+        _context.CostAdjustments.Add(adjustment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Dual-post any newly created cost transactions to GL.
+        var newTxns = await _context.CostTransactions
+            .Where(t => t.SourceReference == $"ADJ-{adjustment.Id:N}").ToListAsync(cancellationToken);
+        foreach (var t in newTxns)
+        {
+            await _eventDispatcher.DispatchAsync(
+                new ProjectCostPostedEvent(t.Id, t.ProjectId, t.TaskId, t.Category.ToString(), t.Amount, t.CompanyId), cancellationToken);
+        }
+
+        return Ok(ApiResponse<Guid>.Success(adjustment.Id));
     }
 
     [HttpGet("summary")]
@@ -223,4 +334,19 @@ public class PostCostRequest
     public bool IsBillable { get; set; } = true;
     public Guid? VendorId { get; set; }
     public Guid? EmployeeId { get; set; }
+}
+
+public class CalculateBurdenRequest
+{
+    public string Category { get; set; } = "Labor";
+    public decimal BaseCost { get; set; }
+}
+
+public class AdjustCostRequest
+{
+    public Guid SourceCostTransactionId { get; set; }
+    public decimal AdjustmentAmount { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public Guid? DestinationProjectId { get; set; }
+    public string? ApprovedBy { get; set; }
 }

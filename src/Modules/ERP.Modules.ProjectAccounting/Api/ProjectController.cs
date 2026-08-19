@@ -138,6 +138,53 @@ public class ProjectController : ControllerBase
         return Ok(ApiResponse.Success());
     }
 
+    // --- Contingency / management reserve (761) ---
+    [HttpPut("{id:guid}/contingency")]
+    public async Task<ActionResult<ApiResponse>> SetContingency(Guid id, [FromBody] ContingencyRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        project.SetContingency(request.ContingencyAmount);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("{id:guid}/contingency/release")]
+    public async Task<ActionResult<ApiResponse<Guid>>> ReleaseContingency(Guid id, [FromBody] ReleaseContingencyRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        var co = project.ReleaseContingency(request.Amount, request.Reason);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse<Guid>.Success(co.Id));
+    }
+
+    // --- Billing hold (783) ---
+    [HttpPut("{id:guid}/billing-hold")]
+    public async Task<ActionResult<ApiResponse>> SetBillingHold(Guid id, [FromBody] BillingHoldRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        project.SetBillingHold(request.Hold, request.Reason);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Multi-currency (742) ---
+    [HttpPut("{id:guid}/currency")]
+    public async Task<ActionResult<ApiResponse>> SetCurrency(Guid id, [FromBody] CurrencyRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        project.SetCurrency(request.CurrencyCode, request.ExchangeRate);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
     // --- Tasks ---
     [HttpGet("{id:guid}/tasks")]
     public async Task<ActionResult<ApiResponse<List<TaskDto>>>> GetTasks(
@@ -246,6 +293,11 @@ public class ProjectController : ControllerBase
         PlannedEndDate = p.PlannedEndDate,
         ActualStartDate = p.ActualStartDate,
         ActualEndDate = p.ActualEndDate,
+        ContingencyAmount = p.ContingencyAmount,
+        ReleasedContingency = p.ReleasedContingency,
+        BillingHold = p.BillingHold,
+        CurrencyCode = p.CurrencyCode,
+        ExchangeRate = p.ExchangeRate,
         TaskCount = p.Tasks.Count,
         BudgetLineCount = p.BudgetLines.Count,
     };
@@ -278,6 +330,11 @@ public class ProjectDto
     public DateTime? PlannedEndDate { get; set; }
     public DateTime? ActualStartDate { get; set; }
     public DateTime? ActualEndDate { get; set; }
+    public decimal ContingencyAmount { get; set; }
+    public decimal ReleasedContingency { get; set; }
+    public bool BillingHold { get; set; }
+    public string? CurrencyCode { get; set; }
+    public decimal ExchangeRate { get; set; }
     public int TaskCount { get; set; }
     public int BudgetLineCount { get; set; }
 }
@@ -346,4 +403,27 @@ public class UpdateTaskRequest
     public decimal? BudgetedHours { get; set; }
     public decimal? BudgetedCost { get; set; }
     public int? SortOrder { get; set; }
+}
+
+public class ContingencyRequest
+{
+    public decimal ContingencyAmount { get; set; }
+}
+
+public class ReleaseContingencyRequest
+{
+    public decimal Amount { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class BillingHoldRequest
+{
+    public bool Hold { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class CurrencyRequest
+{
+    public string? CurrencyCode { get; set; }
+    public decimal ExchangeRate { get; set; } = 1m;
 }

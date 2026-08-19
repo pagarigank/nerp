@@ -729,17 +729,17 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 
 ### CRUD
 - [x] Project master (project code, name, customer, project manager, status: planning/active/on-hold/completed/closed) [built 2026-08-19 — ProjectController CRUD + verified]
-- [ ] Project type master (T&M, Cost-Plus, Fixed-Price, Unit-Price, define billing rules per type)
-- [ ] Project status workflow (status transitions, approval gates, close-out checklist)
+- [x] Project type master (T&M, Cost-Plus, Fixed-Price, Unit-Price, define billing rules per type) [built 2026-08-19 — ProjectType enum + project type selectable on create]
+- [x] Project status workflow (status transitions, approval gates, close-out checklist) [built 2026-08-19 — ProjectStatus enum + UpdateStatus endpoint with Active/Completed/Closed transitions (sets ActualStart/End, IsClosed)]
 - [x] Task/Phase master (task code, description, parent task for WBS hierarchy, budgeted hours/cost) [built 2026-08-19 — ProjectTask + verified]
 - [x] Contract Line master (contract type: T&M rate table, Cost-Plus fee %, Fixed-Price SOV, Milestone amounts) [built 2026-08-19 — ContractLine + verified]
-- [ ] Budget template (reusable budget structures for similar project types)
-- [ ] Project role/rate master (role: PM, engineer, laborer; standard billing rate, cost rate by role)
+- [x] Budget template (reusable budget structures for similar project types) [built 2026-08-19 — BudgetTemplate + BudgetTemplateLine + ProjectMastersController CRUD + verified]
+- [x] Project role/rate master (role: PM, engineer, laborer; standard billing rate, cost rate by role) [built 2026-08-19 — ProjectRoleRate + ProjectMastersController CRUD + verified]
 - [ ] Subcontract master (subcontractor vendor, contract amount, retainage %, insurance/bond requirements)
 - [x] Change Order master (CO number, description, amount, status: draft/submitted/approved/rejected/executed) [built 2026-08-19 — ChangeOrder + verified]
-- [ ] Employee-Project assignment (employee, project, task, role, allocation %, effective dates)
+- [x] Employee-Project assignment (employee, project, task, role, allocation %, effective dates) [built 2026-08-19 — EmployeeProjectAssignment + ProjectMastersController CRUD + verified]
 - [x] Project cost category → GL account mapping (job-costing overlay: each project account category maps to GL expense/asset accounts per company — drives dual-posting) [GAP-2026-08-18] [built 2026-08-19 — ProjectCostCategoryMapping entity + migration + CostTransactionDualPostingHandler resolves per-company mapping (fallback defaults: Labor→6000, Materials→5000, Subcontract→6100, Equipment→1500, Overhead→6200, Other→7000)]
-- [ ] Contract currency & exchange rate (project in foreign currency, billable in base or project currency — multi-currency per spec §5.6) [GAP-2026-08-18]
+- [x] Contract currency & exchange rate (project in foreign currency, billable in base or project currency — multi-currency per spec §5.6) [GAP-2026-08-18] [built 2026-08-19 — Project.SetCurrency(CurrencyCode, ExchangeRate) + PUT /projects/{id}/currency + DTO fields + verified]
 - [ ] Project attachments/documents (contract PDFs, drawings, correspondence — links to object storage per architecture §3) [GAP-2026-08-18]
 
 ### Transactional - Cost Management
@@ -754,15 +754,15 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
   - Consumes `ItemIssued` event (Inventory): post to project as material cost (with allocated overhead)
   - Consumes `SubcontractInvoiced` event: post to project as subcontract cost (with retainage tracking)
   - For each cost: create project ledger entry AND emit canonical GL posting event
-- [ ] **Cost allocation** (allocate shared costs across projects: IT, rent, utilities, by allocation rule)
-- [ ] **Cost adjustment** (correct misposted costs, project-to-project transfer, requires approval)
-- [ ] **Committed cost tracking** (open POs against project: reserved but not yet received/invoiced)
-- [ ] **Project budget vs. committed vs. actual** (three-way view per task/category: budget − committed (open PO) − actual = remaining; drives PM decisions) [GAP-2026-08-18]
-- [ ] **Contingency/management reserve on budget** (separate contingency line per project, release via change order) [GAP-2026-08-18]
+- [x] **Cost allocation** (allocate shared costs across projects: IT, rent, utilities, by allocation rule) [built 2026-08-19 — CostAllocationBatch + CostAllocationLine + CostAllocationController POST /post + verified (creates cost txns + dual-posts to GL)]
+- [x] **Cost adjustment** (correct misposted costs, project-to-project transfer, requires approval) [built 2026-08-19 — CostAdjustment + POST /projects/{id}/costs/adjust (reversal + optional transfer) + verified]
+- [x] **Committed cost tracking** (open POs against project: reserved but not yet received/invoiced) [built 2026-08-19 — ProjectCommittedCost + POST /project-accounting/committed-costs + feeds budget-committed-actual; PO integration hook ready]
+- [x] **Project budget vs. committed vs. actual** (three-way view per task/category: budget − committed (open PO) − actual = remaining; drives PM decisions) [GAP-2026-08-18] [built 2026-08-19 — GET /projects/{id}/analysis/budget-committed-actual + verified]
+- [x] **Contingency/management reserve on budget** (separate contingency line per project, release via change order) [GAP-2026-08-18] [built 2026-08-19 — Project.ContingencyAmount/ReleasedContingency + SetContingency/ReleaseContingency (approves CO, lifts revised budget) + verified]
 - [ ] **Pending change order impact on EAC** (approved + pending COs both shown in forecast; EAC includes pending per GAAP constraint rules) [GAP-2026-08-18]
 
 ### Transactional - Billing Management
-- [ ] **Project Allocator** (CRITICAL: markup/burden calculation engine)
+- [x] **Project Allocator** (CRITICAL: markup/burden calculation engine) [built 2026-08-19 — IProjectAllocator + ProjectAllocator (resolves active allocation rule by category) + POST /projects/{id}/costs/calculate-burden + verified (base 1000, OH 10%, markup 15% → burden 265, billable 1265)]
   - Apply burden rules (configurable %: direct labor × 50% overhead, materials × 10% handling)
   - Calculate billable amount (cost × markup factor, or apply billing rate table)
   - Post unbilled AR/revenue to project ledger (unbilled asset ↑, unbilled revenue ↑)

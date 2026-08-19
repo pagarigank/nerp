@@ -80,6 +80,27 @@ public class Project : AuditableEntity
     public bool IsBilled { get; set; }
     public bool IsClosed { get; private set; }
 
+    /// <summary>Gets the separate contingency / management reserve amount on the budget.</summary>
+    public decimal ContingencyAmount { get; private set; }
+
+    /// <summary>Gets the amount of contingency reserve already released via change order.</summary>
+    public decimal ReleasedContingency { get; private set; }
+
+    /// <summary>Gets a value indicating whether invoicing is held (dispute, customer request, compliance).</summary>
+    public bool BillingHold { get; private set; }
+
+    /// <summary>Gets the reason for the billing hold.</summary>
+    public string? BillingHoldReason { get; private set; }
+
+    /// <summary>Gets the contract currency code for multi-currency projects (spec §5.6).</summary>
+    public string? CurrencyCode { get; private set; }
+
+    /// <summary>Gets the exchange rate applied to the contract currency.</summary>
+    public decimal ExchangeRate { get; private set; } = 1m;
+
+    /// <summary>Gets the remaining contingency available for release.</summary>
+    public decimal RemainingContingency => ContingencyAmount - ReleasedContingency;
+
     public IReadOnlyCollection<ProjectTask> Tasks => _tasks.AsReadOnly();
     public IReadOnlyCollection<BudgetLine> BudgetLines => _budgetLines.AsReadOnly();
     public IReadOnlyCollection<CostTransaction> CostTransactions => _costTransactions.AsReadOnly();
@@ -164,10 +185,46 @@ public class Project : AuditableEntity
         ContractValue += adjustment;
     }
 
+    public void SetContingency(decimal contingencyAmount)
+    {
+        ContingencyAmount = contingencyAmount;
+        RecalculateBudget();
+    }
+
+    /// <summary>Releases part of the contingency reserve via an approved change order that lifts the revised budget.</summary>
+    /// <param name="amount">The amount of contingency to release.</param>
+    /// <param name="reason">Optional reason for the release.</param>
+    /// <returns>The created and approved change order.</returns>
+    public ChangeOrder ReleaseContingency(decimal amount, string? reason = null)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be positive.", nameof(amount));
+        if (amount > ContingencyAmount - ReleasedContingency)
+            throw new InvalidOperationException("Release exceeds remaining contingency reserve.");
+
+        ReleasedContingency += amount;
+        var co = AddChangeOrder(reason ?? "Contingency release", amount, CostCategory.Other, "Management reserve release");
+        co.UpdateStatus(ChangeOrderStatus.Approved, "system");
+        RecalculateBudget();
+        return co;
+    }
+
+    public void SetBillingHold(bool hold, string? reason = null)
+    {
+        BillingHold = hold;
+        BillingHoldReason = hold ? reason : null;
+    }
+
+    public void SetCurrency(string? currencyCode, decimal exchangeRate = 1m)
+    {
+        CurrencyCode = currencyCode;
+        ExchangeRate = exchangeRate > 0 ? exchangeRate : 1m;
+    }
+
     public void RecalculateBudget()
     {
         OriginalBudget = _budgetLines.Where(b => !b.IsRevised).Sum(b => b.BudgetAmount);
-        RevisedBudget = _budgetLines.Sum(b => b.BudgetAmount);
+        RevisedBudget = _budgetLines.Sum(b => b.BudgetAmount) + ContingencyAmount;
     }
 
     public void RecalculateCosts()
