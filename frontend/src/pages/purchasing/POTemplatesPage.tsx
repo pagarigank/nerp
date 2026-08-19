@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
+import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
@@ -133,7 +134,7 @@ export function POTemplatesPage() {
                   <Select options={itemOptions} value={line.itemId ?? ''} onChange={e => setLine(i, 'itemId', e.target.value || null)} label={i === 0 ? 'Item' : undefined} />
                   <Input value={line.description} onChange={e => setLine(i, 'description', e.target.value)} label={i === 0 ? 'Description' : undefined} />
                   <Input type="number" step="0.01" min="0" value={String(line.defaultQuantity)} onChange={e => setLine(i, 'defaultQuantity', Number(e.target.value))} label={i === 0 ? 'Qty' : undefined} />
-                  <Input value={line.unitOfMeasure} onChange={e => setLine(i, 'unitOfMeasure', e.target.value)} label={i === 0 ? 'UOM' : undefined} />
+                  <UomSelect value={line.unitOfMeasure} onChange={(e) => setLine(i, 'unitOfMeasure', e.target.value)} label={i === 0 ? 'UOM' : undefined} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" />
                   <Input type="number" step="0.01" min="0" value={String(line.unitPrice)} onChange={e => setLine(i, 'unitPrice', Number(e.target.value))} label={i === 0 ? 'Price' : undefined} />
                 </div>
               ))}

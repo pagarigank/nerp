@@ -21,6 +21,9 @@ public class BomDbContext : DispatchableDbContext
     public DbSet<BuildOrder> BuildOrders => Set<BuildOrder>();
     public DbSet<BuildOrderLine> BuildOrderLines => Set<BuildOrderLine>();
     public DbSet<BomRevisionHistory> BomRevisionHistories => Set<BomRevisionHistory>();
+    public DbSet<BomComponentSubstitution> BomComponentSubstitutions => Set<BomComponentSubstitution>();
+    public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
+    public DbSet<EngineeringChangeNotice> EngineeringChangeNotices => Set<EngineeringChangeNotice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +37,7 @@ public class BomDbContext : DispatchableDbContext
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.Revision).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.AlternateCode).HasMaxLength(20);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.YieldPercentage).HasColumnType("decimal(5,2)");
             entity.Property(e => e.EstimatedMaterialCost).HasColumnType("decimal(18,4)");
@@ -144,6 +148,45 @@ public class BomDbContext : DispatchableDbContext
             entity.Property(e => e.ReasonForChange).HasMaxLength(500);
 
             entity.HasIndex(e => e.BomHeaderId);
+        });
+
+        // BomComponentSubstitution
+        modelBuilder.Entity<BomComponentSubstitution>(entity =>
+        {
+            entity.ToTable("BomComponentSubstitutions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.CostVariance).HasColumnType("decimal(18,4)");
+            entity.HasIndex(e => e.BomHeaderId);
+            entity.HasIndex(e => e.ComponentLineId);
+        });
+
+        // ComponentAllocation
+        modelBuilder.Entity<ComponentAllocation>(entity =>
+        {
+            entity.ToTable("ComponentAllocations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Quantity).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.FulfilledQuantity).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.UnitOfMeasure).IsRequired().HasMaxLength(20);
+            entity.HasIndex(e => e.BomHeaderId);
+            entity.HasIndex(e => e.BuildOrderId);
+            entity.HasIndex(e => e.ComponentItemId);
+        });
+
+        // EngineeringChangeNotice
+        modelBuilder.Entity<EngineeringChangeNotice>(entity =>
+        {
+            entity.ToTable("EngineeringChangeNotices");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EcnNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Reviewer).HasMaxLength(200);
+            entity.Property(e => e.Approver).HasMaxLength(200);
+            entity.Property(e => e.RejectionReason).HasMaxLength(500);
+            entity.HasIndex(e => e.BomHeaderId);
+            entity.HasIndex(e => new { e.CompanyId, e.EcnNumber }).IsUnique();
         });
     }
 }

@@ -112,6 +112,7 @@ public class ProjDbContext : DispatchableDbContext
             entity.HasIndex(e => e.TaskId);
             entity.HasIndex(e => e.TransactionDate);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.IsBilled);
         });
 
         // ChangeOrder

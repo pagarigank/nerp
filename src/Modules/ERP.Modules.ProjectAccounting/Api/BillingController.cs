@@ -151,6 +151,7 @@ public class BillingController : ControllerBase
         var project = await _context.Projects
             .Include(p => p.ContractLines)
             .Include(p => p.BillingSchedules)
+            .Include(p => p.CostTransactions)
             .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
 
         if (project is null)
@@ -179,6 +180,28 @@ public class BillingController : ControllerBase
 
                 case BillingMethod.UnitPrice:
                     lineAmount = ((contractLine.UnitPrice ?? 0) * (contractLine.UnitQuantity ?? 0)) - contractLine.BilledAmount;
+                    break;
+
+                case BillingMethod.TimeAndMaterials:
+                    // Sum unbilled, billable cost transactions (labor + expenses) and apply markup.
+                    var unbilledCosts = project.CostTransactions
+                        .Where(t => t.IsBillable && !t.IsBilled && t.Status == TransactionStatus.Posted)
+                        .ToList();
+                    var rawCost = unbilledCosts.Sum(t => t.BillableAmount > 0 ? t.BillableAmount : t.Amount);
+                    var tmMarkup = contractLine.FeePercentage ?? 0m;
+                    lineAmount = rawCost * (1m + (tmMarkup / 100m));
+                    foreach (var c in unbilledCosts)
+                    {
+                        c.MarkBilled();
+                    }
+
+                    break;
+
+                case BillingMethod.CostPlus:
+                    // Bill costs-to-date × fee percentage.
+                    var costPlusBase = project.CostsToDate;
+                    var cpFee = contractLine.FeePercentage ?? 0m;
+                    lineAmount = (costPlusBase * (1m + (cpFee / 100m))) - contractLine.BilledAmount;
                     break;
 
                 default:

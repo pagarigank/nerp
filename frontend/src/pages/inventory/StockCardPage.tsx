@@ -20,7 +20,7 @@ export function StockCardPage() {
 
   const { data: items = [] } = useQuery({
     queryKey: ['inventory', 'items'],
-    queryFn: getItems,
+    queryFn: () => getItems(),
   })
 
   const itemOptions = useMemo(

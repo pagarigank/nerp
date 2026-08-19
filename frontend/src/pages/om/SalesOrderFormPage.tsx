@@ -12,6 +12,7 @@ import { getErrorMessage } from '@api/client'
 import { createSalesOrder, DEMO_COMPANY_ID, getShippingMethods, getSalesOrderTypes, evaluatePrice, getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems, getItemUomConversions } from '@api/inventory'
+import { UomSelect } from '@components/ui/UomSelect'
 import { getPaymentTerms } from '@api/ap'
 import type { ArCustomer } from '@/types/ar'
 import type { ItemSummary, UomConversionDto } from '@/types/inventory'
@@ -115,7 +116,7 @@ export function SalesOrderFormPage() {
 
   const { data: items = [] } = useQuery({
     queryKey: ['inventory', 'items'],
-    queryFn: getItems,
+    queryFn: () => getItems(),
   })
 
   const { data: shippingMethods = [] } = useQuery({
@@ -547,14 +548,10 @@ export function SalesOrderFormPage() {
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <select
+                          <UomSelect
                             {...register(`lines.${index}.unitOfMeasure`)}
                             className="w-20 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1.5"
-                          >
-                            {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                          </select>
+                          />
                         </td>
                         <td className="px-3 py-2">
                           <input

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Plus, Search, AlertCircle, Check, Trash2 } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
+import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Select, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
@@ -410,11 +411,7 @@ export function PurchaseOrdersPage() {
                           <input type="number" step="0.01" {...register(`lines.${index}.quantity`)} className="w-20 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <select {...register(`lines.${index}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1">
-                            {(lineUomOptions[index] ?? [{ value: 'EA', label: 'EA' }]).map(o => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                          </select>
+                          <UomSelect {...register(`lines.${index}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1" />
                         </td>
                         <td className="px-2 py-1.5">
                           <input type="number" step="0.01" {...register(`lines.${index}.unitPrice`)} className="w-24 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" />

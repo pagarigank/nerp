@@ -353,7 +353,7 @@ export function InvoiceBatchDetailPage() {
 
   const { data: accounts = [] } = useQuery({
     queryKey: ['platform', 'accounts'],
-    queryFn: getAccounts,
+    queryFn: () => getAccounts(),
   })
 
   const accountOptions = useMemo(

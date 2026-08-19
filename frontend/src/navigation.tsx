@@ -212,6 +212,8 @@ export const mainNavigation: NavModule[] = [
       { label: 'Scrap / Disposal', to: '/inventory/scrap' },
       { label: 'GL Tie-Out', to: '/inventory/gl-tie-out' },
       { label: 'Stock Card', to: '/inventory/stock-card' },
+      { label: 'UOM Conversions', to: '/inventory/uom-conversions' },
+      { label: 'UOM', to: '/inventory/uoms' },
       { label: 'Reports', to: '/inventory/reports' },
     ],
   },

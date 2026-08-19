@@ -194,6 +194,157 @@ public class BomReportsController : ControllerBase
 
         return Ok(ApiResponse<List<BomAccuracyDto>>.Success(result));
     }
+
+    /// <summary>
+    /// Component Shortage Report: planned builds with missing components, qty short, impact.
+    /// </summary>
+    /// <param name="companyId">Filter by company.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of component shortage entries.</returns>
+    [HttpGet("component-shortage")]
+    public async Task<ActionResult<ApiResponse<List<ComponentShortageDto>>>> GetComponentShortage(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var plannedBuilds = await _bomContext.BuildOrders
+            .Include(b => b.Lines)
+            .Where(b => b.Status == BuildOrderStatus.Planned && (!companyId.HasValue || b.CompanyId == companyId.Value))
+            .ToListAsync(cancellationToken);
+
+        var result = new List<ComponentShortageDto>();
+        foreach (var bo in plannedBuilds)
+        {
+            foreach (var line in bo.Lines.Where(l => !l.IsLabor && !l.IsOverhead))
+            {
+                var onHand = await _invContext.ItemStocks
+                    .Where(s => s.ItemId == line.ComponentItemId)
+                    .SumAsync(s => s.OnHandQuantity, cancellationToken);
+
+                var required = line.QuantityRequired * bo.QuantityToBuild;
+                var shortQty = required - onHand;
+                if (shortQty > 0)
+                {
+                    result.Add(new ComponentShortageDto
+                    {
+                        BuildOrderId = bo.Id,
+                        BuildNumber = bo.BuildNumber,
+                        ParentItemId = bo.ParentItemId,
+                        ComponentItemId = line.ComponentItemId,
+                        RequiredQuantity = required,
+                        OnHandQuantity = onHand,
+                        ShortQuantity = shortQty,
+                        UnitOfMeasure = line.UnitOfMeasure,
+                    });
+                }
+            }
+        }
+
+        return Ok(ApiResponse<List<ComponentShortageDto>>.Success(result));
+    }
+
+    /// <summary>
+    /// BOM Revision History Report: all revisions for an item.
+    /// </summary>
+    /// <param name="companyId">Filter by company.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of revision history entries.</returns>
+    [HttpGet("revision-history")]
+    public async Task<ActionResult<ApiResponse<List<RevisionHistoryDto>>>> GetRevisionHistory(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var query = _bomContext.BomRevisionHistories.AsQueryable();
+        if (companyId.HasValue)
+        {
+            var headerIds = await _bomContext.BomHeaders
+                .Where(h => h.CompanyId == companyId.Value)
+                .Select(h => h.Id)
+                .ToListAsync(cancellationToken);
+            query = query.Where(r => headerIds.Contains(r.BomHeaderId));
+        }
+
+        var rows = await query.OrderBy(r => r.BomHeaderId).ThenByDescending(r => r.CreatedOn)
+            .Select(r => new RevisionHistoryDto
+            {
+                BomHeaderId = r.BomHeaderId,
+                Revision = r.Revision,
+                ChangeDescription = r.ChangeDescription,
+                ReasonForChange = r.ReasonForChange,
+                EffectiveDate = r.EffectiveDate,
+                ChangedOn = r.CreatedOn.DateTime,
+            }).ToListAsync(cancellationToken);
+
+        return Ok(ApiResponse<List<RevisionHistoryDto>>.Success(rows));
+    }
+
+    /// <summary>
+    /// Build Variance Report: actual component consumption vs. standard, scrap %, cost variance.
+    /// </summary>
+    /// <param name="companyId">Filter by company.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of build variance entries.</returns>
+    [HttpGet("build-variance")]
+    public async Task<ActionResult<ApiResponse<List<BuildVarianceDto>>>> GetBuildVariance(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var builds = await _bomContext.BuildOrders
+            .Include(b => b.Lines)
+            .Where(b => b.Status == BuildOrderStatus.Completed && (!companyId.HasValue || b.CompanyId == companyId.Value))
+            .ToListAsync(cancellationToken);
+
+        var result = builds.Select(b => new BuildVarianceDto
+        {
+            BuildOrderId = b.Id,
+            BuildNumber = b.BuildNumber,
+            ParentItemId = b.ParentItemId,
+            QuantityBuilt = b.QuantityToBuild,
+            ActualYield = b.ActualYield,
+            TotalStandardCost = b.Lines.Sum(l => l.ExtendedCost),
+            TotalVarianceCost = b.Lines.Sum(l => l.VarianceCost ?? 0),
+            ComponentLineCount = b.Lines.Count(l => !l.IsLabor && !l.IsOverhead),
+        }).ToList();
+
+        return Ok(ApiResponse<List<BuildVarianceDto>>.Success(result));
+    }
+
+    /// <summary>
+    /// Work Center Utilization / Build Capacity Report.
+    /// </summary>
+    /// <param name="companyId">Filter by company.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of work center utilization entries.</returns>
+    [HttpGet("work-center-utilization")]
+    public async Task<ActionResult<ApiResponse<List<WorkCenterUtilizationDto>>>> GetWorkCenterUtilization(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var wcs = await _bomContext.WorkCenters
+            .Where(w => !companyId.HasValue || w.CompanyId == companyId.Value)
+            .ToListAsync(cancellationToken);
+
+        var util = new List<WorkCenterUtilizationDto>();
+        foreach (var wc in wcs)
+        {
+            var lines = await _bomContext.BomComponentLines
+                .Where(c => c.WorkCenterId == wc.Id)
+                .ToListAsync(cancellationToken);
+
+            var capacity = wc.CapacityHoursPerDay * 20m; // ~20 working days/month
+            var estHours = lines.Sum(c => c.OperationSequence > 0 ? (decimal)c.OperationSequence / 10m : 1m) * wc.EfficiencyPercentage / 100m;
+            var utilizationPct = capacity > 0 ? Math.Min(100m, (estHours / capacity) * 100m) : 0m;
+
+            util.Add(new WorkCenterUtilizationDto
+            {
+                WorkCenterId = wc.Id,
+                Code = wc.Code,
+                Name = wc.Name,
+                CapacityHoursPerMonth = capacity,
+                PlannedHours = estHours,
+                UtilizationPercentage = utilizationPct,
+                ComponentCount = lines.Count,
+                CostRatePerHour = wc.CostRatePerHour,
+            });
+        }
+
+        return Ok(ApiResponse<List<WorkCenterUtilizationDto>>.Success(util));
+    }
 }
 
 // --- DTOs ---
@@ -248,4 +399,51 @@ public class BomAccuracyDto
 #pragma warning disable CA1002, CA2227
     public List<string> Issues { get; set; } = [];
 #pragma warning restore CA1002, CA2227
+}
+
+// --- New GAP report DTOs ---
+public class ComponentShortageDto
+{
+    public Guid BuildOrderId { get; set; }
+    public string BuildNumber { get; set; } = string.Empty;
+    public Guid ParentItemId { get; set; }
+    public Guid ComponentItemId { get; set; }
+    public decimal RequiredQuantity { get; set; }
+    public decimal OnHandQuantity { get; set; }
+    public decimal ShortQuantity { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+}
+
+public class RevisionHistoryDto
+{
+    public Guid BomHeaderId { get; set; }
+    public string Revision { get; set; } = string.Empty;
+    public string ChangeDescription { get; set; } = string.Empty;
+    public string? ReasonForChange { get; set; }
+    public DateTime? EffectiveDate { get; set; }
+    public DateTime ChangedOn { get; set; }
+}
+
+public class BuildVarianceDto
+{
+    public Guid BuildOrderId { get; set; }
+    public string BuildNumber { get; set; } = string.Empty;
+    public Guid ParentItemId { get; set; }
+    public decimal QuantityBuilt { get; set; }
+    public decimal? ActualYield { get; set; }
+    public decimal TotalStandardCost { get; set; }
+    public decimal TotalVarianceCost { get; set; }
+    public int ComponentLineCount { get; set; }
+}
+
+public class WorkCenterUtilizationDto
+{
+    public Guid WorkCenterId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public decimal CapacityHoursPerMonth { get; set; }
+    public decimal PlannedHours { get; set; }
+    public decimal UtilizationPercentage { get; set; }
+    public int ComponentCount { get; set; }
+    public decimal CostRatePerHour { get; set; }
 }

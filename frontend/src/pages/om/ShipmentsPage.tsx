@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Plus, Search, AlertCircle, Trash2, Eye } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
+import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
@@ -284,9 +285,7 @@ export function ShipmentsPage() {
                         <td className="px-2 py-1.5"><input {...register(`lines.${idx}.description`)} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1" /></td>
                         <td className="px-2 py-1.5"><input type="number" step="0.01" {...register(`lines.${idx}.quantity`)} className="w-20 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" /></td>
                         <td className="px-2 py-1.5"><input type="number" step="0.01" {...register(`lines.${idx}.unitPrice`)} className="w-24 text-sm text-right rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 tabular-nums" /></td>
-                        <td className="px-2 py-1.5"><select {...register(`lines.${idx}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1">
-                          {(lineUomOptions[idx] ?? [{ value: 'EA', label: 'EA' }]).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select></td>
+                        <td className="px-2 py-1.5"><UomSelect {...register(`lines.${idx}.unitOfMeasure`)} className="w-20 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1 py-1" /></td>
                         <td className="px-2 py-1.5 text-right text-sm font-medium tabular-nums">{formatCurrency(total)}</td>
                         <td className="px-2 py-1.5">{fields.length > 1 && <button type="button" onClick={() => remove(idx)} className="text-red-500 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                       </tr>

@@ -61,12 +61,18 @@ public class CostTransaction : AuditableEntity
     public TransactionStatus Status { get; private set; }
     public DateTime TransactionDate { get; private set; }
     public bool IsAllocated { get; private set; }
+    public bool IsBilled { get; private set; }
 
     public void SetBurden(decimal burdenAmount, decimal billableAmount)
     {
         BurdenAmount = burdenAmount;
         BillableAmount = billableAmount;
         IsAllocated = true;
+    }
+
+    public void MarkBilled()
+    {
+        IsBilled = true;
     }
 
     public void UpdateStatus(TransactionStatus status)

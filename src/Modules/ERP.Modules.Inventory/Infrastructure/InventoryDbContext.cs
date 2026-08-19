@@ -93,6 +93,8 @@ public class InventoryDbContext : DispatchableDbContext
 
     public DbSet<LotExpirationAlert> LotExpirationAlerts => Set<LotExpirationAlert>();
 
+    public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -165,6 +167,21 @@ public class InventoryDbContext : DispatchableDbContext
             entity.Property(e => e.ConversionFactor).HasColumnType("decimal(18,6)");
 
             entity.HasIndex(e => new { e.ItemId, e.FromUOM, e.ToUOM }).IsUnique();
+        });
+
+        // UnitOfMeasure (global UOM master)
+        modelBuilder.Entity<UnitOfMeasure>(entity =>
+        {
+            entity.ToTable("UnitOfMeasures");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Description).HasMaxLength(100);
+            entity.Property(e => e.BaseUOM).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FactorToBase).HasColumnType("decimal(18,6)");
+
+            entity.HasIndex(e => new { e.CompanyId, e.Code }).IsUnique();
         });
 
         // Warehouse

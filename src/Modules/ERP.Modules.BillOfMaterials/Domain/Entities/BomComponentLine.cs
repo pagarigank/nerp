@@ -106,4 +106,6 @@ public class BomComponentLine : AuditableEntity
     }
 
     public void SetEstimatedUnitCost(decimal cost) => EstimatedUnitCost = cost;
+
+    public void ReplaceComponent(Guid newComponentItemId) => ComponentItemId = newComponentItemId;
 }

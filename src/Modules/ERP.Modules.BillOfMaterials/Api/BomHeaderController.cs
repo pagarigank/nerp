@@ -87,7 +87,8 @@ public class BomHeaderController : ControllerBase
             request.EffectiveFrom,
             request.EffectiveTo,
             request.Description,
-            request.YieldPercentage);
+            request.YieldPercentage,
+            request.AlternateCode);
 
         _context.BomHeaders.Add(header);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -122,7 +123,8 @@ public class BomHeaderController : ControllerBase
             updateStatus,
             request.EffectiveFrom,
             request.EffectiveTo,
-            request.YieldPercentage);
+            request.YieldPercentage,
+            request.AlternateCode);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse.Success());
@@ -396,7 +398,269 @@ public class BomHeaderController : ControllerBase
         return Ok(ApiResponse<BomCostRollupDto>.Success(dto));
     }
 
+    // --- Cost Roll-Up to Item Standard Cost (cross-module wiring) ---
+    [HttpPost("{id:guid}/apply-cost-to-item")]
+    public async Task<ActionResult<ApiResponse>> ApplyCostToItem(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.Components)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var totalMaterialCost = 0m;
+        foreach (var comp in header.Components)
+        {
+            var unitCost = await _invContext.Items
+                .Where(i => i.Id == comp.ComponentItemId)
+                .Select(i => i.StandardCost ?? 0)
+                .FirstOrDefaultAsync(cancellationToken);
+            totalMaterialCost += comp.EffectiveQuantity * unitCost;
+        }
+
+        if (header.YieldPercentage > 0 && header.YieldPercentage != 100)
+            totalMaterialCost = totalMaterialCost / (header.YieldPercentage / 100m);
+
+        var item = await _invContext.Items.FindAsync(new object[] { header.ParentItemId }, cancellationToken);
+        if (item is null)
+            return NotFound(ApiResponse.Failure(new[] { "Parent item not found." }, 404));
+
+        item.UpdateStandardCost(totalMaterialCost);
+        await _invContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<decimal>.Success(totalMaterialCost));
+    }
+
+    // --- Component Substitutions ---
+    [HttpGet("{id:guid}/substitutions")]
+    public async Task<ActionResult<ApiResponse<List<BomSubstitutionDto>>>> GetSubstitutions(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var subs = await _context.BomComponentSubstitutions
+            .Where(s => s.BomHeaderId == id)
+            .OrderBy(s => s.Priority)
+            .ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<BomSubstitutionDto>>.Success(subs.Select(MapSubstitution).ToList()));
+    }
+
+    [HttpPost("{id:guid}/substitutions")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AddSubstitution(
+        Guid id, [FromBody] AddSubstitutionRequest request, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var line = await _context.BomComponentLines
+            .FirstOrDefaultAsync(c => c.Id == request.ComponentLineId && c.BomHeaderId == id, cancellationToken);
+        if (line is null)
+            return NotFound(ApiResponse.Failure(new[] { "Component line not found." }, 404));
+
+        var sub = header.AddSubstitution(request.ComponentLineId, request.SubstituteItemId, request.Reason, request.CostVariance, request.Priority);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(sub.Id));
+    }
+
+    [HttpPost("{id:guid}/substitutions/{subId:guid}/approve")]
+    public async Task<ActionResult<ApiResponse>> ApproveSubstitution(
+        Guid id, Guid subId, CancellationToken cancellationToken)
+    {
+        var sub = await _context.BomComponentSubstitutions
+            .FirstOrDefaultAsync(s => s.Id == subId && s.BomHeaderId == id, cancellationToken);
+        if (sub is null)
+            return NotFound(ApiResponse.Failure(new[] { "Substitution not found." }, 404));
+        sub.Approve();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Component Allocation ---
+    [HttpGet("{id:guid}/allocations")]
+    public async Task<ActionResult<ApiResponse<List<BomAllocationDto>>>> GetAllocations(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var allocs = await _context.ComponentAllocations
+            .Where(a => a.BomHeaderId == id)
+            .ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<BomAllocationDto>>.Success(allocs.Select(MapAllocation).ToList()));
+    }
+
+    [HttpPost("{id:guid}/allocations")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AllocateComponent(
+        Guid id, [FromBody] AllocateComponentRequest request, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var alloc = header.AddAllocation(request.BuildOrderId, request.ComponentItemId, request.Quantity, request.UnitOfMeasure, request.WarehouseId);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(alloc.Id));
+    }
+
+    [HttpPut("{id:guid}/allocations/{allocId:guid}/release")]
+    public async Task<ActionResult<ApiResponse>> ReleaseAllocation(
+        Guid id, Guid allocId, CancellationToken cancellationToken)
+    {
+        var alloc = await _context.ComponentAllocations
+            .FirstOrDefaultAsync(a => a.Id == allocId && a.BomHeaderId == id, cancellationToken);
+        if (alloc is null)
+            return NotFound(ApiResponse.Failure(new[] { "Allocation not found." }, 404));
+        alloc.Release();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Engineering Change Notices ---
+    [HttpGet("{id:guid}/ecns")]
+    public async Task<ActionResult<ApiResponse<List<BomEcnDto>>>> GetEcns(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var ecns = await _context.EngineeringChangeNotices
+            .Where(e => e.BomHeaderId == id)
+            .OrderByDescending(e => e.CreatedOn)
+            .ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<BomEcnDto>>.Success(ecns.Select(MapEcn).ToList()));
+    }
+
+    [HttpPost("{id:guid}/ecns")]
+    public async Task<ActionResult<ApiResponse<Guid>>> CreateEcn(
+        Guid id, [FromBody] CreateEcnRequest request, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var ecn = header.AddEngineeringChangeNotice(request.CompanyId, request.EcnNumber, request.Title, request.Description, request.PlannedEffectivity);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(ecn.Id));
+    }
+
+    [HttpPut("{id:guid}/ecns/{ecnId:guid}/transition")]
+    public async Task<ActionResult<ApiResponse>> TransitionEcn(
+        Guid id, Guid ecnId, [FromBody] EcnTransitionRequest request, CancellationToken cancellationToken)
+    {
+        var ecn = await _context.EngineeringChangeNotices
+            .FirstOrDefaultAsync(e => e.Id == ecnId && e.BomHeaderId == id, cancellationToken);
+        if (ecn is null)
+            return NotFound(ApiResponse.Failure(new[] { "ECN not found." }, 404));
+
+        switch (request.Action?.ToUpperInvariant())
+        {
+            case "SUBMIT": ecn.Submit(request.Reviewer ?? "system"); break;
+            case "REVIEW": ecn.StartReview(); break;
+            case "APPROVE": ecn.Approve(request.Approver ?? "system"); break;
+            case "REJECT": ecn.Reject(request.Reason ?? "rejected"); break;
+            case "EXECUTE": ecn.Execute(request.Effectivity ?? DateTime.UtcNow); break;
+            default: return BadRequest(ApiResponse.Failure(new[] { "Unknown ECN action." }));
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- BOM Comparison (two revisions) ---
+    [HttpGet("compare")]
+    public async Task<ActionResult<ApiResponse<BomComparisonDto>>> Compare(
+        [FromQuery] Guid bomA, [FromQuery] Guid bomB, CancellationToken cancellationToken)
+    {
+        var a = await _context.BomHeaders.Include(h => h.Components).FirstOrDefaultAsync(h => h.Id == bomA, cancellationToken);
+        var b = await _context.BomHeaders.Include(h => h.Components).FirstOrDefaultAsync(h => h.Id == bomB, cancellationToken);
+        if (a is null || b is null)
+            return NotFound(ApiResponse.Failure(new[] { "One or both BOMs not found." }, 404));
+
+        var setA = a.Components.ToDictionary(c => c.ComponentItemId, c => c.QuantityPerParent);
+        var setB = b.Components.ToDictionary(c => c.ComponentItemId, c => c.QuantityPerParent);
+        var allItems = setA.Keys.Union(setB.Keys);
+
+        var rows = new List<BomComparisonRowDto>();
+        foreach (var item in allItems)
+        {
+            setA.TryGetValue(item, out var qa);
+            setB.TryGetValue(item, out var qb);
+            rows.Add(new BomComparisonRowDto
+            {
+                ComponentItemId = item,
+                QuantityInA = qa,
+                QuantityInB = qb,
+                Difference = qb - qa,
+                Status = qa == qb ? "Same" : "Changed",
+            });
+        }
+
+        return Ok(ApiResponse<BomComparisonDto>.Success(new BomComparisonDto
+        {
+            BomAId = bomA,
+            BomBId = bomB,
+            Rows = rows,
+        }));
+    }
+
+    // --- Mass BOM Update (global component replacement) ---
+    [HttpPost("mass-update")]
+    public async Task<ActionResult<ApiResponse<BomMassUpdateResultDto>>> MassUpdate(
+        [FromBody] BomMassUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var affected = await _context.BomComponentLines
+            .Where(c => c.ComponentItemId == request.FromItemId)
+            .ToListAsync(cancellationToken);
+
+        var updatedIds = new List<Guid>();
+        foreach (var line in affected)
+        {
+            line.ReplaceComponent(request.ToItemId);
+            updatedIds.Add(line.Id);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<BomMassUpdateResultDto>.Success(new BomMassUpdateResultDto
+        {
+            LinesUpdated = updatedIds.Count,
+            LineIds = updatedIds,
+        }));
+    }
+
     // --- Mapping Helpers ---
+    private static BomSubstitutionDto MapSubstitution(BomComponentSubstitution s) => new ()
+    {
+        Id = s.Id,
+        BomHeaderId = s.BomHeaderId,
+        ComponentLineId = s.ComponentLineId,
+        SubstituteItemId = s.SubstituteItemId,
+        Reason = s.Reason,
+        CostVariance = s.CostVariance,
+        Priority = s.Priority,
+        IsApproved = s.IsApproved,
+    };
+
+    private static BomAllocationDto MapAllocation(ComponentAllocation a) => new ()
+    {
+        Id = a.Id,
+        BomHeaderId = a.BomHeaderId,
+        BuildOrderId = a.BuildOrderId,
+        ComponentItemId = a.ComponentItemId,
+        Quantity = a.Quantity,
+        FulfilledQuantity = a.FulfilledQuantity,
+        UnitOfMeasure = a.UnitOfMeasure,
+        WarehouseId = a.WarehouseId,
+        IsReleased = a.IsReleased,
+    };
+
+    private static BomEcnDto MapEcn(EngineeringChangeNotice e) => new ()
+    {
+        Id = e.Id,
+        BomHeaderId = e.BomHeaderId,
+        EcnNumber = e.EcnNumber,
+        Title = e.Title,
+        Description = e.Description,
+        Status = e.Status.ToString(),
+        PlannedEffectivity = e.PlannedEffectivity,
+        ActualEffectivity = e.ActualEffectivity,
+        Reviewer = e.Reviewer,
+        Approver = e.Approver,
+    };
     private static BomHeaderDto MapToDto(BomHeader h) => new ()
     {
         Id = h.Id,
@@ -409,6 +673,7 @@ public class BomHeaderController : ControllerBase
         EffectiveFrom = h.EffectiveFrom,
         EffectiveTo = h.EffectiveTo,
         YieldPercentage = h.YieldPercentage,
+        AlternateCode = h.AlternateCode,
         EstimatedMaterialCost = h.EstimatedMaterialCost,
         EstimatedLaborCost = h.EstimatedLaborCost,
         EstimatedOverheadCost = h.EstimatedOverheadCost,
@@ -442,6 +707,7 @@ public class BomHeaderDto
     public Guid CompanyId { get; set; }
     public Guid ParentItemId { get; set; }
     public string Revision { get; set; } = string.Empty;
+    public string? AlternateCode { get; set; }
     public string? Description { get; set; }
     public string BomType { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
@@ -481,6 +747,7 @@ public class CreateBomHeaderRequest
     public DateTime? EffectiveFrom { get; set; }
     public DateTime? EffectiveTo { get; set; }
     public decimal? YieldPercentage { get; set; }
+    public string? AlternateCode { get; set; }
 }
 
 public class UpdateBomHeaderRequest
@@ -491,6 +758,7 @@ public class UpdateBomHeaderRequest
     public DateTime? EffectiveFrom { get; set; }
     public DateTime? EffectiveTo { get; set; }
     public decimal? YieldPercentage { get; set; }
+    public string? AlternateCode { get; set; }
 }
 
 public class AddComponentRequest
@@ -564,3 +832,111 @@ public class BomCostRollupLineDto
     public decimal ExtendedCost { get; set; }
     public decimal ScrapFactor { get; set; }
 }
+
+// --- Substitution / Allocation / ECN / Comparison / Mass-Update DTOs ---
+public class BomSubstitutionDto
+{
+    public Guid Id { get; set; }
+    public Guid BomHeaderId { get; set; }
+    public Guid ComponentLineId { get; set; }
+    public Guid SubstituteItemId { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public decimal? CostVariance { get; set; }
+    public int Priority { get; set; }
+    public bool IsApproved { get; set; }
+}
+
+public class AddSubstitutionRequest
+{
+    public Guid ComponentLineId { get; set; }
+    public Guid SubstituteItemId { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public decimal? CostVariance { get; set; }
+    public int Priority { get; set; } = 10;
+}
+
+public class BomAllocationDto
+{
+    public Guid Id { get; set; }
+    public Guid BomHeaderId { get; set; }
+    public Guid BuildOrderId { get; set; }
+    public Guid ComponentItemId { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal FulfilledQuantity { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public Guid? WarehouseId { get; set; }
+    public bool IsReleased { get; set; }
+}
+
+public class AllocateComponentRequest
+{
+    public Guid BuildOrderId { get; set; }
+    public Guid ComponentItemId { get; set; }
+    public decimal Quantity { get; set; }
+    public string UnitOfMeasure { get; set; } = "EA";
+    public Guid? WarehouseId { get; set; }
+}
+
+public class BomEcnDto
+{
+    public Guid Id { get; set; }
+    public Guid BomHeaderId { get; set; }
+    public string EcnNumber { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime? PlannedEffectivity { get; set; }
+    public DateTime? ActualEffectivity { get; set; }
+    public string? Reviewer { get; set; }
+    public string? Approver { get; set; }
+}
+
+public class CreateEcnRequest
+{
+    public Guid CompanyId { get; set; }
+    public string EcnNumber { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime? PlannedEffectivity { get; set; }
+}
+
+public class EcnTransitionRequest
+{
+    public string? Action { get; set; }
+    public string? Reviewer { get; set; }
+    public string? Approver { get; set; }
+    public string? Reason { get; set; }
+    public DateTime? Effectivity { get; set; }
+}
+
+#pragma warning disable CA1002, CA2227
+public class BomComparisonDto
+{
+    public Guid BomAId { get; set; }
+    public Guid BomBId { get; set; }
+    public List<BomComparisonRowDto> Rows { get; set; } = [];
+}
+#pragma warning restore CA1002, CA2227
+
+public class BomComparisonRowDto
+{
+    public Guid ComponentItemId { get; set; }
+    public decimal QuantityInA { get; set; }
+    public decimal QuantityInB { get; set; }
+    public decimal Difference { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+#pragma warning disable CA1002, CA2227
+public class BomMassUpdateRequest
+{
+    public Guid FromItemId { get; set; }
+    public Guid ToItemId { get; set; }
+}
+
+public class BomMassUpdateResultDto
+{
+    public int LinesUpdated { get; set; }
+    public List<Guid> LineIds { get; set; } = [];
+}
+#pragma warning restore CA1002, CA2227

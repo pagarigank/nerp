@@ -119,9 +119,9 @@ export function CustomersPage() {
     [paymentTerms]
   )
 
-  const { data: salesReps = [] } = useQuery({ queryKey: ['om', 'salesReps'], queryFn: getSalesReps })
-  const { data: taxCodes = [] } = useQuery({ queryKey: ['om', 'taxCodes'], queryFn: getTaxCodes })
-  const { data: taxExemptions = [] } = useQuery({ queryKey: ['om', 'taxExemptions'], queryFn: getTaxExemptions })
+  const { data: salesReps = [] } = useQuery({ queryKey: ['om', 'salesReps'], queryFn: () => getSalesReps() })
+  const { data: taxCodes = [] } = useQuery({ queryKey: ['om', 'taxCodes'], queryFn: () => getTaxCodes() })
+  const { data: taxExemptions = [] } = useQuery({ queryKey: ['om', 'taxExemptions'], queryFn: () => getTaxExemptions() })
 
   const salesRepOptions = useMemo(
     () => salesReps.map((r: SalesRepSummary) => ({ value: r.id, label: `${r.code} - ${r.name}` })),

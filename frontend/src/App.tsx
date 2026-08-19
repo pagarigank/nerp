@@ -134,6 +134,8 @@ import { CycleCountSchedulePage } from '@pages/inventory/CycleCountSchedulePage'
 import { ScrapPage } from '@pages/inventory/ScrapPage'
 import { StockCardPage } from '@pages/inventory/StockCardPage'
 import { GlTieOutPage } from '@pages/inventory/GlTieOutPage'
+import { UomConversionsPage } from '@pages/inventory/UomConversionsPage'
+import { UnitOfMeasuresPage } from '@pages/inventory/UnitOfMeasuresPage'
 import { OmLayout } from '@pages/om/OmLayout'
 import { SalesOrdersPage } from '@pages/om/SalesOrdersPage'
 import { SalesOrderFormPage } from '@pages/om/SalesOrderFormPage'
@@ -329,6 +331,8 @@ function App() {
           <Route path="stock-by-location" element={<StockByLocationPage />} />
           <Route path="cycle-count-schedule" element={<CycleCountSchedulePage />} />
           <Route path="stock-card" element={<StockCardPage />} />
+          <Route path="uom-conversions" element={<UomConversionsPage />} />
+          <Route path="uoms" element={<UnitOfMeasuresPage />} />
           <Route path="scrap" element={<ScrapPage />} />
           <Route path="gl-tie-out" element={<GlTieOutPage />} />
         </Route>

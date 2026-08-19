@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Plus, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
+import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Select, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
@@ -71,7 +72,7 @@ export function ReservationsPage() {
             <Select {...register('itemId')} label="Item" options={itemOptions} placeholder="Select item..." {...fieldError(errors.itemId?.message)} required onChange={(e) => { register('itemId').onChange(e); const itemId = e.target.value; if (itemId) { const item = items.find((i: ItemSummary) => i.id === itemId); const baseUom = item?.baseUnitOfMeasure || 'EA'; setUomOptions([{ value: baseUom, label: baseUom + ' (base)' }]); void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => { const opts = [{ value: baseUom, label: baseUom + ' (base)' }]; for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }); } setUomOptions(opts); }).catch(() => {}); } }} />
             <Select {...register('warehouseId')} label="Warehouse" options={whOptions} placeholder="Select warehouse..." {...fieldError(errors.warehouseId?.message)} required />
             <Input {...register('quantity')} type="number" step="0.01" min="0.01" label="Quantity" {...fieldError(errors.quantity?.message)} required />
-            <Select {...register('unitOfMeasure')} label="Unit of Measure" options={uomOptions.length > 0 ? uomOptions : [{ value: 'EA', label: 'EA' }]} {...fieldError(errors.unitOfMeasure?.message)} required />
+            <UomSelect {...register('unitOfMeasure')} />
             <Select {...register('sourceType')} label="Source Type" options={sourceOptions} {...fieldError(errors.sourceType?.message)} required />
             <Input {...register('referenceId')} label="Reference ID" placeholder="SO / Project GUID (optional)" />
           </div>

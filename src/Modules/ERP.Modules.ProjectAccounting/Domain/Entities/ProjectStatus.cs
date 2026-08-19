@@ -46,6 +46,8 @@ public enum BillingMethod
     PercentComplete = 1,
     Scheduled = 2,
     UnitPrice = 3,
+    TimeAndMaterials = 4,
+    CostPlus = 5,
 }
 
 public enum TransactionStatus

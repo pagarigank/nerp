@@ -105,3 +105,26 @@ export function addBillingSchedule(projectId: string, data: any) {
 export function generateInvoice(projectId: string, data?: any) {
   return post(`/projects/${projectId}/billing/generate-invoice`, data ?? {})
 }
+
+// --- Analysis (WIP / Forecast / Profitability / Reports) ---
+export function getWipScheduleAnalysis(projectId: string) {
+  return get(`/projects/${projectId}/analysis/wip`)
+}
+export function getForecast(projectId: string) {
+  return get(`/projects/${projectId}/analysis/forecast`)
+}
+export function getProfitability(projectId: string) {
+  return get(`/projects/${projectId}/analysis/profitability`)
+}
+export function getBudgetVsActual(projectId: string) {
+  return get(`/projects/${projectId}/analysis/budget-vs-actual`)
+}
+export function getUnbilled(projectId: string) {
+  return get(`/projects/${projectId}/analysis/unbilled`)
+}
+export function getChangeOrderSummary(projectId: string) {
+  return get(`/projects/${projectId}/analysis/change-orders`)
+}
+export function getCostDetail(projectId: string) {
+  return get(`/projects/${projectId}/analysis/cost-detail`)
+}

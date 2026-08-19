@@ -15,7 +15,7 @@ export function RtvPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(empty)
-  const { data: vendors = [] } = useQuery({ queryKey: ['ap', 'vendors'], queryFn: getVendors })
+  const { data: vendors = [] } = useQuery({ queryKey: ['ap', 'vendors'], queryFn: () => getVendors() })
   const vendorOptions = useMemo(() => vendors.map((v: Vendor) => ({ value: v.id, label: `${v.vendorId} - ${v.name}` })), [vendors])
   const [lastId, setLastId] = useState<string | null>(null)
 

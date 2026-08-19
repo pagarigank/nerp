@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Plus, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
+import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Select } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
@@ -97,7 +98,7 @@ export function TransactionsPage() {
               {selectedType === 'adjustment' && (
                 <Input {...register('reasonCode')} label="Reason Code" placeholder="e.g. DAMAGE" />
               )}
-              <Select {...register('unitOfMeasure')} label="Unit of Measure" options={uomOptions.length > 0 ? uomOptions : [{ value: 'EA', label: 'EA' }]} />
+              <UomSelect {...register('unitOfMeasure')} />
               <Input {...register('referenceNumber')} label="Reference #" />
               <Input {...register('notes')} label="Notes" />
             </div>

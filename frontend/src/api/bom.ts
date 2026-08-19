@@ -93,3 +93,55 @@ export function getBuildHistory(companyIdParam?: string, parentItemId?: string) 
 export function getBomAccuracy(companyIdParam?: string) {
   return get('/bom/reports/accuracy', { companyId: companyIdParam ?? defaultCompanyId() })
 }
+
+// --- GAP: Substitutions / Allocations / ECN / Comparison / Mass-Update ---
+export function getBomSubstitutions(bomHeaderId: string) {
+  return get(`/bom/bom-headers/${bomHeaderId}/substitutions`)
+}
+export function addBomSubstitution(bomHeaderId: string, data: any) {
+  return post(`/bom/bom-headers/${bomHeaderId}/substitutions`, data)
+}
+export function approveBomSubstitution(bomHeaderId: string, subId: string) {
+  return post(`/bom/bom-headers/${bomHeaderId}/substitutions/${subId}/approve`, {})
+}
+export function getBomAllocations(bomHeaderId: string) {
+  return get(`/bom/bom-headers/${bomHeaderId}/allocations`)
+}
+export function allocateBomComponent(bomHeaderId: string, data: any) {
+  return post(`/bom/bom-headers/${bomHeaderId}/allocations`, data)
+}
+export function releaseBomAllocation(bomHeaderId: string, allocId: string) {
+  return put(`/bom/bom-headers/${bomHeaderId}/allocations/${allocId}/release`, {})
+}
+export function getBomEcns(bomHeaderId: string) {
+  return get(`/bom/bom-headers/${bomHeaderId}/ecns`)
+}
+export function createBomEcn(bomHeaderId: string, data: any) {
+  return post(`/bom/bom-headers/${bomHeaderId}/ecns`, data)
+}
+export function transitionBomEcn(bomHeaderId: string, ecnId: string, action: string, extra?: any) {
+  return put(`/bom/bom-headers/${bomHeaderId}/ecns/${ecnId}/transition`, { action, ...(extra ?? {}) })
+}
+export function compareBoms(bomA: string, bomB: string) {
+  return get('/bom/bom-headers/compare', { bomA, bomB })
+}
+export function massUpdateBom(data: any) {
+  return post('/bom/bom-headers/mass-update', data)
+}
+export function applyBomCostToItem(bomHeaderId: string) {
+  return post(`/bom/bom-headers/${bomHeaderId}/apply-cost-to-item`, {})
+}
+
+// --- GAP: Additional reports ---
+export function getComponentShortage(companyIdParam?: string) {
+  return get('/bom/reports/component-shortage', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getRevisionHistory(companyIdParam?: string) {
+  return get('/bom/reports/revision-history', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getBuildVariance(companyIdParam?: string) {
+  return get('/bom/reports/build-variance', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWorkCenterUtilization(companyIdParam?: string) {
+  return get('/bom/reports/work-center-utilization', { companyId: companyIdParam ?? defaultCompanyId() })
+}

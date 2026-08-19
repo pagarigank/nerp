@@ -73,7 +73,7 @@ public class Item : AuditableEntity
     public int? LeadTimeDays { get; private set; }
     public string? ABCClass { get; private set; }
     public IReadOnlyCollection<ItemAlternateCode> AlternateCodes => _alternateCodes.AsReadOnly();
-    public IReadOnlyCollection<ItemUnitOfMeasureConversion> UOMConversions => _uomConversions.AsReadOnly();
+    public IReadOnlyCollection<ItemUnitOfMeasureConversion> UOMConversions => _uomConversions;
 
     public void UpdateDescription(string description, string? longDescription = null)
     {
