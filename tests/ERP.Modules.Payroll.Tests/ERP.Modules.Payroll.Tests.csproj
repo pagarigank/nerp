@@ -5,11 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <NoWarn>CA1707;CS1591;SA1200;SA1633;SA1636;SA1623;SA1629</NoWarn>
+    <NoWarn>CA1707;CS1591;SA1200;SA1201;SA1202;SA1117;SA1600;SA1615;SA1633;SA1636;SA1623;SA1629</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Modules\ERP.Modules.Payroll\ERP.Modules.Payroll.csproj" />
+    <ProjectReference Include="..\..\src\Modules\ERP.Modules.AccountsPayable\ERP.Modules.AccountsPayable.csproj" />
+    <ProjectReference Include="..\..\src\Modules\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\src\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\src\ERP.Shared\ERP.Shared.csproj" />
   </ItemGroup>
