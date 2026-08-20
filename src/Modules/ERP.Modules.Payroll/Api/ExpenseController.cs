@@ -136,6 +136,8 @@ public class ExpenseController : ControllerBase
             return NotFound(ApiResponse.Failure(new[] { "Expense report not found." }, 404));
         if (report.Status != ExpenseReportStatus.Approved)
             return BadRequest(ApiResponse.Failure(new[] { "Only an approved report can be reimbursed." }));
+        if (report.TotalAmount <= 0m)
+            return BadRequest(ApiResponse.Failure(new[] { "Report has no reimbursable amount (add lines with a non-zero amount)." }));
 
         var apLiabilityId = await ResolveAccountAsync(report.CompanyId, "2200", cancellationToken);
         var expenseAcctId = await ResolveAccountAsync(report.CompanyId, "6000", cancellationToken);
@@ -154,7 +156,7 @@ public class ExpenseController : ControllerBase
         var postingEvent = CanonicalPostingEvent.Create(
             "PAY", batchNumber, report.CompanyId, period?.Id ?? report.CompanyId,
             report.CompanyId.ToString(), (period?.Id ?? report.CompanyId).ToString(),
-            new DateTimeOffset(report.ReportDate), lines,
+            new DateTimeOffset(report.ReportDate == default ? DateTime.UtcNow : DateTime.SpecifyKind(report.ReportDate, DateTimeKind.Utc)), lines,
             PostingMetadata.Create(postedBy, Guid.NewGuid()));
         await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
 
@@ -210,7 +212,7 @@ public class ExpenseController : ControllerBase
 
     private async Task<FiscalPeriod?> ResolveFiscalPeriodAsync(Guid companyId, DateTime transactionDate, CancellationToken cancellationToken)
     {
-        var date = new DateTimeOffset(transactionDate);
+        var date = transactionDate == default ? DateTimeOffset.UtcNow : new DateTimeOffset(DateTime.SpecifyKind(transactionDate, DateTimeKind.Utc));
         return await _platformContext.FiscalPeriods
             .Where(p => p.CompanyId == companyId && p.StartDate <= date && p.EndDate >= date)
             .OrderBy(p => p.StartDate)

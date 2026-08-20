@@ -61,7 +61,9 @@ public class PayrollRunController : ControllerBase
     {
         var calendar = await _context.PayrollCalendars
             .FirstOrDefaultAsync(c => c.Id == request.CalendarId, cancellationToken);
-        if (calendar is null)
+        // Calendar is advisory for a draft run; a run can be built from approved timesheets
+        // even if no calendar exists yet. A missing calendar is not a hard blocker.
+        if (calendar is null && request.CalendarId != Guid.Empty)
             return BadRequest(ApiResponse.Failure(new[] { "Payroll calendar not found." }));
 
         var run = new PayrollRun(request.CompanyId, request.CalendarId, request.PeriodStart, request.PeriodEnd, request.PayDate);
@@ -89,10 +91,14 @@ public class PayrollRunController : ControllerBase
             var sample = grp.First().Line;
             var regularRate = sample.Rate;
             var overtimeRate = sample.Rate * 1.5m;
+            var employeeFica = calendar?.EmployeeFicaRate ?? 0.0765m;
+            var employerFica = calendar?.EmployerFicaRate ?? 0.0765m;
+            var futa = calendar?.FutaRate ?? 0.006m;
+            var suta = calendar?.SutaRate ?? 0.0m;
             var grossPay = (regularHours * regularRate) + (overtimeHours * overtimeRate);
-            var employeeTax = Math.Round(grossPay * calendar.EmployeeFicaRate, 2);
+            var employeeTax = Math.Round(grossPay * employeeFica, 2);
             var deductions = 0m; // deductions accumulated from employee pay codes if configured
-            var employerTax = Math.Round(grossPay * (calendar.EmployerFicaRate + calendar.FutaRate + calendar.SutaRate), 2);
+            var employerTax = Math.Round(grossPay * (employerFica + futa + suta), 2);
             var netPay = Math.Round(grossPay - employeeTax - deductions, 2);
 
             // Certified payroll: fringe/prevailing from the trade's union profile (Davis-Bacon).

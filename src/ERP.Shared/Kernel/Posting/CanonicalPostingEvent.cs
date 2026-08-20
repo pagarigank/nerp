@@ -226,7 +226,7 @@ public sealed record CanonicalPostingEvent
 
         var validation = posting.Validate();
         if (!validation.IsSuccess)
-            throw new InvalidOperationException($"Invalid posting event: {string.Join(", ", validation.Errors)}");
+            throw new InvalidOperationException($"Invalid posting event: {string.Join("; ", validation.Errors)}");
 
         return posting;
     }
@@ -272,7 +272,7 @@ public sealed record CanonicalPostingEvent
 
         var validation = posting.Validate();
         if (!validation.IsSuccess)
-            throw new InvalidOperationException($"Invalid posting event: {string.Join(", ", validation.Errors)}");
+            throw new InvalidOperationException($"Invalid posting event: {string.Join("; ", validation.Errors)}");
 
         return posting;
     }
