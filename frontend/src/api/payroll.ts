@@ -226,3 +226,17 @@ export function createEmployeeTaxProfile(employeeId: string, data: any) {
 export function updateEmployeeTaxProfile(employeeId: string, data: any) {
   return put(`/payroll/employees/${employeeId}/tax-profile`, data)
 }
+
+// --- Direct deposit accounts (Batch B) ---
+export function getDirectDeposits(employeeId: string) {
+  return get(`/payroll/employees/${employeeId}/direct-deposits`)
+}
+export function createDirectDeposit(employeeId: string, data: any) {
+  return post(`/payroll/employees/${employeeId}/direct-deposits`, data)
+}
+export function updateDirectDeposit(id: string, data: any) {
+  return put(`/payroll/direct-deposits/${id}`, data)
+}
+export function deleteDirectDeposit(id: string) {
+  return del(`/payroll/direct-deposits/${id}`)
+}

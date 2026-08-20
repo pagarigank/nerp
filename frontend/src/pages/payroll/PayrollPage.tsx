@@ -68,11 +68,19 @@ export function PayrollPage() {
 function EmployeesTab({ qc }: { qc: any }) {
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ employeeCode: '', firstName: '', lastName: '', email: '' })
+  const [selId, setSelId] = useState('')
   const { data = [], isLoading } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
   const mutation = useMutation({
-    mutationFn: () => createEmployee({ companyId: currentCompanyId(), ...form, employmentType: 0, hireDate: new Date().toISOString().slice(0, 10), isBillable: true }),
+    mutationFn: () => createEmployee({ companyId: getCompanyId(), ...form, employmentType: 0, hireDate: new Date().toISOString().slice(0, 10), isBillable: true }),
     onSuccess: () => { setShow(false); qc.invalidateQueries({ queryKey: ['payroll', 'employees'] }) },
   })
+  const { data: dds = [], refetch: refetchDd } = useQuery({ queryKey: ['payroll', 'dd', selId], queryFn: () => getDirectDeposits(selId), enabled: !!selId })
+  const [ddForm, setDdForm] = useState({ bankName: '', routingNumber: '', accountNumber: '', accountType: 'Checking', allocationPercentage: '', fixedAmount: '', isRemainder: false })
+  const ddMut = useMutation({
+    mutationFn: () => createDirectDeposit(selId, { companyId: getCompanyId(), ...ddForm, allocationPercentage: ddForm.allocationPercentage ? Number(ddForm.allocationPercentage) : null, fixedAmount: ddForm.fixedAmount ? Number(ddForm.fixedAmount) : null }),
+    onSuccess: () => { setDdForm({ bankName: '', routingNumber: '', accountNumber: '', accountType: 'Checking', allocationPercentage: '', fixedAmount: '', isRemainder: false }); refetchDd() },
+  })
+  const delMut = useMutation({ mutationFn: (id: string) => deleteDirectDeposit(id), onSuccess: () => refetchDd() })
   const cols: DataTableColumn<any>[] = [
     { key: 'employeeCode', header: 'Code' },
     { key: 'fullName', header: 'Name' },
@@ -82,7 +90,33 @@ function EmployeesTab({ qc }: { qc: any }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-end"><Button onClick={() => setShow(true)}><Plus className="h-4 w-4" /> New Employee</Button></div>
-      <DataTable columns={cols} data={data as any[]} loading={isLoading} />
+      <DataTable columns={cols} data={data as any[]} loading={isLoading}
+        onRowClick={(row: any) => setSelId(row.id)} />
+      {selId && (
+        <div className="border rounded p-3 space-y-2">
+          <div className="font-semibold">Direct Deposit Accounts</div>
+          <DataTable columns={[
+            { key: 'bankName', header: 'Bank' },
+            { key: 'routingNumber', header: 'Routing' },
+            { key: 'maskedAccount', header: 'Account' },
+            { key: 'accountType', header: 'Type' },
+            { key: 'allocationPercentage', header: '%', align: 'right', render: (v: any) => v != null ? `${v}%` : '' },
+            { key: 'fixedAmount', header: 'Fixed', align: 'right', render: (v: any) => v != null ? MONEY(v) : '' },
+            { key: 'isRemainder', header: 'Remainder', render: (v: boolean) => (v ? 'Yes' : '') },
+            { key: 'id', header: '', render: (_: unknown, r: any) => <Button size="sm" variant="destructive" onClick={() => delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button> },
+          ]} data={dds as any[]} emptyMessage="No direct deposit accounts." />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 items-end border-t pt-2">
+            <Input label="Bank Name" value={ddForm.bankName} onChange={(v: any) => setDdForm({ ...ddForm, bankName: v })} />
+            <Input label="Routing #" value={ddForm.routingNumber} onChange={(v: any) => setDdForm({ ...ddForm, routingNumber: v })} />
+            <Input label="Account #" value={ddForm.accountNumber} onChange={(v: any) => setDdForm({ ...ddForm, accountNumber: v })} />
+            <Input label="Type" value={ddForm.accountType} onChange={(v: any) => setDdForm({ ...ddForm, accountType: v })} />
+            <Input type="number" label="% Alloc" value={ddForm.allocationPercentage} onChange={(v: any) => setDdForm({ ...ddForm, allocationPercentage: v })} />
+            <Input type="number" label="Fixed $" value={ddForm.fixedAmount} onChange={(v: any) => setDdForm({ ...ddForm, fixedAmount: v })} />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ddForm.isRemainder} onChange={(e: any) => setDdForm({ ...ddForm, isRemainder: e.target.checked })} /> Remainder</label>
+            <Button onClick={() => ddMut.mutate()} disabled={ddMut.isPending}>Add Account</Button>
+          </div>
+        </div>
+      )}
       <Modal isOpen={show} onClose={() => setShow(false)} title="New Employee">
         <div className="space-y-2">
           <Input label="Code" value={form.employeeCode} onChange={(e: any) => setForm({ ...form, employeeCode: e.target.value })} />

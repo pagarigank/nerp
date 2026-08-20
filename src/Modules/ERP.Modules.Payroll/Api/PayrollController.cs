@@ -54,6 +54,66 @@ public class PayrollController : ControllerBase
         return Ok(ApiResponse<List<EmployeeDto>>.Success(list));
     }
 
+    // --- Employee direct-deposit accounts ---
+    [HttpPost("employees/{employeeId:guid}/direct-deposits")]
+    public async Task<ActionResult<ApiResponse<Guid>>> CreateDirectDeposit(
+        Guid employeeId, [FromBody] CreateDirectDepositRequest request, CancellationToken cancellationToken)
+    {
+        var dd = new DirectDeposit(request.CompanyId, employeeId, request.BankName, request.RoutingNumber,
+            request.AccountNumberEncrypted, request.AccountType, request.AllocationPercentage, request.FixedAmount, request.IsRemainder);
+        _context.DirectDeposits.Add(dd);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(dd.Id));
+    }
+
+    [HttpPut("direct-deposits/{id:guid}")]
+    public async Task<ActionResult<ApiResponse>> UpdateDirectDeposit(
+        Guid id, [FromBody] CreateDirectDepositRequest request, CancellationToken cancellationToken)
+    {
+        var dd = await _context.DirectDeposits.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (dd is null)
+            return NotFound(ApiResponse.Failure(new[] { "Direct deposit not found." }, 404));
+        dd.Update(request.BankName, request.RoutingNumber, request.AccountNumberEncrypted, request.AccountType,
+            request.AllocationPercentage, request.FixedAmount, request.IsRemainder);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpGet("employees/{employeeId:guid}/direct-deposits")]
+    public async Task<ActionResult<ApiResponse<List<DirectDepositDto>>>> GetDirectDeposits(
+        Guid employeeId, CancellationToken cancellationToken)
+    {
+        var rows = await _context.DirectDeposits
+            .Where(d => d.EmployeeId == employeeId)
+            .Select(d => new { d.Id, d.BankName, d.RoutingNumber, d.AccountType, d.AllocationPercentage, d.FixedAmount, d.IsRemainder, d.AccountNumberEncrypted })
+            .ToListAsync(cancellationToken);
+
+        var dtos = rows.Select(d => new DirectDepositDto
+        {
+            Id = d.Id,
+            BankName = d.BankName,
+            RoutingNumber = d.RoutingNumber,
+            AccountType = d.AccountType,
+            AllocationPercentage = d.AllocationPercentage,
+            FixedAmount = d.FixedAmount,
+            IsRemainder = d.IsRemainder,
+            // Account number masked; full value is PII stored encrypted.
+            MaskedAccount = "****" + (d.AccountNumberEncrypted.Length > 4 ? d.AccountNumberEncrypted[^4..] : d.AccountNumberEncrypted),
+        }).ToList();
+        return Ok(ApiResponse<List<DirectDepositDto>>.Success(dtos));
+    }
+
+    [HttpDelete("direct-deposits/{id:guid}")]
+    public async Task<ActionResult<ApiResponse>> DeleteDirectDeposit(Guid id, CancellationToken cancellationToken)
+    {
+        var dd = await _context.DirectDeposits.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (dd is null)
+            return NotFound(ApiResponse.Failure(new[] { "Direct deposit not found." }, 404));
+        _context.DirectDeposits.Remove(dd);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
     // --- Pay code master ---
     [HttpPost("pay-codes")]
     public async Task<ActionResult<ApiResponse<Guid>>> CreatePayCode(
@@ -146,6 +206,31 @@ public class PayrollController : ControllerBase
             MeetsRate = profile.MeetsPrevailingWage(actualWage),
         }));
     }
+}
+
+public class CreateDirectDepositRequest
+{
+    public Guid CompanyId { get; set; }
+    public string BankName { get; set; } = string.Empty;
+    public string RoutingNumber { get; set; } = string.Empty;
+    /// <summary>Account number; callers should send the encrypted/masked value (PII).</summary>
+    public string AccountNumberEncrypted { get; set; } = string.Empty;
+    public string AccountType { get; set; } = string.Empty;
+    public decimal? AllocationPercentage { get; set; }
+    public decimal? FixedAmount { get; set; }
+    public bool IsRemainder { get; set; }
+}
+
+public class DirectDepositDto
+{
+    public Guid Id { get; set; }
+    public string BankName { get; set; } = string.Empty;
+    public string RoutingNumber { get; set; } = string.Empty;
+    public string AccountType { get; set; } = string.Empty;
+    public decimal? AllocationPercentage { get; set; }
+    public decimal? FixedAmount { get; set; }
+    public bool IsRemainder { get; set; }
+    public string MaskedAccount { get; set; } = string.Empty;
 }
 
 public class CreateEmployeeRequest

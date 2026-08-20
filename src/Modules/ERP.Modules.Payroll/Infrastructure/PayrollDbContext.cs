@@ -39,6 +39,7 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<PtoLedger> PtoLedgers => Set<PtoLedger>();
     public DbSet<ManualCheck> ManualChecks => Set<ManualCheck>();
     public DbSet<PayrollCheck> PayrollChecks => Set<PayrollCheck>();
+    public DbSet<DirectDeposit> DirectDeposits => Set<DirectDeposit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -354,6 +355,19 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.AchTraceNumber).HasMaxLength(50);
             entity.HasIndex(e => e.PayrollRunId);
             entity.HasIndex(e => e.EmployeeId);
+        });
+
+        modelBuilder.Entity<DirectDeposit>(entity =>
+        {
+            entity.ToTable("DirectDeposits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BankName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.RoutingNumber).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.AccountNumberEncrypted).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.AccountType).HasMaxLength(20);
+            entity.Property(e => e.AllocationPercentage).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.FixedAmount).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => new { e.CompanyId, e.EmployeeId });
         });
     }
 }
