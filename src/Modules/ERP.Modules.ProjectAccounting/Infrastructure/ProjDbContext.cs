@@ -65,6 +65,7 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.CurrencyCode).HasMaxLength(10);
             entity.Property(e => e.BillingHoldReason).HasMaxLength(500);
             entity.Property(e => e.EstimateAtCompletion).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.AccruedLoss).HasColumnType("decimal(18,2)");
 
             entity.HasIndex(e => new { e.CompanyId, e.ProjectCode }).IsUnique();
             entity.HasIndex(e => e.Status);
@@ -77,6 +78,7 @@ public class ProjDbContext : DispatchableDbContext
             entity.HasMany(e => e.ContractLines).WithOne().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.BillingSchedules).WithOne().HasForeignKey(b => b.ProjectId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.AllocationRules).WithOne().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Subcontracts).WithOne().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // ProjectTask

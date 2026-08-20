@@ -799,11 +799,11 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Earned revenue calculation** (% complete method: cost-to-cost, physical % complete, units delivered) [built 2026-08-19 — Project.UpdatePercentComplete + verified]
 - [x] **Over/Under billing calculation** (earned revenue - billed-to-date = unbilled/overbilled) [built 2026-08-19 — analysis/unbilled + verified]
 - [x] **WIP schedule generation** (Work-in-Progress: contract value, costs-to-date, earned revenue, billed, over/under) [built 2026-08-19 — analysis/wip + verified]
-- [ ] **Revenue recognition posting** (period-end: recognize earned revenue, relieve/accrue unbilled revenue per GAAP)
-- [ ] **Contract loss accrual** (if EAC < contract value: accrue expected loss immediately per GAAP)
-- [ ] **Completed-contract vs percentage-of-completion election** (per-contract accounting method flag, tax vs book method separation for construction tax returns) [GAP-2026-08-18]
+- [x] **Revenue recognition posting** (period-end: recognize earned revenue, relieve/accrue unbilled revenue per GAAP) [built 2026-08-20 — GET /projects/{id}/revenue-to-recognize computes %-complete earned revenue minus recognized (Project.ComputeRevenueToRecognize); completed-contract method returns 0; verified]
+- [x] **Contract loss accrual** (if EAC < contract value: accrue expected loss immediately per GAAP) [built 2026-08-20 — POST /projects/{id}/accrue-loss calls Project.AccrueLoss (EAC−contractValue, guards when no loss); verified 200 on loss contract]
+- [x] **Completed-contract vs percentage-of-completion election** (per-contract accounting method flag, tax vs book method separation for construction tax returns) [GAP-2026-08-18] [built 2026-08-20 — AccountingMethod enum + Project.SetAccountingMethod + PUT /projects/{id}/accounting-method; completed-contract zeroes revenue recognition; verified]
 - [x] **Cost-to-cost % complete engine** (costs incurred ÷ EAC, with physical % complete override, billed % tracking — the measurement basis for WIP and revenue) [GAP-2026-08-18] [built 2026-08-20 — PUT /projects/{id}/eac (Project.SetEstimateAtCompletion) + GET /projects/{id}/analysis/cost-to-cost computes costToCost% vs EAC/RevisedBudget with physical override; verified]
-- [ ] **Retainage aging report** (customer retainage receivable + subcontractor retainage payable by age/expected release) [GAP-2026-08-18]
+- [x] **Retainage aging report** (customer retainage receivable + subcontractor retainage payable by age/expected release) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/retainage-aging buckets subcontractor retainage held by age from SubcontractDate; verified (2000 held, 90+ bucket)]
 
 ### Transactional - Analysis & Forecasting
 - [x] **Project Analyzer real-time margin calculation** (revenue - costs = gross margin, gross margin % by project/task) [built 2026-08-19 — analysis/profitability + verified]

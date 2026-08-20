@@ -435,6 +435,57 @@ public class ProjectAnalysisController : ControllerBase
             IsCloseOutComplete = project.IsCloseOutComplete,
         }));
     }
+
+    /// <summary>Retainage aging: held subcontractor retainage payable by age bucket from subcontract execution date.</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Retainage held by aging bucket and per-subcontract rows.</returns>
+    [HttpGet("retainage-aging")]
+    public async Task<ActionResult<ApiResponse<RetainageAgingDto>>> RetainageAging(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Subcontracts)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var asOf = DateTime.UtcNow;
+        var rows = new List<RetainageAgingRowDto>();
+        foreach (var sc in project.Subcontracts)
+        {
+            if (sc.RetainageHeld == 0)
+                continue;
+            var ageDays = (int)(asOf - sc.SubcontractDate).TotalDays;
+            var bucket = ageDays switch
+            {
+                <= 30 => "0-30",
+                <= 60 => "31-60",
+                <= 90 => "61-90",
+                _ => "90+",
+            };
+
+            rows.Add(new RetainageAgingRowDto
+            {
+                SubcontractId = sc.Id,
+                SubcontractNumber = sc.SubcontractNumber,
+                VendorId = sc.VendorId,
+                RetainageHeld = sc.RetainageHeld,
+                AgeDays = ageDays,
+                Bucket = bucket,
+            });
+        }
+
+        return Ok(ApiResponse<RetainageAgingDto>.Success(new RetainageAgingDto
+        {
+            ProjectId = projectId,
+            TotalRetainageHeld = rows.Sum(r => r.RetainageHeld),
+            Bucket0To30 = rows.Where(r => r.Bucket == "0-30").Sum(r => r.RetainageHeld),
+            Bucket31To60 = rows.Where(r => r.Bucket == "31-60").Sum(r => r.RetainageHeld),
+            Bucket61To90 = rows.Where(r => r.Bucket == "61-90").Sum(r => r.RetainageHeld),
+            Bucket90Plus = rows.Where(r => r.Bucket == "90+").Sum(r => r.RetainageHeld),
+            Rows = rows,
+        }));
+    }
 }
 
 // --- DTOs ---
@@ -583,4 +634,27 @@ public class ChecklistItemDto
 {
     public string Item { get; set; } = string.Empty;
     public bool Passed { get; set; }
+}
+
+#pragma warning disable CA1002, CA2227
+public class RetainageAgingDto
+{
+    public Guid ProjectId { get; set; }
+    public decimal TotalRetainageHeld { get; set; }
+    public decimal Bucket0To30 { get; set; }
+    public decimal Bucket31To60 { get; set; }
+    public decimal Bucket61To90 { get; set; }
+    public decimal Bucket90Plus { get; set; }
+    public List<RetainageAgingRowDto> Rows { get; set; } = [];
+}
+#pragma warning restore CA1002, CA2227
+
+public class RetainageAgingRowDto
+{
+    public Guid SubcontractId { get; set; }
+    public string SubcontractNumber { get; set; } = string.Empty;
+    public Guid VendorId { get; set; }
+    public decimal RetainageHeld { get; set; }
+    public int AgeDays { get; set; }
+    public string Bucket { get; set; } = string.Empty;
 }

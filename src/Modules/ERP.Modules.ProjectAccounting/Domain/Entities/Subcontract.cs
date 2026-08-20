@@ -63,6 +63,9 @@ public class Subcontract : AuditableEntity
     public decimal RetainageHeld { get; private set; }
     public bool IsClosed { get; private set; }
 
+    /// <summary>Gets the date this subcontract was executed, used for retainage-aging calculations.</summary>
+    public DateTime SubcontractDate { get; private set; } = DateTime.UtcNow;
+
     public IReadOnlyCollection<SubcontractChangeOrder> ChangeOrders => _changeOrders.AsReadOnly();
     public IReadOnlyCollection<SubcontractInvoice> Invoices => _invoices.AsReadOnly();
     public IReadOnlyCollection<SubcontractCompliance> Compliance => _compliance.AsReadOnly();

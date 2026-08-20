@@ -15,6 +15,7 @@ public class Project : AuditableEntity
     private readonly List<ContractLine> _contractLines = [];
     private readonly List<BillingSchedule> _billingSchedules = [];
     private readonly List<ProjectAllocationRule> _allocationRules = [];
+    private readonly List<Subcontract> _subcontracts = [];
 
     protected Project() { }
 
@@ -104,6 +105,21 @@ public class Project : AuditableEntity
     /// <summary>Gets the estimate at completion (EAC) used as the denominator for the cost-to-cost % complete measurement basis.</summary>
     public decimal EstimateAtCompletion { get; private set; }
 
+    /// <summary>Gets the accounting method elected for this project (percentage-of-completion vs. completed-contract).</summary>
+    public AccountingMethod AccountingMethod { get; private set; } = AccountingMethod.PercentageOfCompletion;
+
+    /// <summary>Gets the cumulative expected-loss accrual recognized on this project (GAAP: recognized immediately when EAC &lt; contract value).</summary>
+    public decimal AccruedLoss { get; private set; }
+
+    /// <summary>Gets a value indicating whether an expected-loss accrual has been recorded for this project.</summary>
+    public bool LossAccrued => AccruedLoss != 0;
+
+    /// <summary>Gets the user who recorded the expected-loss accrual.</summary>
+    public Guid? LossAccruedBy { get; private set; }
+
+    /// <summary>Gets the date the expected-loss accrual was recorded.</summary>
+    public DateTime? LossAccruedOn { get; private set; }
+
     /// <summary>Gets the user who approved billing for this project (review/approval gate), if any.</summary>
     public Guid? BillingApprovedBy { get; private set; }
 
@@ -120,6 +136,7 @@ public class Project : AuditableEntity
     public IReadOnlyCollection<ContractLine> ContractLines => _contractLines.AsReadOnly();
     public IReadOnlyCollection<BillingSchedule> BillingSchedules => _billingSchedules.AsReadOnly();
     public IReadOnlyCollection<ProjectAllocationRule> AllocationRules => _allocationRules.AsReadOnly();
+    public IReadOnlyCollection<Subcontract> Subcontracts => _subcontracts.AsReadOnly();
 
     public void Update(
         string? name,
@@ -269,6 +286,43 @@ public class Project : AuditableEntity
         if (eac < 0)
             throw new ArgumentException("EAC cannot be negative.", nameof(eac));
         EstimateAtCompletion = eac;
+    }
+
+    /// <summary>Elected accounting method for this contract (percentage-of-completion vs. completed-contract).</summary>
+    /// <param name="method">The accounting method.</param>
+    public void SetAccountingMethod(AccountingMethod method)
+    {
+        AccountingMethod = method;
+    }
+
+    /// <summary>Recognizes an expected-loss accrual immediately per GAAP when the estimate at completion
+    /// exceeds the contract value (loss-making contract). The accrual equals contract value − EAC.</summary>
+    /// <param name="accruedBy">The identifier of the user recording the accrual.</param>
+    public void AccrueLoss(Guid accruedBy)
+    {
+        var contractValue = ContractValue ?? 0;
+        var eac = EstimateAtCompletion > 0 ? EstimateAtCompletion : RevisedBudget;
+        if (eac <= contractValue)
+            throw new InvalidOperationException("No expected loss: EAC does not exceed contract value.");
+        AccruedLoss = eac - contractValue;
+        LossAccruedBy = accruedBy;
+        LossAccruedOn = DateTime.UtcNow;
+    }
+
+    /// <summary>Computes the revenue to recognize for the period under the percentage-of-completion method:
+    /// earned revenue = cost-to-cost % complete × contract value, less revenue recognized to date.</summary>
+    /// <returns>The revenue amount to recognize this period.</returns>
+    public decimal ComputeRevenueToRecognize()
+    {
+        if (AccountingMethod == AccountingMethod.CompletedContract)
+            return 0; // No revenue recognized until project completion.
+        var contractValue = ContractValue ?? 0;
+        if (contractValue == 0)
+            return 0;
+        var eac = EstimateAtCompletion > 0 ? EstimateAtCompletion : RevisedBudget;
+        var percentComplete = eac > 0 ? CostsToDate / eac : 0;
+        var earnedRevenue = percentComplete * contractValue;
+        return earnedRevenue - RevenueToDate;
     }
 
     /// <summary>Approves billing for the project (review/approval gate before invoice generation).</summary>

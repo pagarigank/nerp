@@ -66,3 +66,9 @@ public enum CostTransactionType
     ManualAdjustment = 4,
     Burden = 5,
 }
+
+public enum AccountingMethod
+{
+    PercentageOfCompletion = 0,
+    CompletedContract = 1,
+}

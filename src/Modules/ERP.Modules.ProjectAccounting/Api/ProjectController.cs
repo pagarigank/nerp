@@ -205,6 +205,45 @@ public class ProjectController : ControllerBase
         return Ok(ApiResponse.Success());
     }
 
+    [HttpPut("{id:guid}/accounting-method")]
+    public async Task<ActionResult<ApiResponse>> SetAccountingMethod(Guid id, [FromBody] AccountingMethodRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        project.SetAccountingMethod(request.Method);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("{id:guid}/accrue-loss")]
+    public async Task<ActionResult<ApiResponse>> AccrueLoss(Guid id, [FromBody] LossAccrualRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        try
+        {
+            project.AccrueLoss(request.AccruedBy);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpGet("{id:guid}/revenue-to-recognize")]
+    public async Task<ActionResult<ApiResponse<decimal>>> RevenueToRecognize(Guid id, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        return Ok(ApiResponse<decimal>.Success(project.ComputeRevenueToRecognize()));
+    }
+
     [HttpPost("{id:guid}/billing/approve")]
     public async Task<ActionResult<ApiResponse>> ApproveBilling(Guid id, [FromBody] BillingApprovalRequest request, CancellationToken ct)
     {
@@ -498,6 +537,16 @@ public class CurrencyRequest
 public class EacRequest
 {
     public decimal EstimateAtCompletion { get; set; }
+}
+
+public class AccountingMethodRequest
+{
+    public AccountingMethod Method { get; set; }
+}
+
+public class LossAccrualRequest
+{
+    public Guid AccruedBy { get; set; }
 }
 
 public class BillingApprovalRequest
