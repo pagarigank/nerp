@@ -32,8 +32,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
 
-type Tab = 'employees' | 'paycodes' | 'union' | 'timesheets' | 'runs' | 'expenses' | 'tax' | 'deductions' | 'pto' | 'manual' | 'reports' | 'garnishments'
-const TABS: Tab[] = ['employees', 'paycodes', 'union', 'timesheets', 'runs', 'expenses', 'tax', 'deductions', 'pto', 'manual', 'reports', 'garnishments']
+type Tab = 'employees' | 'paycodes' | 'union' | 'timesheets' | 'runs' | 'expenses' | 'tax' | 'deductions' | 'pto' | 'manual' | 'reports' | 'garnishments' | 'setup'
+const TABS: Tab[] = ['employees', 'paycodes', 'union', 'timesheets', 'runs', 'expenses', 'tax', 'deductions', 'pto', 'manual', 'reports', 'garnishments', 'setup']
 
 export function PayrollPage() {
   const queryClient = useQueryClient()
@@ -61,6 +61,7 @@ export function PayrollPage() {
       {tab === 'manual' && <ManualChecksTab qc={queryClient} />}
       {tab === 'reports' && <ReportsTab qc={queryClient} />}
       {tab === 'garnishments' && <GarnishmentsTab qc={queryClient} />}
+      {tab === 'setup' && <SetupTab qc={queryClient} />}
     </div>
   )
 }
@@ -609,6 +610,117 @@ function GarnishmentsTab({ qc }: { qc: any }) {
           />
         </>
       )}
+    </div>
+  )
+}
+
+
+// --- Setup tab: company payroll setup, PTO policies, new-hire configs, ACH returns ---
+function SetupTab({ qc }: { qc: any }) {
+  const cid = getCompanyId()
+  const { data: setup } = useQuery({ queryKey: ['payroll', 'company-setup', cid], queryFn: () => getCompanySetup(cid) })
+  const [form, setForm] = useState({ ein: '', federalTaxId: '', stateTaxId: '', sutAState: '', eftpsPin: '', depositSchedule: 'Monthly', socialSecurityRate: '0.062', medicareRate: '0.0145', futaRate: '0.006', sutARate: '0.027' })
+  const setupMut = useMutation({ mutationFn: () => createCompanySetup({ companyId: cid, ...form, socialSecurityRate: Number(form.socialSecurityRate), medicareRate: Number(form.medicareRate), futaRate: Number(form.futaRate), sutARate: Number(form.sutARate) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'company-setup', cid] }) })
+
+  const { data: ptos = [] } = useQuery({ queryKey: ['payroll', 'pto-policies'], queryFn: () => getPtoPolicies() })
+  const [pto, setPto] = useState({ name: '', accrualRate: '', accrualBasis: 'PerHourWorked', maxAccrual: '', carryoverLimit: '', cashOutAllowed: false, cashOutRate: '' })
+  const ptoMut = useMutation({ mutationFn: () => createPtoPolicy({ companyId: cid, ...pto, accrualRate: Number(pto.accrualRate), maxAccrual: Number(pto.maxAccrual), carryoverLimit: Number(pto.carryoverLimit), cashOutRate: pto.cashOutRate ? Number(pto.cashOutRate) : null }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'pto-policies'] }) })
+
+  const { data: nhc = [] } = useQuery({ queryKey: ['payroll', 'new-hire', cid], queryFn: () => getNewHireConfigs(cid) })
+  const [nh, setNh] = useState({ stateCode: '', agencyName: '', dueWindowDays: '20', transmissionMethod: 'SFTP', sftpEndpoint: '', agencyId: '' })
+  const nhMut = useMutation({ mutationFn: () => createNewHireConfig({ companyId: cid, ...nh, dueWindowDays: Number(nh.dueWindowDays) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'new-hire', cid] }) })
+
+  const { data: returns = [] } = useQuery({ queryKey: ['payroll', 'ach-returns', cid], queryFn: () => getAchReturns(cid) })
+  const [ret, setRet] = useState({ traceNumber: '', returnCode: '', description: '', amount: '', returnAction: 'Reissue' })
+  const retMut = useMutation({ mutationFn: () => createAchReturn({ companyId: cid, ...ret, amount: Number(ret.amount) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'ach-returns', cid] }) })
+  const procMut = useMutation({ mutationFn: (id: string) => processAchReturn(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'ach-returns', cid] }) })
+
+  return (
+    <div className="space-y-4">
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold">Company Payroll Setup</div>
+        {setup?.data ? (
+          <div className="text-sm">
+            <div>EIN: {setup.data.ein} • Federal Tax ID: {setup.data.federalTaxId}</div>
+            <div>State Tax ID: {setup.data.stateTaxId || '—'} • SUTA State: {setup.data.sutAState || '—'}</div>
+            <div>Deposit Schedule: {setup.data.depositSchedule} • SS: {(setup.data.socialSecurityRate * 100).toFixed(2)}% • Medicare: {(setup.data.medicareRate * 100).toFixed(2)}%</div>
+            <div>FUTA: {(setup.data.futaRate * 100).toFixed(2)}% • SUTA: {(setup.data.sutARate * 100).toFixed(2)}%</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 items-end">
+            <Input label="EIN" value={form.ein} onChange={(v: any) => setForm({ ...form, ein: v })} />
+            <Input label="Federal Tax ID" value={form.federalTaxId} onChange={(v: any) => setForm({ ...form, federalTaxId: v })} />
+            <Input label="State Tax ID" value={form.stateTaxId} onChange={(v: any) => setForm({ ...form, stateTaxId: v })} />
+            <Input label="SUTA State" value={form.sutAState} onChange={(v: any) => setForm({ ...form, sutAState: v })} />
+            <Input label="EFTPS PIN" value={form.eftpsPin} onChange={(v: any) => setForm({ ...form, eftpsPin: v })} />
+            <Input label="Deposit Schedule" value={form.depositSchedule} onChange={(v: any) => setForm({ ...form, depositSchedule: v })} />
+            <Input type="number" label="SS Rate" value={form.socialSecurityRate} onChange={(v: any) => setForm({ ...form, socialSecurityRate: v })} />
+            <Input type="number" label="Medicare Rate" value={form.medicareRate} onChange={(v: any) => setForm({ ...form, medicareRate: v })} />
+            <Input type="number" label="FUTA Rate" value={form.futaRate} onChange={(v: any) => setForm({ ...form, futaRate: v })} />
+            <Input type="number" label="SUTA Rate" value={form.sutARate} onChange={(v: any) => setForm({ ...form, sutARate: v })} />
+            <Button onClick={() => setupMut.mutate()} disabled={setupMut.isPending}>Save Setup</Button>
+          </div>
+        )}
+      </div>
+
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold">PTO Policies</div>
+        <DataTable columns={[
+          { key: 'name', header: 'Name' },
+          { key: 'accrualBasis', header: 'Basis' },
+          { key: 'accrualRate', header: 'Rate', align: 'right' },
+          { key: 'maxAccrual', header: 'Max', align: 'right' },
+          { key: 'carryoverLimit', header: 'Carryover', align: 'right' },
+          { key: 'cashOutAllowed', header: 'Cash-out', render: (v: boolean) => (v ? 'Yes' : 'No') },
+        ]} data={ptos as any[]} emptyMessage="No PTO policies." />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end border-t pt-2">
+          <Input label="Name" value={pto.name} onChange={(v: any) => setPto({ ...pto, name: v })} />
+          <Input label="Basis" value={pto.accrualBasis} onChange={(v: any) => setPto({ ...pto, accrualBasis: v })} />
+          <Input type="number" label="Accrual Rate" value={pto.accrualRate} onChange={(v: any) => setPto({ ...pto, accrualRate: v })} />
+          <Input type="number" label="Max" value={pto.maxAccrual} onChange={(v: any) => setPto({ ...pto, maxAccrual: v })} />
+          <Input type="number" label="Carryover" value={pto.carryoverLimit} onChange={(v: any) => setPto({ ...pto, carryoverLimit: v })} />
+          <Input type="number" label="Cash-out Rate" value={pto.cashOutRate} onChange={(v: any) => setPto({ ...pto, cashOutRate: v })} />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={pto.cashOutAllowed} onChange={(e: any) => setPto({ ...pto, cashOutAllowed: e.target.checked })} /> Cash-out</label>
+          <Button onClick={() => ptoMut.mutate()} disabled={ptoMut.isPending}>Add Policy</Button>
+        </div>
+      </div>
+
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold">New-Hire Reporting Config</div>
+        <DataTable columns={[
+          { key: 'stateCode', header: 'State' },
+          { key: 'agencyName', header: 'Agency' },
+          { key: 'dueWindowDays', header: 'Due (days)', align: 'right' },
+          { key: 'transmissionMethod', header: 'Method' },
+        ]} data={nhc as any[]} emptyMessage="No new-hire configs." />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end border-t pt-2">
+          <Input label="State" value={nh.stateCode} onChange={(v: any) => setNh({ ...nh, stateCode: v })} />
+          <Input label="Agency" value={nh.agencyName} onChange={(v: any) => setNh({ ...nh, agencyName: v })} />
+          <Input type="number" label="Due Window" value={nh.dueWindowDays} onChange={(v: any) => setNh({ ...nh, dueWindowDays: v })} />
+          <Input label="Method" value={nh.transmissionMethod} onChange={(v: any) => setNh({ ...nh, transmissionMethod: v })} />
+          <Button onClick={() => nhMut.mutate()} disabled={nhMut.isPending}>Add Config</Button>
+        </div>
+      </div>
+
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold">ACH Returns</div>
+        <DataTable columns={[
+          { key: 'returnCode', header: 'Code' },
+          { key: 'description', header: 'Description' },
+          { key: 'amount', header: 'Amount', align: 'right', render: (v: any) => MONEY(v) },
+          { key: 'returnAction', header: 'Action' },
+          { key: 'processed', header: 'Processed', render: (v: boolean) => (v ? 'Yes' : 'No') },
+          { key: 'id', header: '', render: (_: unknown, r: any) => !r.processed ? <Button size="sm" onClick={() => procMut.mutate(r.id)}>Process</Button> : null },
+        ]} data={returns as any[]} emptyMessage="No ACH returns." />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end border-t pt-2">
+          <Input label="Trace #" value={ret.traceNumber} onChange={(v: any) => setRet({ ...ret, traceNumber: v })} />
+          <Input label="Return Code" value={ret.returnCode} onChange={(v: any) => setRet({ ...ret, returnCode: v })} />
+          <Input label="Description" value={ret.description} onChange={(v: any) => setRet({ ...ret, description: v })} />
+          <Input type="number" label="Amount" value={ret.amount} onChange={(v: any) => setRet({ ...ret, amount: v })} />
+          <Input label="Action" value={ret.returnAction} onChange={(v: any) => setRet({ ...ret, returnAction: v })} />
+          <Button onClick={() => retMut.mutate()} disabled={retMut.isPending}>Record Return</Button>
+        </div>
+      </div>
     </div>
   )
 }

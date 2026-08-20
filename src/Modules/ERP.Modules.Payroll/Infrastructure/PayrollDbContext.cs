@@ -40,6 +40,10 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<ManualCheck> ManualChecks => Set<ManualCheck>();
     public DbSet<PayrollCheck> PayrollChecks => Set<PayrollCheck>();
     public DbSet<DirectDeposit> DirectDeposits => Set<DirectDeposit>();
+    public DbSet<CompanyPayrollSetup> CompanyPayrollSetups => Set<CompanyPayrollSetup>();
+    public DbSet<PtoPolicy> PtoPolicies => Set<PtoPolicy>();
+    public DbSet<NewHireReportingConfig> NewHireReportingConfigs => Set<NewHireReportingConfig>();
+    public DbSet<AchReturn> AchReturns => Set<AchReturn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -368,6 +372,61 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.AllocationPercentage).HasColumnType("decimal(9,4)");
             entity.Property(e => e.FixedAmount).HasColumnType("decimal(18,2)");
             entity.HasIndex(e => new { e.CompanyId, e.EmployeeId });
+        });
+
+        modelBuilder.Entity<CompanyPayrollSetup>(entity =>
+        {
+            entity.ToTable("CompanyPayrollSetups");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Ein).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FederalTaxId).HasMaxLength(20);
+            entity.Property(e => e.StateTaxId).HasMaxLength(20);
+            entity.Property(e => e.SutaState).HasMaxLength(10);
+            entity.Property(e => e.EftpsPin).HasMaxLength(20);
+            entity.Property(e => e.DepositSchedule).HasMaxLength(20);
+            entity.Property(e => e.SocialSecurityRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.MedicareRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.FutaRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.SutaRate).HasColumnType("decimal(9,6)");
+            entity.HasIndex(e => e.CompanyId).IsUnique();
+        });
+
+        modelBuilder.Entity<PtoPolicy>(entity =>
+        {
+            entity.ToTable("PtoPolicies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AccrualRate).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.AccrualBasis).HasMaxLength(20);
+            entity.Property(e => e.MaxAccrual).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CarryoverLimit).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CashOutRate).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => new { e.CompanyId, e.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<NewHireReportingConfig>(entity =>
+        {
+            entity.ToTable("NewHireReportingConfigs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StateCode).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.AgencyName).HasMaxLength(200);
+            entity.Property(e => e.TransmissionMethod).HasMaxLength(50);
+            entity.Property(e => e.SftpEndpoint).HasMaxLength(300);
+            entity.Property(e => e.AgencyId).HasMaxLength(50);
+            entity.HasIndex(e => new { e.CompanyId, e.StateCode }).IsUnique();
+        });
+
+        modelBuilder.Entity<AchReturn>(entity =>
+        {
+            entity.ToTable("AchReturns");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TraceNumber).HasMaxLength(50);
+            entity.Property(e => e.ReturnCode).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Description).HasMaxLength(300);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ReturnAction).HasMaxLength(20);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.PayrollRunId);
         });
     }
 }

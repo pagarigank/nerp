@@ -285,6 +285,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Manual Checks', to: '/payroll?tab=manual' },
       { label: 'Reports', to: '/payroll?tab=reports' },
       { label: 'Garnishments', to: '/payroll?tab=garnishments' },
+      { label: 'Setup & Config', to: '/payroll?tab=setup' },
     ],
   },
   {

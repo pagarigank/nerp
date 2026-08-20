@@ -240,3 +240,32 @@ export function updateDirectDeposit(id: string, data: any) {
 export function deleteDirectDeposit(id: string) {
   return del(`/payroll/direct-deposits/${id}`)
 }
+
+// --- Payroll setup / PTO / new-hire / ACH returns (Batch C) ---
+export function getCompanySetup(companyId: string) {
+  return get(`/payroll/company-setup?companyId=${companyId}`)
+}
+export function createCompanySetup(data: any) {
+  return post(`/payroll/company-setup`, data)
+}
+export function getPtoPolicies() {
+  return get(`/payroll/pto-policies`)
+}
+export function createPtoPolicy(data: any) {
+  return post(`/payroll/pto-policies`, data)
+}
+export function getNewHireConfigs(companyId: string) {
+  return get(`/payroll/new-hire-configs?companyId=${companyId}`)
+}
+export function createNewHireConfig(data: any) {
+  return post(`/payroll/new-hire-configs`, data)
+}
+export function getAchReturns(companyId: string) {
+  return get(`/payroll/ach-returns?companyId=${companyId}`)
+}
+export function createAchReturn(data: any) {
+  return post(`/payroll/ach-returns`, data)
+}
+export function processAchReturn(id: string) {
+  return post(`/payroll/ach-returns/${id}/process`, {})
+}
