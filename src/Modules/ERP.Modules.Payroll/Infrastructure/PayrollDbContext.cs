@@ -166,6 +166,10 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Ignore(e => e.FringeCost);
             entity.Ignore(e => e.TotalPrevailingRate);
             entity.Property(e => e.TradeClassification).HasMaxLength(100);
+            entity.HasOne(e => e.PayrollRun)
+                .WithMany(r => r.Lines)
+                .HasForeignKey(e => e.PayrollRunId)
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => e.PayrollRunId);
             entity.HasIndex(e => e.EmployeeId);
         });

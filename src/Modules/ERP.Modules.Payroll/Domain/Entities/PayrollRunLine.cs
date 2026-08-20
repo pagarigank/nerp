@@ -45,6 +45,7 @@ public class PayrollRunLine : AuditableEntity
     }
 
     public Guid PayrollRunId { get; private set; }
+    public PayrollRun? PayrollRun { get; internal set; }
     public Guid EmployeeId { get; private set; }
     public decimal RegularHours { get; private set; }
     public decimal OvertimeHours { get; private set; }

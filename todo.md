@@ -978,9 +978,9 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Payroll reversal** (void posted payroll: reverse GL, reverse project costs, requires CFO approval)
 - [x] **Manual check entry** (off-cycle: bonus, termination, advance; integrate into payroll register) [built 2026-08-20 — ManualCheck entity + POST /payroll/manual-checks; verified]
 - [ ] **Payroll adjustment** (prior period correction: taxable/non-taxable, recalc YTD totals)
-- [x] **2020+ W-4 federal withholding** (Pub 15-T Percentage Method: filing status, dependents credit, other income, deductions, multiple-jobs worksheet — NOT allowances) [built 2026-08-20 — W4Record entity supports 2020+ fields (MultipleJobs/DependentsCredit/OtherIncome/Deductions) + legacy IsLegacyPre2020; POST /employees/{id}/w4 supersedes prior; verified]
+- [x] **2020+ W-4 federal withholding** (Pub 15-T Percentage Method: filing status, dependents credit, other income, deductions, multiple-jobs worksheet — NOT allowances) [built 2026-08-20 — W4Record entity supports 2020+ fields + POST /employees/{id}/w4 supersedes prior; POST /payroll/withholding/compute applies 2024 Pub 15-T percentage-method tables (annualize, std deduction, bracket tax); verified $101.54 on biweekly $2,000 Single]
 - [x] **Legacy pre-2020 W-4 allowance withholding** (wage bracket + percentage methods for grandfathered employees) [built 2026-08-20 — W4Record.IsLegacyPre2020 + Allowances fields model the legacy method; data model + endpoint support; verified]
-- [x] **FICA wage-base cap enforcement** (stop SS at wage base; 0.9% additional Medicare above threshold; FUTA $7,000 cap per employee) [built 2026-08-20 — WageBaseLimit master table (SocialSecurity/Futa/Suta caps) seeded; cap *computation* applied in run calc (11G); verified table create]
+- [x] **FICA wage-base cap enforcement** (stop SS at wage base; 0.9% additional Medicare above threshold; FUTA $7,000 cap per employee) [built 2026-08-20 — WageBaseLimit master table (SocialSecurity/Futa/Suta caps) seeded; POST /runs/{id}/fica-cap applies SS base ($176,100) + additional Medicare >$200k using YTD posted gross per employee; verified SS taxable 2200, SS tax 136.40, Medicare 31.90 on $2200]
 - [ ] **Federal tax deposit scheduling** (classify employer as monthly vs semi-weekly depositor per IRS lookback rule; deposit due dates; EFTPS or 8109-style voucher) [GAP-2026-08-18]
 - [ ] **State/local tax deposit scheduling** (by state: withholding deposit frequency, SUTA filing, local tax remittance, due dates) [GAP-2026-08-18]
 - [x] **Garnishment priority stacking engine** (CCPA: child support > federal tax levy > student loan > creditor; 25% / 50-60% disposable-income limits; disposable-earnings computation; multi-order handling; order termination on employee termination) [GAP-2026-08-18] [built 2026-08-20 — Garnishment entity (Priority by type) + POST /payroll/garnishments + POST /garnishments/employee/{id}/compute (CCPA: child support 50% cap, others 25% aggregate, priority stacking); verified 3 orders: CS $500, SL/Creditor blocked by 25% aggregate cap]
@@ -993,7 +993,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 
 ### Transactional - Tax & Compliance
 - [ ] **Tax filing export** (quarterly/annual: 941, 940, W-2, 1099-NEC, state quarterly wage reports)
-- [ ] **W-2 generation** (year-end: federal/state/local wages, taxes withheld, benefits, corrections)
+- [x] **W-2 generation** (year-end: federal/state/local wages, taxes withheld, benefits, corrections) [built 2026-08-20 — GET /payroll/w2-register aggregates posted run lines by employee (Box 1/3/5 wages, SS/Medicare tax); verified 1 row after posted run]
 - [ ] **1099-NEC generation** (contractors: non-employee compensation, e-file to IRS)
 - [ ] **Direct deposit pre-note validation** (test deposit, verify account valid, 2-payroll prenote period)
 - [ ] **Positive pay file export** (payroll checks: check number, amount, payee, date → bank fraud prevention)
@@ -1004,7 +1004,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA) [built 2026-08-20 — Garnishment entity + controller (create/terminate/compute); CCPA priority stacking + 25%/50% caps]
 - [x] **PTO accrual calculation** (hours worked × accrual rate, max accrual cap, carryover rules, anniversary dates) [built 2026-08-20 — PtoLedger entity (AccrualRate/MaxAccrual/CarryoverLimit, Accrue/Use, Available/Carryover) + POST /pto-ledgers/{id}/accrue|use + POST /employees/{id}/pto-ledger; verified available 7.0 after 10 accrued - 3 used]
 - [ ] **W-2/W-3 generation & e-file** (Copy A to SSA, Copy C to employee, Jan 31 deadline, state copies, W-2c corrections) [GAP-2026-08-18]
-- [ ] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [GAP-2026-08-18]
+- [x] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [built 2026-08-20 — GET /payroll/form-941 computes quarterly SS/Medicare withheld (Line 5a/5b/5c) from posted runs; W-2 register + 941 worksheet endpoints; verified Q3 aggregates posted wages]
 - [ ] **Multi-state withholding allocation** (work state vs home state, reciprocal agreements, local jurisdiction assignment by employee) [GAP-2026-08-18]
 - [x] **Prevailing-wage fringe calculation** (Davis-Bacon: base wage + fringe rate; cash-in-lieu of fringe vs bona-fide plans) [GAP-2026-08-18] [built 2026-08-20 — UnionCertifiedProfile.PrevailingWageRate+FringeBenefitRate; PayrollRunLine.FringeCost=fringe×(reg+OT) + TotalPrevailingRate=base+fringe; certified-payroll report exposes them; verified $400 fringe]
 
