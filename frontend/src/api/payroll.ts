@@ -269,3 +269,17 @@ export function createAchReturn(data: any) {
 export function processAchReturn(id: string) {
   return post(`/payroll/ach-returns/${id}/process`, {})
 }
+
+// --- Tax deposit scheduling (Batch D) ---
+export function getTaxDeposits(companyId: string) {
+  return get(`/payroll/tax-deposits?companyId=${companyId}`)
+}
+export function createTaxDeposit(data: any) {
+  return post(`/payroll/tax-deposits`, data)
+}
+export function generateTaxDeposits(runId: string, frequency: string) {
+  return post(`/payroll/tax-deposits/generate/${runId}?frequency=${encodeURIComponent(frequency)}`, {})
+}
+export function markTaxDeposited(id: string, data: any) {
+  return post(`/payroll/tax-deposits/${id}/deposit`, data)
+}

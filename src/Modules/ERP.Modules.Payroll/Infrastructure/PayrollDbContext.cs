@@ -44,6 +44,7 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<PtoPolicy> PtoPolicies => Set<PtoPolicy>();
     public DbSet<NewHireReportingConfig> NewHireReportingConfigs => Set<NewHireReportingConfig>();
     public DbSet<AchReturn> AchReturns => Set<AchReturn>();
+    public DbSet<TaxDepositSchedule> TaxDepositSchedules => Set<TaxDepositSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -427,6 +428,20 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.ReturnAction).HasMaxLength(20);
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.PayrollRunId);
+        });
+
+        modelBuilder.Entity<TaxDepositSchedule>(entity =>
+        {
+            entity.ToTable("TaxDepositSchedules");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TaxType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Agency).HasMaxLength(50);
+            entity.Property(e => e.EstimatedAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.DepositedAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Frequency).HasMaxLength(20);
+            entity.Property(e => e.FormType).HasMaxLength(20);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.DepositDate);
         });
     }
 }

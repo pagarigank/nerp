@@ -257,6 +257,10 @@ function RunsTab({ qc }: { qc: any }) {
   const certQ = useQuery({ queryKey: ['payroll', 'certified', runId], queryFn: () => getCertifiedPayroll(runId), enabled: !!runId })
   const nachaQ = useQuery({ queryKey: ['payroll', 'nacha', runId], queryFn: () => getNachaFile(runId), enabled: false })
   const loadNacha = () => { nachaQ.refetch().then((r) => setNacha((r.data as any)?.data ?? null)) }
+  const cid = getCompanyId()
+  const depositsQ = useQuery({ queryKey: ['payroll', 'tax-deposits', cid], queryFn: () => getTaxDeposits(cid) })
+  const genMut = useMutation({ mutationFn: () => generateTaxDeposits(runId, 'Monthly'), onSuccess: () => depositsQ.refetch() })
+  const depMut = useMutation({ mutationFn: (id: string) => markTaxDeposited(id, { depositedAmount: 0, depositedOn: new Date().toISOString().slice(0, 10) }), onSuccess: () => depositsQ.refetch() })
 
   return (
     <div className="space-y-3 max-w-2xl">
@@ -269,6 +273,7 @@ function RunsTab({ qc }: { qc: any }) {
         <Button variant="secondary" disabled={!runId || printMut.isPending} onClick={() => printMut.mutate()}>Print Checks</Button>
         <Button variant="secondary" disabled={!runId} onClick={loadNacha}>NACHA File</Button>
         <Button variant="secondary" disabled={!runId} onClick={() => setReport((certQ.data as any))}>Certified Payroll Report</Button>
+        <Button variant="secondary" disabled={!runId || genMut.isPending} onClick={() => genMut.mutate()}>Generate Tax Deposits</Button>
       </div>
       {runId && <p className="text-sm">Run: <code>{runId}</code></p>}
       {createMut.data && <p className="text-sm text-green-700">Draft run created from approved timesheets.</p>}
@@ -294,6 +299,18 @@ function RunsTab({ qc }: { qc: any }) {
           <pre className="text-[11px] whitespace-pre-wrap max-h-40 overflow-auto">{nacha.slice(0, 600)}</pre>
         </div>
       )}
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold">Scheduled Tax Deposits (EFTPS)</div>
+        <DataTable columns={[
+          { key: 'taxType', header: 'Type' },
+          { key: 'agency', header: 'Agency' },
+          { key: 'depositDate', header: 'Due', render: (r: any) => r.depositDate?.slice(0, 10) },
+          { key: 'estimatedAmount', header: 'Est.', align: 'right', render: (v: any) => MONEY(v) },
+          { key: 'formType', header: 'Form' },
+          { key: 'deposited', header: 'Status', render: (v: boolean) => (v ? 'Deposited' : 'Open') },
+          { key: 'id', header: '', render: (_: unknown, r: any) => !r.deposited ? <Button size="sm" onClick={() => depMut.mutate(r.id)}>Mark Dep.</Button> : null },
+        ]} data={(depositsQ.data as any)?.data || []} emptyMessage="No tax deposits scheduled. Post a run and click Generate Tax Deposits." />
+      </div>
     </div>
   )
 }
