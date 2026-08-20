@@ -237,6 +237,104 @@ public class PayrollRunController : ControllerBase
             .OrderBy(p => p.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    // --- Payroll accrual (period-end: accrue wages earned-but-unpaid) (closes 987) ---
+    [HttpPost("runs/{id:guid}/accrue")]
+    public async Task<ActionResult<ApiResponse>> AccrueRun(
+        Guid id, [FromBody] AccrueRunRequest request, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+
+        var wageExpenseId = await ResolveAccountAsync(run.CompanyId, "6000", cancellationToken);   // Salaries & Wages
+        var payrollLiabId = await ResolveAccountAsync(run.CompanyId, "2200", cancellationToken);   // Payroll Liabilities (accrued wages)
+
+        var segments = ERP.Shared.Kernel.Posting.AccountKey.Create();
+        var lines = new List<PostingLine>
+        {
+            // Dr Wage Expense (accrued gross), Cr Payroll Liabilities (accrued wages payable)
+            new PostingLine { AccountId = wageExpenseId, Segments = segments, Debit = run.TotalGross, Credit = 0m, Currency = "USD" },
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = 0m, Credit = run.TotalGross, Currency = "USD" },
+        };
+
+        var period = await ResolveFiscalPeriodAsync(run.CompanyId, request.AccrualDate, cancellationToken);
+        var postedBy = _currentUser.UserId ?? "system";
+        var batchNumber = $"PAYROLL-ACCRUAL-{run.Id:N}";
+
+        var postingEvent = CanonicalPostingEvent.Create(
+            "PAY",
+            batchNumber,
+            run.CompanyId,
+            period?.Id ?? run.CompanyId,
+            run.CompanyId.ToString(),
+            (period?.Id ?? run.CompanyId).ToString(),
+            new DateTimeOffset(request.AccrualDate),
+            lines,
+            PostingMetadata.Create(postedBy, Guid.NewGuid()));
+        await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Reverse a posted run (payroll correction / re-run) ---
+    [HttpPost("runs/{id:guid}/reverse")]
+    public async Task<ActionResult<ApiResponse>> ReverseRun(
+        Guid id, [FromBody] ReverseRunRequest request, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+        if (run.Status != PayrollRunStatus.Posted)
+            return BadRequest(ApiResponse.Failure(new[] { "Only a posted run can be reversed." }));
+
+        var wageExpenseId = await ResolveAccountAsync(run.CompanyId, "6000", cancellationToken);
+        var payrollLiabId = await ResolveAccountAsync(run.CompanyId, "2200", cancellationToken);
+        var otherExpenseId = await ResolveAccountAsync(run.CompanyId, "7000", cancellationToken);
+
+        var segments = ERP.Shared.Kernel.Posting.AccountKey.Create();
+        var lines = new List<PostingLine>
+        {
+            // Reversing entry: negate the original posted legs.
+            new PostingLine { AccountId = wageExpenseId, Segments = segments, Debit = 0m, Credit = run.TotalGross, Currency = "USD" },
+            new PostingLine { AccountId = otherExpenseId, Segments = segments, Debit = 0m, Credit = run.TotalEmployerTax, Currency = "USD" },
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = run.TotalNet, Credit = 0m, Currency = "USD" },
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = run.TotalEmployeeTax, Credit = 0m, Currency = "USD" },
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = run.TotalEmployerTax, Credit = 0m, Currency = "USD" },
+        };
+
+        var period = await ResolveFiscalPeriodAsync(run.CompanyId, request.ReversalDate, cancellationToken);
+        var postedBy = _currentUser.UserId ?? "system";
+        var batchNumber = $"PAYROLL-REV-{run.Id:N}";
+
+        var postingEvent = CanonicalPostingEvent.Create(
+            "PAY",
+            batchNumber,
+            run.CompanyId,
+            period?.Id ?? run.CompanyId,
+            run.CompanyId.ToString(),
+            (period?.Id ?? run.CompanyId).ToString(),
+            new DateTimeOffset(request.ReversalDate),
+            lines,
+            PostingMetadata.Create(postedBy, Guid.NewGuid()));
+        await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
+        run.Reverse();
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+}
+
+public class AccrueRunRequest
+{
+    public DateTime AccrualDate { get; set; }
+}
+
+public class ReverseRunRequest
+{
+    public DateTime ReversalDate { get; set; }
 }
 
 public class CreateCalendarRequest

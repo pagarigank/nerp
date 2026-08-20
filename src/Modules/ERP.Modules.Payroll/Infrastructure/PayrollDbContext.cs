@@ -25,6 +25,7 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<PayrollCalendar> PayrollCalendars => Set<PayrollCalendar>();
     public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
     public DbSet<PayrollRunLine> PayrollRunLines => Set<PayrollRunLine>();
+    public DbSet<Garnishment> Garnishments => Set<Garnishment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,6 +158,18 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.TradeClassification).HasMaxLength(100);
             entity.HasIndex(e => e.PayrollRunId);
             entity.HasIndex(e => e.EmployeeId);
+        });
+
+        modelBuilder.Entity<Garnishment>(entity =>
+        {
+            entity.ToTable("Garnishments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CaseNumber).HasMaxLength(100);
+            entity.Property(e => e.DisposableIncomePercent).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.FixedAmount).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.EmployeeId);
+            entity.HasIndex(e => new { e.EmployeeId, e.IsActive });
         });
     }
 }

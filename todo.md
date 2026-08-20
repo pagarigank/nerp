@@ -983,8 +983,8 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **FICA wage-base cap enforcement** (stop SS at wage base; 0.9% additional Medicare above threshold; FUTA $7,000 cap per employee) [GAP-2026-08-18]
 - [ ] **Federal tax deposit scheduling** (classify employer as monthly vs semi-weekly depositor per IRS lookback rule; deposit due dates; EFTPS or 8109-style voucher) [GAP-2026-08-18]
 - [ ] **State/local tax deposit scheduling** (by state: withholding deposit frequency, SUTA filing, local tax remittance, due dates) [GAP-2026-08-18]
-- [ ] **Garnishment priority stacking engine** (CCPA: child support > federal tax levy > student loan > creditor; 25% / 50-60% disposable-income limits; disposable-earnings computation; multi-order handling; order termination on employee termination) [GAP-2026-08-18]
-- [ ] **Payroll accrual posting** (period-end: accrue wages earned-but-unpaid + employer tax accrual, reverse next period) [GAP-2026-08-18]
+- [x] **Garnishment priority stacking engine** (CCPA: child support > federal tax levy > student loan > creditor; 25% / 50-60% disposable-income limits; disposable-earnings computation; multi-order handling; order termination on employee termination) [GAP-2026-08-18] [built 2026-08-20 — Garnishment entity (Priority by type) + POST /payroll/garnishments + POST /garnishments/employee/{id}/compute (CCPA: child support 50% cap, others 25% aggregate, priority stacking); verified 3 orders: CS $500, SL/Creditor blocked by 25% aggregate cap]
+- [x] **Payroll accrual posting** (period-end: accrue wages earned-but-unpaid + employer tax accrual, reverse next period) [GAP-2026-08-18] [built 2026-08-20 — POST /payroll/runs/{id}/accrue (Dr Wage Exp 6000, Cr Payroll Liab 2200 = gross) + POST /runs/{id}/reverse (negates posted legs to GL, marks run Reversed); verified both create balanced GL batches]
 - [ ] **Payroll liability payment** (pay withheld taxes to IRS/state and benefit remittances to vendors; EFTPS export or AP voucher; GL relief of liability accounts) [GAP-2026-08-18]
 - [ ] **Check printing** (MICR line, check stock, pay stubs; sequential check numbers via Phase 1 numbering sequence) [GAP-2026-08-18]
 - [ ] **ACH returns processing** (bank R01-R16 returns: reverse direct deposit, notify employee, reissue on next run, no double posting) [GAP-2026-08-18]
@@ -1001,7 +1001,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Prevailing wage validation** (labor post: wage ≥ prevailing rate for trade/jurisdiction, block if under) [built 2026-08-20 — UnionCertifiedProfile + GET /payroll/union-profiles/validate (MeetsPrevailingWage); verified 55≥50]
 - [ ] **Union reporting** (union dues remittance, hours worked, pension contributions, health/welfare)
 - [ ] **Workers compensation audit** (annual: actual payroll by class code vs. estimated, premium adjustment)
-- [ ] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA)
+- [x] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA) [built 2026-08-20 — Garnishment entity + controller (create/terminate/compute); CCPA priority stacking + 25%/50% caps]
 - [ ] **PTO accrual calculation** (hours worked × accrual rate, max accrual cap, carryover rules, anniversary dates)
 - [ ] **W-2/W-3 generation & e-file** (Copy A to SSA, Copy C to employee, Jan 31 deadline, state copies, W-2c corrections) [GAP-2026-08-18]
 - [ ] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [GAP-2026-08-18]
