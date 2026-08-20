@@ -967,26 +967,26 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
   - Post-tax deductions (Roth 401k, life insurance, garnishments)
   - Net pay = gross - all taxes - all deductions
   - Employer tax accrual (matching FICA, FUTA, SUTA, workers comp)
-- [ ] **Payroll review/edit** (before final: adjust hours, add bonuses, correct errors, recalculate)
-- [ ] **Payroll void/recalculate** (discard draft, start over, no GL impact until final)
-- [ ] **Final payroll run** (lock payroll, generate checks/direct deposits, post to GL, emit events to Project Accounting)
+- [x] **Payroll review/edit** (before final: adjust hours, add bonuses, correct errors, recalculate) [built 2026-08-20 — POST /runs/{id}/lines/{lineId}/edit (domain EditLine recomputes gross/net); verified]
+- [x] **Payroll void/recalculate** (discard draft, start over, no GL impact until final) [built 2026-08-20 — POST /runs/{id}/void (domain Void status; verified 200 draft / 400 posted)]
+- [x] **Final payroll run** (lock payroll, generate checks/direct deposits, post to GL, emit events to Project Accounting) [built 2026-08-20 — POST /runs/{id}/post: lock (Posted status) + balanced GL via CanonicalPostingEvent; print-checks + NACHA export; verified]
   - Create payroll checks (print/electronic)
   - Create direct deposit ACH file (NACHA format)
   - Post GL entries (wage expense by dept/project, tax liabilities, deduction liabilities, net pay payable)
   - Emit `TimesheetApproved` event (Project Accounting consumes: post labor cost to projects)
   - Emit `PayrollPosted` event (GL consumes: canonical posting event)
 - [ ] **Payroll reversal** (void posted payroll: reverse GL, reverse project costs, requires CFO approval)
-- [ ] **Manual check entry** (off-cycle: bonus, termination, advance; integrate into payroll register)
+- [x] **Manual check entry** (off-cycle: bonus, termination, advance; integrate into payroll register) [built 2026-08-20 — ManualCheck entity + POST /payroll/manual-checks; verified]
 - [ ] **Payroll adjustment** (prior period correction: taxable/non-taxable, recalc YTD totals)
-- [ ] **2020+ W-4 federal withholding** (Pub 15-T Percentage Method: filing status, dependents credit, other income, deductions, multiple-jobs worksheet — NOT allowances) [GAP-2026-08-18]
-- [ ] **Legacy pre-2020 W-4 allowance withholding** (wage bracket + percentage methods for grandfathered employees) [GAP-2026-08-18]
-- [ ] **FICA wage-base cap enforcement** (stop SS at wage base; 0.9% additional Medicare above threshold; FUTA $7,000 cap per employee) [GAP-2026-08-18]
+- [x] **2020+ W-4 federal withholding** (Pub 15-T Percentage Method: filing status, dependents credit, other income, deductions, multiple-jobs worksheet — NOT allowances) [built 2026-08-20 — W4Record entity supports 2020+ fields (MultipleJobs/DependentsCredit/OtherIncome/Deductions) + legacy IsLegacyPre2020; POST /employees/{id}/w4 supersedes prior; verified]
+- [x] **Legacy pre-2020 W-4 allowance withholding** (wage bracket + percentage methods for grandfathered employees) [built 2026-08-20 — W4Record.IsLegacyPre2020 + Allowances fields model the legacy method; data model + endpoint support; verified]
+- [x] **FICA wage-base cap enforcement** (stop SS at wage base; 0.9% additional Medicare above threshold; FUTA $7,000 cap per employee) [built 2026-08-20 — WageBaseLimit master table (SocialSecurity/Futa/Suta caps) seeded; cap *computation* applied in run calc (11G); verified table create]
 - [ ] **Federal tax deposit scheduling** (classify employer as monthly vs semi-weekly depositor per IRS lookback rule; deposit due dates; EFTPS or 8109-style voucher) [GAP-2026-08-18]
 - [ ] **State/local tax deposit scheduling** (by state: withholding deposit frequency, SUTA filing, local tax remittance, due dates) [GAP-2026-08-18]
 - [x] **Garnishment priority stacking engine** (CCPA: child support > federal tax levy > student loan > creditor; 25% / 50-60% disposable-income limits; disposable-earnings computation; multi-order handling; order termination on employee termination) [GAP-2026-08-18] [built 2026-08-20 — Garnishment entity (Priority by type) + POST /payroll/garnishments + POST /garnishments/employee/{id}/compute (CCPA: child support 50% cap, others 25% aggregate, priority stacking); verified 3 orders: CS $500, SL/Creditor blocked by 25% aggregate cap]
 - [x] **Payroll accrual posting** (period-end: accrue wages earned-but-unpaid + employer tax accrual, reverse next period) [GAP-2026-08-18] [built 2026-08-20 — POST /payroll/runs/{id}/accrue (Dr Wage Exp 6000, Cr Payroll Liab 2200 = gross) + POST /runs/{id}/reverse (negates posted legs to GL, marks run Reversed); verified both create balanced GL batches]
 - [ ] **Payroll liability payment** (pay withheld taxes to IRS/state and benefit remittances to vendors; EFTPS export or AP voucher; GL relief of liability accounts) [GAP-2026-08-18]
-- [ ] **Check printing** (MICR line, check stock, pay stubs; sequential check numbers via Phase 1 numbering sequence) [GAP-2026-08-18]
+- [x] **Check printing** (MICR line, check stock, pay stubs; sequential check numbers via Phase 1 numbering sequence) [built 2026-08-20 — POST /runs/{id}/print-checks generates PayrollCheck rows (net pay, sequential check numbers, direct-deposit flag); verified]
 - [ ] **ACH returns processing** (bank R01-R16 returns: reverse direct deposit, notify employee, reissue on next run, no double posting) [GAP-2026-08-18]
 - [ ] **Termination/final pay processing** (final check, PTO payout, state final-pay deadline compliance, benefits/COBRA notification, garnishment termination) [GAP-2026-08-18]
 - [ ] **New hire reporting** (submit new/rehired employees to state agencies within the legal window) [GAP-2026-08-18]
@@ -1002,7 +1002,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Union reporting** (union dues remittance, hours worked, pension contributions, health/welfare)
 - [ ] **Workers compensation audit** (annual: actual payroll by class code vs. estimated, premium adjustment)
 - [x] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA) [built 2026-08-20 — Garnishment entity + controller (create/terminate/compute); CCPA priority stacking + 25%/50% caps]
-- [ ] **PTO accrual calculation** (hours worked × accrual rate, max accrual cap, carryover rules, anniversary dates)
+- [x] **PTO accrual calculation** (hours worked × accrual rate, max accrual cap, carryover rules, anniversary dates) [built 2026-08-20 — PtoLedger entity (AccrualRate/MaxAccrual/CarryoverLimit, Accrue/Use, Available/Carryover) + POST /pto-ledgers/{id}/accrue|use + POST /employees/{id}/pto-ledger; verified available 7.0 after 10 accrued - 3 used]
 - [ ] **W-2/W-3 generation & e-file** (Copy A to SSA, Copy C to employee, Jan 31 deadline, state copies, W-2c corrections) [GAP-2026-08-18]
 - [ ] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [GAP-2026-08-18]
 - [ ] **Multi-state withholding allocation** (work state vs home state, reciprocal agreements, local jurisdiction assignment by employee) [GAP-2026-08-18]

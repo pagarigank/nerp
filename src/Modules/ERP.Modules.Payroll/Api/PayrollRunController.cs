@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using ERP.Core.Domain.Common;
 using ERP.Core.Domain.Events;
 using ERP.Modules.Payroll.Domain.Entities;
@@ -325,6 +326,163 @@ public class PayrollRunController : ControllerBase
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse.Success());
     }
+
+    // --- Review/edit a draft run line (adjust hours or bonus before final) ---
+    [HttpPost("runs/{id:guid}/lines/{lineId:guid}/edit")]
+    public async Task<ActionResult<ApiResponse>> EditRunLine(
+        Guid id, Guid lineId, [FromBody] EditRunLineRequest request, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+        try
+        {
+            run.EditLine(lineId, request.RegularHours, request.OvertimeHours, request.Bonus);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Void (discard) a draft run: no GL impact ---
+    [HttpPost("runs/{id:guid}/void")]
+    public async Task<ActionResult<ApiResponse>> VoidRun(Guid id, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+        try
+        {
+            run.Void();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Check printing: generate a check/stub for each run line (net pay) ---
+    [HttpPost("runs/{id:guid}/print-checks")]
+    public async Task<ActionResult<ApiResponse<List<PayrollCheckDto>>>> PrintChecks(
+        Guid id, [FromBody] PrintChecksRequest request, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+        if (run.Status != PayrollRunStatus.Posted)
+            return BadRequest(ApiResponse.Failure(new[] { "Only a posted run can be printed." }));
+
+        var checks = new List<PayrollCheckDto>();
+        int seq = request.StartingCheckNumber;
+        foreach (var line in run.Lines)
+        {
+            var check = new PayrollCheck(run.Id, line.EmployeeId, line.NetPay, seq.ToString(), request.CheckDate);
+            check.SetDirectDeposit(request.DirectDeposit);
+            _context.PayrollChecks.Add(check);
+            checks.Add(new PayrollCheckDto
+            {
+                EmployeeId = line.EmployeeId,
+                NetPay = line.NetPay,
+                CheckNumber = seq.ToString(),
+                CheckDate = request.CheckDate,
+                IsDirectDeposit = request.DirectDeposit,
+            });
+            seq++;
+        }
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<List<PayrollCheckDto>>.Success(checks));
+    }
+
+    // --- ACH NACHA file export (PPD credits to employees) ---
+    [HttpGet("runs/{id:guid}/ach-nacha")]
+    public async Task<ActionResult<ApiResponse<string>>> ExportNacha(Guid id, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+
+        CultureInfo inv = CultureInfo.InvariantCulture;
+        var companyName = "ERP COMPANY";
+        var companyId = run.CompanyId.ToString("N", inv)[..9].ToUpperInvariant();
+        var fileIdModifier = BuildAchFileId();
+        var sb = new System.Text.StringBuilder();
+        // File header (record type 1)
+        sb.Append("101  ").Append("1234567890  ").Append(companyId.PadRight(10))
+            .Append(DateTime.Now.ToString("yyMMdd", inv)).Append(DateTime.Now.ToString("HHmm", inv))
+            .Append(fileIdModifier).Append("PPD").Append("PAYROLL".PadRight(6))
+            .Append(new string(' ', 26)).AppendLine("1");
+        // Batch header (record type 5)
+        sb.Append("5200").Append(companyName.PadRight(16)).Append("PAYROLL".PadRight(20))
+            .Append("1234567890".PadLeft(10)).Append("PPD").Append("PAYROLL".PadRight(20))
+            .Append(DateTime.Now.ToString("yyMMdd", inv)).Append(DateTime.Now.ToString("yyMMdd", inv))
+            .Append("1".PadLeft(10, '0')).Append(new string(' ', 25)).AppendLine("1");
+        int entryCount = 0;
+        decimal totalCredit = 0m;
+        int trace = 1;
+        foreach (var line in run.Lines)
+        {
+            var amountCents = (long)Math.Round(line.NetPay * 100m);
+            // Entry detail (record type 6): PPD credit
+            sb.Append("627 ").Append("1234567890".PadLeft(9)).Append(line.EmployeeId.ToString("N", inv)[..9].ToUpperInvariant().PadLeft(15, '0'))
+                .Append(amountCents.ToString(inv).PadLeft(10, '0'))
+                .Append(line.EmployeeId.ToString("N", inv)[..9].ToUpperInvariant().PadLeft(15, '0'))
+                .Append("              ").Append('0').Append(trace.ToString(inv).PadLeft(15, '0')).Append("  ")
+                .Append(DateTime.Now.ToString("yyMMdd", inv)).Append("1").AppendLine();
+            entryCount++;
+            totalCredit += line.NetPay;
+            trace++;
+        }
+
+        int blockCount = ((entryCount + 1) / 10) + 1;
+        long totalCreditCents = (long)Math.Round(totalCredit * 100m);
+        // Batch control (record type 8)
+        sb.Append("8200").Append(entryCount.ToString(inv).PadLeft(6, '0'))
+            .Append(new string('0', 10))
+            .Append(totalCreditCents.ToString(inv).PadLeft(12, '0'))
+            .Append(new string(' ', 39)).Append("1".PadLeft(10, '0')).Append(new string(' ', 25)).AppendLine("1");
+        // File control (record type 9)
+        sb.Append("9000001").Append(entryCount.ToString(inv).PadLeft(6, '0')).Append(blockCount.ToString(inv).PadLeft(6, '0'))
+            .Append(totalCreditCents.ToString(inv).PadLeft(12, '0')).Append(new string('0', 12))
+            .Append(new string(' ', 39)).Append("1").AppendLine();
+
+        return Ok(ApiResponse<string>.Success(sb.ToString()));
+    }
+
+    private static string BuildAchFileId() => DateTime.Now.ToString("HHmm", CultureInfo.InvariantCulture);
+}
+
+public class EditRunLineRequest
+{
+    public decimal? RegularHours { get; set; }
+    public decimal? OvertimeHours { get; set; }
+    public decimal? Bonus { get; set; }
+}
+
+public class PrintChecksRequest
+{
+    public DateTime CheckDate { get; set; }
+    public int StartingCheckNumber { get; set; } = 1000;
+    public bool DirectDeposit { get; set; }
+}
+
+public class PayrollCheckDto
+{
+    public Guid EmployeeId { get; set; }
+    public decimal NetPay { get; set; }
+    public string CheckNumber { get; set; } = string.Empty;
+    public DateTime CheckDate { get; set; }
+    public bool IsDirectDeposit { get; set; }
 }
 
 public class AccrueRunRequest

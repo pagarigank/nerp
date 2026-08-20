@@ -97,6 +97,25 @@ public class PayrollRun : AuditableEntity
             throw new InvalidOperationException("Only a posted run can be reversed.");
         Status = PayrollRunStatus.Reversed;
     }
+
+    /// <summary>Review/edit a draft run line (adjust hours or bonus before final).</summary>
+    public void EditLine(Guid lineId, decimal? regularHours = null, decimal? overtimeHours = null, decimal? bonus = null)
+    {
+        if (Status != PayrollRunStatus.Draft)
+            throw new InvalidOperationException("Only a draft run can be edited.");
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+            throw new InvalidOperationException("Line not found.");
+        line.Adjust(regularHours, overtimeHours, bonus);
+    }
+
+    /// <summary>Voids (discards) a draft run — no GL impact.</summary>
+    public void Void()
+    {
+        if (Status != PayrollRunStatus.Draft)
+            throw new InvalidOperationException("Only a draft run can be voided.");
+        Status = PayrollRunStatus.Void;
+    }
 }
 
 public enum PayrollRunStatus
@@ -104,4 +123,5 @@ public enum PayrollRunStatus
     Draft = 0,
     Posted = 1,
     Reversed = 2,
+    Void = 3,
 }

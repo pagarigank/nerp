@@ -28,6 +28,14 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<Garnishment> Garnishments => Set<Garnishment>();
     public DbSet<ExpenseReport> ExpenseReports => Set<ExpenseReport>();
     public DbSet<ExpenseReportLine> ExpenseReportLines => Set<ExpenseReportLine>();
+    public DbSet<DeductionBenefit> DeductionBenefits => Set<DeductionBenefit>();
+    public DbSet<EmployeeDeductionBenefit> EmployeeDeductionBenefits => Set<EmployeeDeductionBenefit>();
+    public DbSet<W4Record> W4Records => Set<W4Record>();
+    public DbSet<WageBaseLimit> WageBaseLimits => Set<WageBaseLimit>();
+    public DbSet<WorkersCompClassCode> WorkersCompClassCodes => Set<WorkersCompClassCode>();
+    public DbSet<PtoLedger> PtoLedgers => Set<PtoLedger>();
+    public DbSet<ManualCheck> ManualChecks => Set<ManualCheck>();
+    public DbSet<PayrollCheck> PayrollChecks => Set<PayrollCheck>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,6 +206,102 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.PerDiemRate).HasColumnType("decimal(18,4)");
             entity.HasIndex(e => e.ExpenseReportId);
             entity.HasIndex(e => e.ProjectId);
+        });
+
+        modelBuilder.Entity<DeductionBenefit>(entity =>
+        {
+            entity.ToTable("DeductionBenefits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.Description).HasMaxLength(200);
+            entity.Property(e => e.DefaultRate).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.GlAccountNumber).HasMaxLength(20);
+            entity.HasIndex(e => e.CompanyId);
+        });
+
+        modelBuilder.Entity<EmployeeDeductionBenefit>(entity =>
+        {
+            entity.ToTable("EmployeeDeductionBenefits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Percent).HasColumnType("decimal(9,4)");
+            entity.HasIndex(e => e.EmployeeId);
+            entity.HasIndex(e => e.DeductionBenefitId);
+        });
+
+        modelBuilder.Entity<W4Record>(entity =>
+        {
+            entity.ToTable("W4Records");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.AdditionalWithholding).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OtherIncome).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Deductions).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.EmployeeId);
+        });
+
+        modelBuilder.Entity<WageBaseLimit>(entity =>
+        {
+            entity.ToTable("WageBaseLimits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.LimitAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.SurtaxThreshold).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => new { e.CompanyId, e.Year, e.Type });
+        });
+
+        modelBuilder.Entity<WorkersCompClassCode>(entity =>
+        {
+            entity.ToTable("WorkersCompClassCodes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ClassCode).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Description).HasMaxLength(200);
+            entity.Property(e => e.State).HasMaxLength(10);
+            entity.Property(e => e.RatePer100).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.ExperienceModification).HasColumnType("decimal(9,4)");
+            entity.HasIndex(e => e.CompanyId);
+        });
+
+        modelBuilder.Entity<PtoLedger>(entity =>
+        {
+            entity.ToTable("PtoLedgers");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PolicyName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AccrualRate).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.MaxAccrual).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CarryoverLimit).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Accrued).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Used).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.EmployeeId);
+        });
+
+        modelBuilder.Entity<PtoTransaction>(entity =>
+        {
+            entity.ToTable("PtoTransactions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Hours).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.PtoLedgerId);
+        });
+
+        modelBuilder.Entity<ManualCheck>(entity =>
+        {
+            entity.ToTable("ManualChecks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Reason).HasMaxLength(300);
+            entity.Property(e => e.CheckNumber).HasMaxLength(30);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.EmployeeId);
+        });
+
+        modelBuilder.Entity<PayrollCheck>(entity =>
+        {
+            entity.ToTable("PayrollChecks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.NetPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CheckNumber).HasMaxLength(30);
+            entity.Property(e => e.AchTraceNumber).HasMaxLength(50);
+            entity.HasIndex(e => e.PayrollRunId);
+            entity.HasIndex(e => e.EmployeeId);
         });
     }
 }

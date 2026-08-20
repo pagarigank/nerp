@@ -70,4 +70,14 @@ public class PayrollRunLine : AuditableEntity
 
     /// <summary>Gets the fully-burdened rate (prevailing base + fringe) for certified payroll reporting.</summary>
     public decimal TotalPrevailingRate => (PrevailingWageRate ?? 0m) + (FringeRate ?? 0m);
+
+    /// <summary>Review/edit adjustment: recompute gross when hours/bonus change (simple recompute for edits).</summary>
+    public void Adjust(decimal? regularHours = null, decimal? overtimeHours = null, decimal? bonus = null)
+    {
+        if (regularHours.HasValue) RegularHours = regularHours.Value;
+        if (overtimeHours.HasValue) OvertimeHours = overtimeHours.Value;
+        var bonusAmt = bonus ?? 0m;
+        GrossPay = (RegularHours * RegularRate) + (OvertimeHours * OvertimeRate) + bonusAmt;
+        NetPay = GrossPay - EmployeeTax - Deductions;
+    }
 }
