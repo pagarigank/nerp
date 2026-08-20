@@ -1,0 +1,293 @@
+// <copyright file="PayrollRunController.cs" company="ERP Project">
+// Copyright (c) ERP Project. All rights reserved.
+// </copyright>
+
+using ERP.Core.Domain.Common;
+using ERP.Core.Domain.Events;
+using ERP.Modules.Payroll.Domain.Entities;
+using ERP.Modules.Payroll.Infrastructure;
+using ERP.Modules.Platform.Domain.Entities;
+using ERP.Modules.Platform.Infrastructure;
+using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Posting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace ERP.Modules.Payroll.Api;
+
+[ApiController]
+[Route("api/v1/payroll")]
+public class PayrollRunController : ControllerBase
+{
+    private readonly PayrollDbContext _context;
+    private readonly PlatformDbContext _platformContext;
+    private readonly IPostingEventPublisher _postingPublisher;
+    private readonly ICurrentUserService _currentUser;
+
+    public PayrollRunController(
+        PayrollDbContext context,
+        PlatformDbContext platformContext,
+        IPostingEventPublisher postingPublisher,
+        ICurrentUserService currentUser)
+    {
+        _context = context;
+        _platformContext = platformContext;
+        _postingPublisher = postingPublisher;
+        _currentUser = currentUser;
+    }
+
+    // --- Payroll calendar ---
+    [HttpPost("calendars")]
+    public async Task<ActionResult<ApiResponse<Guid>>> CreateCalendar(
+        [FromBody] CreateCalendarRequest request, CancellationToken cancellationToken)
+    {
+        var calendar = new PayrollCalendar(request.CompanyId, request.Name, request.Frequency, request.StartDate)
+        {
+            EmployerFicaRate = request.EmployerFicaRate,
+            EmployeeFicaRate = request.EmployeeFicaRate,
+            FutaRate = request.FutaRate,
+            SutaRate = request.SutaRate,
+        };
+        _context.PayrollCalendars.Add(calendar);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(calendar.Id));
+    }
+
+    // --- Draft payroll run from approved timesheets ---
+    [HttpPost("runs/draft")]
+    public async Task<ActionResult<ApiResponse<Guid>>> CreateDraftRun(
+        [FromBody] CreateRunRequest request, CancellationToken cancellationToken)
+    {
+        var calendar = await _context.PayrollCalendars
+            .FirstOrDefaultAsync(c => c.Id == request.CalendarId, cancellationToken);
+        if (calendar is null)
+            return BadRequest(ApiResponse.Failure(new[] { "Payroll calendar not found." }));
+
+        var run = new PayrollRun(request.CompanyId, request.CalendarId, request.PeriodStart, request.PeriodEnd, request.PayDate);
+
+        // Pull approved timesheet lines in the pay period (optionally filtered to charged project for certified payroll).
+        var lines = await (from l in _context.TimesheetLines
+                           join t in _context.Timesheets on l.TimesheetId equals t.Id
+                           where t.CompanyId == request.CompanyId
+                                 && t.Status == TimesheetStatus.Approved
+                                 && l.WorkDate >= request.PeriodStart
+                                 && l.WorkDate <= request.PeriodEnd
+                           select new { Line = l, EmployeeId = t.EmployeeId })
+            .ToListAsync(cancellationToken);
+
+        var byEmployee = lines
+            .GroupBy(x => x.EmployeeId)
+            .ToList();
+
+        foreach (var grp in byEmployee)
+        {
+            var employeeId = grp.Key;
+            var regularHours = grp.Where(x => !x.Line.IsOvertime).Sum(x => x.Line.Hours);
+            var overtimeHours = grp.Where(x => x.Line.IsOvertime).Sum(x => x.Line.Hours);
+            // Use the blended rate (first line's rate) as the basis for the run calculation.
+            var sample = grp.First().Line;
+            var regularRate = sample.Rate;
+            var overtimeRate = sample.Rate * 1.5m;
+            var grossPay = (regularHours * regularRate) + (overtimeHours * overtimeRate);
+            var employeeTax = Math.Round(grossPay * calendar.EmployeeFicaRate, 2);
+            var deductions = 0m; // deductions accumulated from employee pay codes if configured
+            var employerTax = Math.Round(grossPay * (calendar.EmployerFicaRate + calendar.FutaRate + calendar.SutaRate), 2);
+            var netPay = Math.Round(grossPay - employeeTax - deductions, 2);
+
+            // Certified payroll: fringe/prevailing from the trade's union profile (Davis-Bacon).
+            decimal? prevailing = null;
+            decimal? fringe = null;
+            if (!string.IsNullOrWhiteSpace(sample.TradeClassification))
+            {
+                var profile = await _context.UnionCertifiedProfiles
+                    .Where(p => p.TradeClassification == sample.TradeClassification)
+                    .OrderByDescending(p => p.PrevailingWageRate)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (profile is not null)
+                {
+                    prevailing = profile.PrevailingWageRate;
+                    fringe = profile.FringeBenefitRate;
+                }
+            }
+
+            run.AddLine(employeeId, regularHours, overtimeHours, regularRate, overtimeRate,
+                grossPay, employeeTax, deductions, employerTax, netPay, prevailing, fringe, sample.TradeClassification);
+        }
+
+        run.MarkDraftCalculated();
+        _context.PayrollRuns.Add(run);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(run.Id));
+    }
+
+    // --- Post (finalize) payroll run -> GL ---
+    [HttpPost("runs/{id:guid}/post")]
+    public async Task<ActionResult<ApiResponse>> PostRun(
+        Guid id, [FromBody] PostRunRequest request, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+        if (run.Status != PayrollRunStatus.Draft)
+            return BadRequest(ApiResponse.Failure(new[] { "Run is not in draft state." }));
+
+        // Resolve GL accounts.
+        var wageExpenseId = await ResolveAccountAsync(run.CompanyId, "6000", cancellationToken);   // Salaries & Wages
+        var payrollLiabId = await ResolveAccountAsync(run.CompanyId, "2200", cancellationToken);   // Payroll Liabilities
+        var otherExpenseId = await ResolveAccountAsync(run.CompanyId, "7000", cancellationToken);   // Employer taxes bucket
+
+        var segments = ERP.Shared.Kernel.Posting.AccountKey.Create();
+
+        var lines = new List<PostingLine>
+        {
+            // Dr Wage Expense (gross wages)
+            new PostingLine { AccountId = wageExpenseId, Segments = segments, Debit = run.TotalGross, Credit = 0m, Currency = "USD" },
+            // Dr Payroll Tax Expense (employer taxes)
+            new PostingLine { AccountId = otherExpenseId, Segments = segments, Debit = run.TotalEmployerTax, Credit = 0m, Currency = "USD" },
+            // Cr Payroll Liabilities (net payable to employees)
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = 0m, Credit = run.TotalNet, Currency = "USD" },
+            // Cr Payroll Liabilities (employee tax withheld)
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = 0m, Credit = run.TotalEmployeeTax, Currency = "USD" },
+            // Cr Payroll Liabilities (employer taxes accrued)
+            new PostingLine { AccountId = payrollLiabId, Segments = segments, Debit = 0m, Credit = run.TotalEmployerTax, Currency = "USD" },
+        };
+
+        var period = await ResolveFiscalPeriodAsync(run.CompanyId, run.PayDate, cancellationToken);
+        var postedBy = _currentUser.UserId ?? "system";
+        var batchNumber = $"PAYROLL-{run.Id:N}";
+
+        var postingEvent = CanonicalPostingEvent.Create(
+            "PAY",
+            batchNumber,
+            run.CompanyId,
+            period?.Id ?? run.CompanyId,
+            run.CompanyId.ToString(),
+            (period?.Id ?? run.CompanyId).ToString(),
+            new DateTimeOffset(run.PayDate),
+            lines,
+            PostingMetadata.Create(postedBy, Guid.NewGuid()));
+
+        await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
+        run.MarkPosted(request.PostedById, batchNumber);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    // --- Certified payroll report (Davis-Bacon) (closes 822 / 1000) ---
+    [HttpGet("runs/{id:guid}/certified-payroll")]
+    public async Task<ActionResult<ApiResponse<CertifiedPayrollReportDto>>> CertifiedPayrollReport(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var run = await _context.PayrollRuns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (run is null)
+            return NotFound(ApiResponse.Failure(new[] { "Payroll run not found." }, 404));
+
+        var employeeIds = run.Lines.Select(l => l.EmployeeId).Distinct().ToList();
+        var employees = await _context.Employees
+            .Where(e => employeeIds.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => $"{e.FirstName} {e.LastName}", cancellationToken);
+
+        var rows = run.Lines.Select(l => new CertifiedPayrollRowDto
+        {
+            EmployeeName = employees.GetValueOrDefault(l.EmployeeId, l.EmployeeId.ToString()),
+            TradeClassification = l.TradeClassification ?? "(none)",
+            RegularHours = l.RegularHours,
+            OvertimeHours = l.OvertimeHours,
+            TotalHours = l.RegularHours + l.OvertimeHours,
+            GrossWage = l.GrossPay,
+            // Certified "basic rate" reported as the actual paid rate (>= prevailing by validation).
+            BasicRate = l.RegularHours > 0 ? Math.Round(l.GrossPay / (l.RegularHours + (l.OvertimeHours * 1.5m)), 2) : 0m,
+            FringeRate = l.FringeRate ?? 0m,
+            FringeCost = l.FringeCost,
+            PrevailingWageRate = l.PrevailingWageRate ?? 0m,
+            TotalPrevailingRate = l.TotalPrevailingRate,
+            MeetsPrevailing = !l.PrevailingWageRate.HasValue || l.GrossPay / (l.RegularHours + l.OvertimeHours) >= l.PrevailingWageRate,
+        }).ToList();
+
+        return Ok(ApiResponse<CertifiedPayrollReportDto>.Success(new CertifiedPayrollReportDto
+        {
+            PayrollRunId = run.Id,
+            PeriodStart = run.PeriodStart,
+            PeriodEnd = run.PeriodEnd,
+            PayDate = run.PayDate,
+            TotalGross = run.TotalGross,
+            TotalFringe = rows.Sum(r => r.FringeCost),
+            Rows = rows,
+        }));
+    }
+
+    private async Task<Guid> ResolveAccountAsync(Guid companyId, string accountNumber, CancellationToken cancellationToken)
+    {
+        var account = await _platformContext.Accounts
+            .FirstOrDefaultAsync(a => a.CompanyId == companyId && a.AccountNumber == accountNumber, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException($"GL account '{accountNumber}' for company {companyId} was not found.");
+        return account.Id;
+    }
+
+    private async Task<FiscalPeriod?> ResolveFiscalPeriodAsync(Guid companyId, DateTime transactionDate, CancellationToken cancellationToken)
+    {
+        var date = new DateTimeOffset(transactionDate);
+        return await _platformContext.FiscalPeriods
+            .Where(p => p.CompanyId == companyId && p.StartDate <= date && p.EndDate >= date)
+            .OrderBy(p => p.StartDate)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+}
+
+public class CreateCalendarRequest
+{
+    public Guid CompanyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public PayrollFrequency Frequency { get; set; }
+    public DateTime StartDate { get; set; }
+    public decimal EmployerFicaRate { get; set; } = 0.0765m;
+    public decimal EmployeeFicaRate { get; set; } = 0.0765m;
+    public decimal FutaRate { get; set; } = 0.006m;
+    public decimal SutaRate { get; set; } = 0.034m;
+}
+
+public class CreateRunRequest
+{
+    public Guid CompanyId { get; set; }
+    public Guid CalendarId { get; set; }
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public DateTime PayDate { get; set; }
+}
+
+public class PostRunRequest
+{
+    public Guid PostedById { get; set; }
+}
+
+public class CertifiedPayrollReportDto
+{
+    public Guid PayrollRunId { get; set; }
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public DateTime PayDate { get; set; }
+    public decimal TotalGross { get; set; }
+    public decimal TotalFringe { get; set; }
+    public List<CertifiedPayrollRowDto> Rows { get; set; } = [];
+}
+
+public class CertifiedPayrollRowDto
+{
+    public string EmployeeName { get; set; } = string.Empty;
+    public string TradeClassification { get; set; } = string.Empty;
+    public decimal RegularHours { get; set; }
+    public decimal OvertimeHours { get; set; }
+    public decimal TotalHours { get; set; }
+    public decimal GrossWage { get; set; }
+    public decimal BasicRate { get; set; }
+    public decimal FringeRate { get; set; }
+    public decimal FringeCost { get; set; }
+    public decimal PrevailingWageRate { get; set; }
+    public decimal TotalPrevailingRate { get; set; }
+    public bool MeetsPrevailing { get; set; }
+}

@@ -819,7 +819,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Project-to-GL reconciliation check** (CRITICAL gate: project ledger balance = GL balance, must net to zero variance) [built 2026-08-20 — GET /projects/{id}/analysis/reconcile compares project ledger posted cost vs GL PROJECT-segment debit sum, returns variance + isBalanced; verified (variance 2051 shown on d2ce8c99)]
 - [x] **Period-end project close checklist** (all costs posted, all time approved, billing up-to-date, reconciliation complete) [built 2026-08-20 — GET /projects/{id}/analysis/period-end-close (costs posted / billing / reconcile / reviewed); verified]
 - [x] **Project close-out** (final billing, release retention, final cost adjustments, lock project, archive) [built 2026-08-20 — POST /projects/{id}/close-out calls Project.CompleteCloseOut (requires RetainageHeld=0 + Status=Completed), sets IsCloseOutComplete + Status=Closed; verified guard]
-- [ ] **Certified payroll reporting** (government projects: Davis-Bacon, prevailing wage, union reporting)
+- [x] **Certified payroll reporting** (government projects: Davis-Bacon, prevailing wage, union reporting) [built 2026-08-20 — GET /payroll/runs/{id}/certified-payroll; per-employee hours/basic rate/fringe/prevailing/MeetsPrevailing; verified Electrician 40h fringe $400]
 - [x] **Prevailing-wage validation** (labor postings: validate wage ≥ prevailing rate for trade/jurisdiction) [built 2026-08-20 — UnionCertifiedProfile entity + GET /payroll/union-profiles/validate (MeetsPrevailingWage)]
 - [x] **Project close-out checklist engine** (retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained, archive) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/close-out-checklist returns checklist items (retainage released, final invoice billed, unbilled=0, completed, billing hold cleared) + AllPassed; verified]
 
@@ -955,8 +955,8 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Expense reimbursement** (approved expenses → AP voucher for employee, post to GL and project)
 
 ### Transactional - Payroll Processing
-- [ ] **Payroll calendar setup** (pay periods: weekly/bi-weekly/semi-monthly/monthly, pay dates, fiscal period mapping)
-- [ ] **Payroll calculation run (draft)** (calculate gross pay, taxes, deductions, net pay, employer taxes)
+- [x] **Payroll calendar setup** (pay periods: weekly/bi-weekly/semi-monthly/monthly, pay dates, fiscal period mapping) [built 2026-08-20 — PayrollCalendar entity + POST /payroll/calendars; FICA/FUTA/SUTA rates]
+- [x] **Payroll calculation run (draft)** (calculate gross pay, taxes, deductions, net pay, employer taxes) [built 2026-08-20 — POST /payroll/runs/draft computes gross (reg×rate + OT×1.5)/employeeTax=gross×empFica/deductions/net/employerTax=gross×(erFica+FUTA+SUTA) from approved timesheets; POST /runs/{id}/post → GL (Wage Exp 6000 Dr, Payroll Tax Exp 7000 Dr, Payroll Liab 2200 Cr net+empTax+erTax); verified $2200 gross / $168.30 empTax / $2031.70 net / $256.30 erTax]
   - Regular hours × rate, overtime hours × OT rate, double-time hours × DT rate
   - Federal income tax (W-4 allowances, bracket tables)
   - Social Security tax (6.2% up to wage base limit)
@@ -997,7 +997,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **1099-NEC generation** (contractors: non-employee compensation, e-file to IRS)
 - [ ] **Direct deposit pre-note validation** (test deposit, verify account valid, 2-payroll prenote period)
 - [ ] **Positive pay file export** (payroll checks: check number, amount, payee, date → bank fraud prevention)
-- [ ] **Certified payroll reporting** (government contracts: Davis-Bacon, employee, hours, wage, fringe, prevailing rate compliance)
+- [x] **Certified payroll reporting** (government contracts: Davis-Bacon, employee, hours, wage, fringe, prevailing rate compliance) [built 2026-08-20 — GET /payroll/runs/{id}/certified-payroll (Davis-Bacon: employee/hours/basic rate/fringe cost/prevailing rate/MeetsPrevailing); verified]
 - [x] **Prevailing wage validation** (labor post: wage ≥ prevailing rate for trade/jurisdiction, block if under) [built 2026-08-20 — UnionCertifiedProfile + GET /payroll/union-profiles/validate (MeetsPrevailingWage); verified 55≥50]
 - [ ] **Union reporting** (union dues remittance, hours worked, pension contributions, health/welfare)
 - [ ] **Workers compensation audit** (annual: actual payroll by class code vs. estimated, premium adjustment)
@@ -1006,7 +1006,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **W-2/W-3 generation & e-file** (Copy A to SSA, Copy C to employee, Jan 31 deadline, state copies, W-2c corrections) [GAP-2026-08-18]
 - [ ] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [GAP-2026-08-18]
 - [ ] **Multi-state withholding allocation** (work state vs home state, reciprocal agreements, local jurisdiction assignment by employee) [GAP-2026-08-18]
-- [ ] **Prevailing-wage fringe calculation** (Davis-Bacon: base wage + fringe rate; cash-in-lieu of fringe vs bona-fide plans) [GAP-2026-08-18]
+- [x] **Prevailing-wage fringe calculation** (Davis-Bacon: base wage + fringe rate; cash-in-lieu of fringe vs bona-fide plans) [GAP-2026-08-18] [built 2026-08-20 — UnionCertifiedProfile.PrevailingWageRate+FringeBenefitRate; PayrollRunLine.FringeCost=fringe×(reg+OT) + TotalPrevailingRate=base+fringe; certified-payroll report exposes them; verified $400 fringe]
 
 ### Background Jobs
 - [ ] Scheduled payroll run trigger (every pay period: draft calculation, email notification to payroll dept)

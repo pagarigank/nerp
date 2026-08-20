@@ -22,6 +22,9 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<UnionCertifiedProfile> UnionCertifiedProfiles => Set<UnionCertifiedProfile>();
     public DbSet<Timesheet> Timesheets => Set<Timesheet>();
     public DbSet<TimesheetLine> TimesheetLines => Set<TimesheetLine>();
+    public DbSet<PayrollCalendar> PayrollCalendars => Set<PayrollCalendar>();
+    public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
+    public DbSet<PayrollRunLine> PayrollRunLines => Set<PayrollRunLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,6 +109,54 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.TradeClassification).HasMaxLength(100);
             entity.HasIndex(e => e.TimesheetId);
             entity.HasIndex(e => e.ProjectId);
+        });
+
+        modelBuilder.Entity<PayrollCalendar>(entity =>
+        {
+            entity.ToTable("PayrollCalendars");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EmployerFicaRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.EmployeeFicaRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.FutaRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.SutaRate).HasColumnType("decimal(9,6)");
+            entity.HasIndex(e => new { e.CompanyId, e.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<PayrollRun>(entity =>
+        {
+            entity.ToTable("PayrollRuns");
+            entity.HasKey(e => e.Id);
+            entity.Ignore(e => e.TotalGross);
+            entity.Ignore(e => e.TotalEmployeeTax);
+            entity.Ignore(e => e.TotalDeductions);
+            entity.Ignore(e => e.TotalNet);
+            entity.Ignore(e => e.TotalEmployerTax);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.Status);
+            entity.HasMany(e => e.Lines).WithOne().HasForeignKey(l => l.PayrollRunId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PayrollRunLine>(entity =>
+        {
+            entity.ToTable("PayrollRunLines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RegularHours).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OvertimeHours).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RegularRate).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OvertimeRate).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.GrossPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.EmployeeTax).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Deductions).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.EmployerTax).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.NetPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PrevailingWageRate).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.FringeRate).HasColumnType("decimal(18,2)");
+            entity.Ignore(e => e.FringeCost);
+            entity.Ignore(e => e.TotalPrevailingRate);
+            entity.Property(e => e.TradeClassification).HasMaxLength(100);
+            entity.HasIndex(e => e.PayrollRunId);
+            entity.HasIndex(e => e.EmployeeId);
         });
     }
 }
