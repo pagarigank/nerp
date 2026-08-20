@@ -183,6 +183,8 @@ import { ManualChecksPage } from '@pages/payroll/ManualChecksPage'
 import { ReportsPage as PayrollReportsPage } from '@pages/payroll/ReportsPage'
 import { GarnishmentsPage } from '@pages/payroll/GarnishmentsPage'
 import { SetupPage } from '@pages/payroll/SetupPage'
+import { FieldServiceLayout } from '@pages/field-service/FieldServiceLayout'
+import { FieldServicePage } from '@pages/field-service/FieldServicePage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -414,7 +416,22 @@ function App() {
           <Route path="garnishments" element={<GarnishmentsPage />} />
           <Route path="setup" element={<SetupPage />} />
         </Route>
-        <Route path="field-service/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Field Service</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
+        <Route path="field-service" element={<FieldServiceLayout />}>
+          <Route index element={<FieldServicePage />} />
+          <Route path="work-orders" element={<FieldServicePage />} />
+          <Route path="dispatch" element={<FieldServicePage />} />
+          <Route path="technicians" element={<FieldServicePage />} />
+          <Route path="contracts" element={<FieldServicePage />} />
+          <Route path="equipment" element={<FieldServicePage />} />
+          <Route path="slas" element={<FieldServicePage />} />
+          <Route path="territories" element={<FieldServicePage />} />
+          <Route path="rate-cards" element={<FieldServicePage />} />
+          <Route path="estimates" element={<FieldServicePage />} />
+          <Route path="pm" element={<FieldServicePage />} />
+          <Route path="van-stock" element={<FieldServicePage />} />
+          <Route path="warranty" element={<FieldServicePage />} />
+          <Route path="reports" element={<FieldServicePage />} />
+        </Route>
         <Route path="reporting/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Reporting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
       </Route>

@@ -1660,6 +1660,33 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 
 ---
 
+## Phase 12 (Field Service) — BUILT 2026-08-20 ✅
+
+Full-stack Field Service Management module implemented and verified live.
+
+### Backend (`src/Modules/ERP.Modules.FieldService/`)
+- [x] Domain entities: ServiceContract, EquipmentAsset, Technician, SkillCertification, SlaDefinition, ServiceTerritory, ServiceRateCard, Estimate, PreventiveMaintenance, VanStock, ServiceCall, WorkOrder (+ WorkOrderLine) — `AuditableEntity` base, explicit `CompanyId`.
+- [x] `FieldServiceDbContext` (schema `fs`) + `InitialFieldService` EF migration (+ `AddSlaBreachedToWorkOrder`).
+- [x] `FieldServiceMastersController` — CRUD for contracts, equipment, technicians, skills, SLAs, territories, rate cards, PM schedules, van stock (issue/receive), warranty claims, service-call intake.
+- [x] `WorkOrderController` — create/dispatch/schedule/clock-in/clock-out/add-line/complete/close/cancel; estimate approve + convert→WO.
+- [x] `FieldServiceReportsController` — 5 reports: SLA compliance, technician utilization, open-WO aging, contract status, PM due.
+- [x] Cross-module wiring (`FieldServiceIntegration`, HTTP + forwarded bearer): parts issue → Inventory; completed WO → AR standalone invoice + Payroll timesheet. Background job generates PM work orders + flags SLA breaches.
+- [x] Registered in `Program.cs` + `ModuleExtensions` (DbContext, HttpClient, hosted job).
+
+### Frontend (`frontend/src/`)
+- [x] `api/fieldService.ts` — typed API client mirroring payroll patterns.
+- [x] `pages/field-service/FieldServicePage.tsx` — 13-tab page: Work Orders (+detail w/ dispatch/clock/lines/complete/close/cancel), Dispatch Board, Technicians, Contracts, Equipment, SLAs, Territories, Rate Cards, Estimates (approve/convert), PM Schedules, Van Stock, Warranty, Reports.
+- [x] `pages/field-service/FieldServiceLayout.tsx`, `navigation.tsx` sub-items, `App.tsx` route wiring.
+
+### Verification
+- [x] Full solution builds clean (0 errors); FSM module + entire sln `dotnet build` → 0 Error(s).
+- [x] Vite production build → 2086 modules transformed, EXIT=0.
+- [x] `tsc -b` clean for all FSM files (pre-existing `exactOptionalPropertyTypes` errors exist only in untouched ap/purchasing/bom files).
+- [x] Live API: work-orders list (6 rows), SLA report (1 row), technician create → all `isSuccess=True`; `/field-service` SPA route → HTTP 200.
+- [x] Cross-module calls fire correctly (AR invoice created, Payroll timesheet created). NOTE: `BilledToAr` flip on WO-complete depends on AR→GL journal posting, which requires platform chart-of-accounts seeding (pre-existing gap affecting ALL AR invoicing, not FSM). Deferred to platform work.
+
+---
+
 ## Cross-Cutting "Definition of Done" checklist (apply to every transactional endpoint above)
 - [ ] Input validation + meaningful error responses (matches shared error envelope)
 - [ ] Authorization check (role + field-level where applicable)
