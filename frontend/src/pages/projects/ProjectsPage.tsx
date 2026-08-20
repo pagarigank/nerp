@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FolderKanban, Plus, Pencil, Trash2, DollarSign } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
@@ -45,8 +46,10 @@ const PCT = (v: number) => `${v.toFixed(1)}%`
 
 export function ProjectsPage() {
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const sectionParam = searchParams.get('section') as 'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis' | null
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders'>('overview')
+  const [tab, setTab] = useState<'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis'>(sectionParam ?? 'overview')
   const [showCreate, setShowCreate] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -64,6 +67,17 @@ export function ProjectsPage() {
   const customerMap = useMemo(() => Object.fromEntries((customers as any[]).map((c: any) => [c.id, c])), [customers])
 
   const selectedProject = (projects as ProjectSummary[]).find((p: ProjectSummary) => p.id === selectedId)
+
+  // Deep-linking: when a sub-menu item sets ?section=, switch the active detail tab to it,
+  // and if no project is selected yet, open the first project so the section actually renders.
+  useEffect(() => {
+    if (sectionParam) {
+      setTab(sectionParam)
+      if (!selectedId && (projects as ProjectSummary[]).length > 0) {
+        setSelectedId((projects as ProjectSummary[])[0].id)
+      }
+    }
+  }, [sectionParam, projects, selectedId])
 
   const createMutation = useMutation({
     mutationFn: createProject,

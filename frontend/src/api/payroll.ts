@@ -179,6 +179,16 @@ export function getLaborDistribution(companyId: string, year?: number) {
 export function getGarnishmentRegister(companyId: string) {
   return get('/payroll/reports/garnishment-register', { companyId })
 }
+// --- Garnishments (CCPA) ---
+export function createGarnishment(data: any) {
+  return post('/payroll/garnishments', data)
+}
+export function getGarnishmentsForEmployee(employeeId: string) {
+  return get(`/payroll/garnishments/employee/${employeeId}`)
+}
+export function computeGarnishments(employeeId: string, disposableIncome: number) {
+  return post(`/payroll/garnishments/employee/${employeeId}/compute`, { disposableIncome })
+}
 export function getWageBaseReport(companyId: string, year: number) {
   return get('/payroll/reports/wage-base', { companyId, year })
 }

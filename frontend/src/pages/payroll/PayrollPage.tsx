@@ -2,6 +2,7 @@
 // timesheets (with PA project validation + labor dual-post), payroll runs (draft/post/
 // accrue/reverse + certified payroll report), and garnishments (CCPA).
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { UserCheck, Clock, CalendarRange, FileSpreadsheet, Scale, BadgeDollarSign, Plus } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
@@ -32,41 +33,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
 
 type Tab = 'employees' | 'paycodes' | 'union' | 'timesheets' | 'runs' | 'expenses' | 'tax' | 'deductions' | 'pto' | 'manual' | 'reports' | 'garnishments'
+const TABS: Tab[] = ['employees', 'paycodes', 'union', 'timesheets', 'runs', 'expenses', 'tax', 'deductions', 'pto', 'manual', 'reports', 'garnishments']
 
 export function PayrollPage() {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<Tab>('employees')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as Tab | null
+  const tab: Tab = tabParam && TABS.includes(tabParam) ? tabParam : 'employees'
+  const setTab = (key: Tab) => setSearchParams(key === 'employees' ? {} : { tab: key })
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <BadgeDollarSign className="h-6 w-6 text-indigo-600" />
         <h1 className="text-2xl font-semibold">Payroll</h1>
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-b">
-        {([
-          ['employees', 'Employees', UserCheck],
-          ['paycodes', 'Pay Codes', FileSpreadsheet],
-          ['union', 'Union / Certified', Scale],
-          ['timesheets', 'Timesheets', Clock],
-          ['runs', 'Runs & Checks', CalendarRange],
-          ['expenses', 'Expenses', FileSpreadsheet],
-          ['tax', 'Tax / W-4', Scale],
-          ['deductions', 'Deductions', FileSpreadsheet],
-          ['pto', 'PTO', Clock],
-          ['manual', 'Manual Checks', BadgeDollarSign],
-          ['reports', 'Reports', FileSpreadsheet],
-          ['garnishments', 'Garnishments', Scale],
-        ] as [Tab, string, any][]).map(([key, label, Icon]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex items-center gap-1 px-3 py-2 text-sm border-b-2 ${tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500'}`}
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </button>
-        ))}
       </div>
 
       {tab === 'employees' && <EmployeesTab qc={queryClient} />}
@@ -357,17 +337,36 @@ function TaxTab({ qc }: { qc: any }) {
 }
 
 function DeductionsTab({ qc }: { qc: any }) {
+  const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ description: '', deductionType: '0', isPercent: false, percentRate: '0', flatAmount: '0', glAccountNumber: '2200' })
   const { data: items = [] } = useQuery({ queryKey: ['payroll', 'deductions'], queryFn: () => getDeductionBenefits() })
-  const createMut = useMutation({ mutationFn: () => createDeductionBenefit({ companyId: currentCompanyId(), description: form.description, deductionType: Number(form.deductionType), isPercent: form.isPercent, percentRate: Number(form.percentRate), flatAmount: Number(form.flatAmount), glAccountNumber: form.glAccountNumber }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'deductions'] }) })
+  const createMut = useMutation({
+    mutationFn: () => createDeductionBenefit({
+      companyId: currentCompanyId(),
+      code: (form.description || 'DB').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'DB',
+      description: form.description,
+      type: Number(form.deductionType),
+      isPreTax: form.deductionType === '0',
+      defaultRate: form.isPercent ? Number(form.percentRate) : Number(form.flatAmount),
+      glAccountNumber: form.glAccountNumber,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll', 'deductions'] }); setOpen(false) },
+  })
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><Button onClick={() => createMut.mutate()} disabled={createMut.isPending}><Plus className="h-4 w-4" /> New Deduction/Benefit</Button></div>
-      <DataTable columns={[{ key: 'description', header: 'Description' }, { key: 'deductionType', header: 'Type' }, { key: 'isPercent', header: '%?', render: (r: any) => (r.isPercent ? 'Yes' : 'No') }, { key: 'glAccountNumber', header: 'GL' }]} data={items as any[]} />
-      <Modal isOpen={createMut.isIdle} onClose={() => {}} title="New Deduction/Benefit">
+      <div className="flex justify-end"><Button onClick={() => setOpen(true)} disabled={createMut.isPending}><Plus className="h-4 w-4" /> New Deduction/Benefit</Button></div>
+      <DataTable columns={[
+        { key: 'description', header: 'Description' },
+        { key: 'type', header: 'Type' },
+        { key: 'isPreTax', header: 'Pre-Tax?', render: (v: any) => (v ? 'Yes' : 'No') },
+        { key: 'defaultRate', header: 'Rate' },
+        { key: 'glAccountNumber', header: 'GL' },
+      ]} data={items as any[]} />
+      <Modal isOpen={open} onClose={() => setOpen(false)} title="New Deduction/Benefit">
         <div className="space-y-2">
           <Input label="Description" value={form.description} onChange={(e: any) => setForm({ ...form, description: e.target.value })} />
           <Select label="Type" value={form.deductionType} onChange={(e: any) => setForm({ ...form, deductionType: e.target.value })} options={[{ value: '0', label: 'Pre-Tax' }, { value: '1', label: 'Post-Tax' }, { value: '2', label: 'Employer' }]} />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isPercent} onChange={(e: any) => setForm({ ...form, isPercent: e.target.checked })} /> Rate is a percent</label>
           <Input type="number" label="Percent Rate" value={form.percentRate} onChange={(v: any) => setForm({ ...form, percentRate: v })} />
           <Input type="number" label="Flat Amount" value={form.flatAmount} onChange={(v: any) => setForm({ ...form, flatAmount: v })} />
           <Input label="GL Account" value={form.glAccountNumber} onChange={(e: any) => setForm({ ...form, glAccountNumber: e.target.value })} />
