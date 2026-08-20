@@ -711,6 +711,90 @@ public class BomHeaderController : ControllerBase
         }));
     }
 
+    /// <summary>Adds a co-product / by-product to a BOM header (joint production output with a cost-split percentage).</summary>
+    /// <param name="id">The BOM header identifier.</param>
+    /// <param name="request">The co-product definition.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The new co-product identifier.</returns>
+    [HttpPost("{id:guid}/co-products")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AddCoProduct(
+        Guid id, [FromBody] AddCoProductRequest request, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders.FindAsync(new object[] { id }, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var type = request.CoProductType switch
+        {
+            "ByProduct" => CoProductType.ByProduct,
+            _ => CoProductType.CoProduct,
+        };
+
+        var co = header.AddCoProduct(
+            request.ItemId, type, request.QuantityPerBuild, request.UnitOfMeasure, request.CostSplitPercentage, request.Description);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(co.Id));
+    }
+
+    [HttpGet("{id:guid}/co-products")]
+    public async Task<ActionResult<ApiResponse<List<BomCoProductDto>>>> GetCoProducts(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.CoProducts)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var dtos = header.CoProducts.Select(c => new BomCoProductDto
+        {
+            Id = c.Id,
+            ItemId = c.ItemId,
+            CoProductType = c.CoProductType.ToString(),
+            QuantityPerBuild = c.QuantityPerBuild,
+            UnitOfMeasure = c.UnitOfMeasure,
+            CostSplitPercentage = c.CostSplitPercentage,
+            Description = c.Description,
+        }).ToList();
+
+        return Ok(ApiResponse<List<BomCoProductDto>>.Success(dtos));
+    }
+
+    /// <summary>Allocates a joint production cost across co/by-products by their cost-split percentages.</summary>
+    /// <param name="id">The BOM header identifier.</param>
+    /// <param name="request">The joint cost to allocate.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The allocated cost per co/by-product.</returns>
+    [HttpPost("{id:guid}/co-products/cost-split")]
+    public async Task<ActionResult<ApiResponse<BomCoProductCostSplitDto>>> AllocateCoProductCost(
+        Guid id, [FromBody] BomCoProductCostSplitRequest request, CancellationToken cancellationToken)
+    {
+        var header = await _context.BomHeaders
+            .Include(h => h.CoProducts)
+            .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
+        if (header is null)
+            return NotFound(ApiResponse.Failure(new[] { "BOM header not found." }, 404));
+
+        var rows = header.CoProducts.Select(c => new BomCoProductCostSplitRowDto
+        {
+            CoProductId = c.Id,
+            ItemId = c.ItemId,
+            CoProductType = c.CoProductType.ToString(),
+            CostSplitPercentage = c.CostSplitPercentage,
+            AllocatedCost = c.AllocateCost(request.JointCost),
+        }).ToList();
+
+        var totalSplit = rows.Sum(r => r.CostSplitPercentage);
+
+        return Ok(ApiResponse<BomCoProductCostSplitDto>.Success(new BomCoProductCostSplitDto
+        {
+            BomHeaderId = id,
+            JointCost = request.JointCost,
+            TotalCostSplitPercentage = totalSplit,
+            Rows = rows,
+        }));
+    }
+
     // --- Mapping Helpers ---
     private static BomSubstitutionDto MapSubstitution(BomComponentSubstitution s) => new ()
     {
@@ -1057,4 +1141,49 @@ public class WhatIfSimulationDto
 public class SuggestRequisitionsRequest
 {
     public decimal PlannedQuantity { get; set; }
+}
+
+public class AddCoProductRequest
+{
+    public Guid ItemId { get; set; }
+    public string CoProductType { get; set; } = "CoProduct";
+    public decimal QuantityPerBuild { get; set; }
+    public string UnitOfMeasure { get; set; } = "EA";
+    public decimal? CostSplitPercentage { get; set; }
+    public string? Description { get; set; }
+}
+
+public class BomCoProductDto
+{
+    public Guid Id { get; set; }
+    public Guid ItemId { get; set; }
+    public string CoProductType { get; set; } = string.Empty;
+    public decimal QuantityPerBuild { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public decimal CostSplitPercentage { get; set; }
+    public string? Description { get; set; }
+}
+
+public class BomCoProductCostSplitRequest
+{
+    public decimal JointCost { get; set; }
+}
+
+#pragma warning disable CA1002, CA2227
+public class BomCoProductCostSplitDto
+{
+    public Guid BomHeaderId { get; set; }
+    public decimal JointCost { get; set; }
+    public decimal TotalCostSplitPercentage { get; set; }
+    public List<BomCoProductCostSplitRowDto> Rows { get; set; } = [];
+}
+#pragma warning restore CA1002, CA2227
+
+public class BomCoProductCostSplitRowDto
+{
+    public Guid CoProductId { get; set; }
+    public Guid ItemId { get; set; }
+    public string CoProductType { get; set; } = string.Empty;
+    public decimal CostSplitPercentage { get; set; }
+    public decimal AllocatedCost { get; set; }
 }

@@ -675,7 +675,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **What-if BOM cost simulation** (change component cost/qty, see parent cost impact before commit) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/bom-headers/{id}/what-if computes current vs simulated material cost with overrides; verified (cost 80 -> 1998 on override, delta +1918)]
 - [x] **BOM → requisition suggestion** (component shortage on planned builds → purchasing requisition for component items, reusing Phase 6 requisition API) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/bom-headers/{id}/suggest-requisitions; one-way BOM->Purchasing ref + RequisitionSuggester creates draft requisition for shortfall; verified (shortfall 173 -> pur.Requisitions BOM-... created)]
 - [x] **Backflush component consumption** (post-production auto-consume standard component qty vs. manual issue; variance to standard) [GAP-2026-08-18] [built 2026-08-19 — POST /bom/build-orders/{id}/backflush issues standard qty via InventoryTransaction + dispatches dual-posting event, records BackflushRecord with standard/actual/variance; verified (built 10 -> issue -20, record persisted)]
-- [ ] **Co-product/by-product handling** (assembly produces parent + by-products with cost split) [GAP-2026-08-18]
+- [x] **Co-product/by-product handling** (assembly produces parent + by-products with cost split) [GAP-2026-08-18] [built 2026-08-20 — BomCoProduct/BomCoProductCost entities + BomHeader.AddCoProduct; POST/GET /bom/bom-headers/{id}/co-products + POST .../cost-split (joint cost allocation); verified (25% of 1000 = 250)]
 
 ### Background Jobs
 - [ ] Nightly BOM validation (check for circular references, inactive components, cost anomalies)
@@ -813,11 +813,11 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Budget vs. Actual variance analysis** (by task, by category, by period; favorable/unfavorable variance) [built 2026-08-19 — analysis/budget-vs-actual + verified]
 - [x] **Earned Value Analysis (EVA)** (BCWS, BCWP, ACWP, SPI, CPI calculations for government contracts) [built 2026-08-19 — analysis/forecast SPI/CPI + verified]
 - [ ] **Profit fade / estimate-at-complete trend** (original vs. current estimate, margin erosion by period, per-project and portfolio) [GAP-2026-08-18]
-- [ ] **Project cash-flow forecast** (expected billings vs. cost burn vs. retainage release by period — feeds Cash Management forecast) [GAP-2026-08-18]
+- [x] **Project cash-flow forecast** (expected billings vs. cost burn vs. retainage release by period — feeds Cash Management forecast) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/cash-flow-forecast (expected billings, remaining cost-to-complete, retainage held, net cash flow); verified]
 
 ### Transactional - Reconciliation & Close
 - [x] **Project-to-GL reconciliation check** (CRITICAL gate: project ledger balance = GL balance, must net to zero variance) [built 2026-08-20 — GET /projects/{id}/analysis/reconcile compares project ledger posted cost vs GL PROJECT-segment debit sum, returns variance + isBalanced; verified (variance 2051 shown on d2ce8c99)]
-- [ ] **Period-end project close checklist** (all costs posted, all time approved, billing up-to-date, reconciliation complete)
+- [x] **Period-end project close checklist** (all costs posted, all time approved, billing up-to-date, reconciliation complete) [built 2026-08-20 — GET /projects/{id}/analysis/period-end-close (costs posted / billing / reconcile / reviewed); verified]
 - [x] **Project close-out** (final billing, release retention, final cost adjustments, lock project, archive) [built 2026-08-20 — POST /projects/{id}/close-out calls Project.CompleteCloseOut (requires RetainageHeld=0 + Status=Completed), sets IsCloseOutComplete + Status=Closed; verified guard]
 - [ ] **Certified payroll reporting** (government projects: Davis-Bacon, prevailing wage, union reporting)
 - [ ] **Prevailing-wage validation** (labor postings: validate wage ≥ prevailing rate for trade/jurisdiction)

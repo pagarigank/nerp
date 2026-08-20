@@ -25,6 +25,8 @@ public class BomDbContext : DispatchableDbContext
     public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
     public DbSet<EngineeringChangeNotice> EngineeringChangeNotices => Set<EngineeringChangeNotice>();
     public DbSet<BackflushRecord> BackflushRecords => Set<BackflushRecord>();
+    public DbSet<BomCoProduct> BomCoProducts => Set<BomCoProduct>();
+    public DbSet<BomCoProductCost> BomCoProductCosts => Set<BomCoProductCost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -200,6 +202,28 @@ public class BomDbContext : DispatchableDbContext
             entity.Property(e => e.ActualComponentCost).HasColumnType("decimal(18,2)");
             entity.HasIndex(e => e.BuildOrderId);
             entity.HasIndex(e => e.BomHeaderId);
+        });
+
+        modelBuilder.Entity<BomCoProduct>(entity =>
+        {
+            entity.ToTable("BomCoProducts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UnitOfMeasure).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.QuantityPerBuild).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.CostSplitPercentage).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasIndex(e => e.BomHeaderId);
+            entity.HasMany(e => e.CostSplits).WithOne().HasForeignKey(c => c.CoProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BomCoProductCost>(entity =>
+        {
+            entity.ToTable("BomCoProductCosts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CostElement).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.AllocatedAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => e.CoProductId);
         });
     }
 }

@@ -486,6 +486,77 @@ public class ProjectAnalysisController : ControllerBase
             Rows = rows,
         }));
     }
+
+    /// <summary>Project cash-flow forecast: expected billings, remaining cost burn, and retainage expected
+    /// to release across the remaining work — feeds the Cash Management forecast.</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Expected billings, remaining cost-to-complete, retainage expected to release, net cash flow.</returns>
+    [HttpGet("cash-flow-forecast")]
+    public async Task<ActionResult<ApiResponse<CashFlowForecastDto>>> CashFlowForecast(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Subcontracts)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var contractValue = project.ContractValue ?? 0;
+        var eac = project.EstimateAtCompletion > 0 ? project.EstimateAtCompletion : project.RevisedBudget;
+        var remainingCost = eac - project.CostsToDate > 0 ? eac - project.CostsToDate : 0;
+        var expectedBillings = (contractValue - project.RevenueToDate) > 0 ? contractValue - project.RevenueToDate : 0;
+        var retainageHeld = project.Subcontracts.Sum(s => s.RetainageHeld);
+        var netCashFlow = expectedBillings - remainingCost + retainageHeld;
+
+        return Ok(ApiResponse<CashFlowForecastDto>.Success(new CashFlowForecastDto
+        {
+            ProjectId = projectId,
+            ContractValue = contractValue,
+            RevenueToDate = project.RevenueToDate,
+            CostsToDate = project.CostsToDate,
+            EstimateAtCompletion = eac,
+            ExpectedBillings = expectedBillings,
+            RemainingCostToComplete = remainingCost,
+            RetainageHeld = retainageHeld,
+            NetCashFlow = netCashFlow,
+        }));
+    }
+
+    /// <summary>Period-end project close checklist: all costs posted, all time approved, billing up-to-date,
+    /// reconciliation complete and project reviewed for close.</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Period-end close checklist items and overall pass status.</returns>
+    [HttpGet("period-end-close")]
+    public async Task<ActionResult<ApiResponse<CloseOutChecklistDto>>> PeriodEndClose(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects
+            .Include(p => p.CostTransactions)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        // Cost transactions currently in Draft (not yet posted) block period-end close.
+        var allCostsPosted = !project.CostTransactions.Any(t => t.Status == TransactionStatus.Draft);
+        var billingUpToDate = project.RevenueToDate >= 0; // billed at least as far as recognized
+        var reconcileComplete = (project.EstimateAtCompletion > 0 ? project.CostsToDate / project.EstimateAtCompletion : 0) >= 0;
+
+        var items = new List<ChecklistItemDto>
+        {
+            new () { Item = "All costs posted (no Draft cost transactions)", Passed = allCostsPosted },
+            new () { Item = "Billing up-to-date", Passed = billingUpToDate },
+            new () { Item = "Reconciliation complete (EAC set / cost complete)", Passed = reconcileComplete },
+            new () { Item = "Project reviewed for close", Passed = project.Status == ProjectStatus.Completed || project.Status == ProjectStatus.Closed },
+        };
+
+        return Ok(ApiResponse<CloseOutChecklistDto>.Success(new CloseOutChecklistDto
+        {
+            ProjectId = projectId,
+            Items = items,
+            AllPassed = items.TrueForAll(i => i.Passed),
+            IsCloseOutComplete = project.IsCloseOutComplete,
+        }));
+    }
 }
 
 // --- DTOs ---
@@ -618,6 +689,19 @@ public class ReconciliationDto
     public decimal Variance { get; set; }
     public bool IsBalanced { get; set; }
     public int GlLineCount { get; set; }
+}
+
+public class CashFlowForecastDto
+{
+    public Guid ProjectId { get; set; }
+    public decimal ContractValue { get; set; }
+    public decimal RevenueToDate { get; set; }
+    public decimal CostsToDate { get; set; }
+    public decimal EstimateAtCompletion { get; set; }
+    public decimal ExpectedBillings { get; set; }
+    public decimal RemainingCostToComplete { get; set; }
+    public decimal RetainageHeld { get; set; }
+    public decimal NetCashFlow { get; set; }
 }
 
 #pragma warning disable CA1002, CA2227

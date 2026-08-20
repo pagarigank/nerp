@@ -13,6 +13,7 @@ public class BomHeader : AuditableEntity
     private readonly List<BomComponentSubstitution> _substitutions = [];
     private readonly List<ComponentAllocation> _allocations = [];
     private readonly List<EngineeringChangeNotice> _ecns = [];
+    private readonly List<BomCoProduct> _coProducts = [];
 
     protected BomHeader() { }
 
@@ -63,6 +64,7 @@ public class BomHeader : AuditableEntity
     public IReadOnlyCollection<BomComponentSubstitution> Substitutions => _substitutions.AsReadOnly();
     public IReadOnlyCollection<ComponentAllocation> Allocations => _allocations.AsReadOnly();
     public IReadOnlyCollection<EngineeringChangeNotice> EngineeringChangeNotices => _ecns.AsReadOnly();
+    public IReadOnlyCollection<BomCoProduct> CoProducts => _coProducts.AsReadOnly();
 
     public void Update(
         string? description,
@@ -171,5 +173,25 @@ public class BomHeader : AuditableEntity
         var ecn = new EngineeringChangeNotice(companyId, Id, ecnNumber, title, description, plannedEffectivity);
         _ecns.Add(ecn);
         return ecn;
+    }
+
+    public BomCoProduct AddCoProduct(
+        Guid itemId,
+        CoProductType coProductType,
+        decimal quantityPerBuild,
+        string unitOfMeasure,
+        decimal? costSplitPercentage = null,
+        string? description = null)
+    {
+        var co = new BomCoProduct(Id, itemId, coProductType, quantityPerBuild, unitOfMeasure, costSplitPercentage, description);
+        _coProducts.Add(co);
+        return co;
+    }
+
+    public void RemoveCoProduct(Guid coProductId)
+    {
+        var co = _coProducts.FirstOrDefault(c => c.Id == coProductId);
+        if (co is not null)
+            _coProducts.Remove(co);
     }
 }
