@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Core.Common;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -14,18 +15,24 @@ namespace ERP.Modules.Purchasing.Api;
 [Route("api/v1/purchasing/purchase-orders")]
 public class PurchaseOrderController : ControllerBase
 {
-    private readonly IRepository<PurchaseOrder> _poRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrder> _poRepository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IUnitOfWork _unitOfWork;
     private readonly PurchasingDbContext _context;
+    private readonly IPurchaseOrderService _poService;
+    private readonly IProjectCostValidation _projectCostValidation;
 
     public PurchaseOrderController(
-        IRepository<PurchaseOrder> poRepository,
-        IUnitOfWork unitOfWork,
-        PurchasingDbContext context)
+        ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrder> poRepository,
+        ERP.Modules.Purchasing.Infrastructure.IUnitOfWork unitOfWork,
+        PurchasingDbContext context,
+        IPurchaseOrderService poService,
+        IProjectCostValidation projectCostValidation)
     {
         _poRepository = poRepository;
         _unitOfWork = unitOfWork;
         _context = context;
+        _poService = poService;
+        _projectCostValidation = projectCostValidation;
     }
 
     [HttpGet]
@@ -185,6 +192,20 @@ public class PurchaseOrderController : ControllerBase
         if (po == null)
         {
             return NotFound(ApiResponse<PurchaseOrderDto>.Failure(["Purchase order not found."]));
+        }
+
+        // Validate project budgets for any project-charged lines via the shared cross-module contract.
+        var projectLines = po.Lines.Where(l => l.ProjectId.HasValue).ToList();
+        foreach (var line in projectLines)
+        {
+            var proposedAmount = line.GetExtendedPrice();
+            var result = await _projectCostValidation.ValidateAsync(
+                po.CompanyId, line.ProjectId, line.TaskId, proposedAmount, cancellationToken);
+
+            if (!result.IsValid)
+            {
+                return BadRequest(ApiResponse<PurchaseOrderDto>.Failure(new[] { result.Message ?? "Project budget exceeded." }));
+            }
         }
 
         po.Approve(request.ApprovedById);

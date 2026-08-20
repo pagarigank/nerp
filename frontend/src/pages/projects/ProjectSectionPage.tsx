@@ -10,7 +10,7 @@ import { getCustomers } from '@api/ar'
 import type { ProjectSummary } from '@/types/projectAccounting'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
-const PCT = (v: number) => `${v.toFixed(1)}%`
+const PCT = (v?: number | null) => (v != null && !Number.isNaN(v) ? `${v.toFixed(1)}%` : '—')
 
 export function ProjectSectionPage({ children, title }: { children: (props: { project: ProjectSummary; setError: (e: string | null) => void; queryClient: any }) => React.ReactNode; title: string }) {
   const queryClient = useQueryClient()

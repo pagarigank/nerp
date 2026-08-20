@@ -15,15 +15,15 @@ namespace ERP.Modules.Purchasing.Api;
 [Route("api/v1/purchasing/receipts")]
 public class ReceiptController : ControllerBase
 {
-    private readonly IRepository<Receipt> _receiptRepository;
-    private readonly IRepository<PurchaseOrder> _poRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<Receipt> _receiptRepository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrder> _poRepository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IUnitOfWork _unitOfWork;
     private readonly PurchasingDbContext _context;
 
     public ReceiptController(
-        IRepository<Receipt> receiptRepository,
-        IRepository<PurchaseOrder> poRepository,
-        IUnitOfWork unitOfWork,
+        ERP.Modules.Purchasing.Infrastructure.IRepository<Receipt> receiptRepository,
+        ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrder> poRepository,
+        ERP.Modules.Purchasing.Infrastructure.IUnitOfWork unitOfWork,
         PurchasingDbContext context)
     {
         _receiptRepository = receiptRepository;
@@ -192,7 +192,29 @@ public class ReceiptController : ControllerBase
                         var poLine = po.Lines.FirstOrDefault(l => l.Id == receiptLine.PurchaseOrderLineId.Value);
                         if (poLine != null)
                         {
-                            poLine.UpdateQuantityReceived(receiptLine.QuantityReceived);
+                            try
+                            {
+                                poLine.UpdateQuantityReceived(receiptLine.QuantityReceived);
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                // Over-receipt exceeded tolerance - record for approval.
+                                var orderedQty = poLine.Quantity;
+                                var receivedQty = poLine.QuantityReceived + receiptLine.QuantityReceived;
+                                var tolerance = 0.05m;
+
+                                var overReceiptApproval = new OverReceiptApproval(
+                                    receipt.CompanyId,
+                                    receipt.Id,
+                                    receipt.ReceiptNumber,
+                                    po.Id,
+                                    poLine.Id,
+                                    orderedQty,
+                                    receivedQty,
+                                    tolerance);
+
+                                _context.OverReceiptApprovals.Add(overReceiptApproval);
+                            }
                         }
                     }
                 }

@@ -3,6 +3,7 @@
 // </copyright>
 
 using ERP.Core.Domain.Common;
+using ERP.Modules.Purchasing.Domain.Events;
 
 namespace ERP.Modules.Purchasing.Domain.Entities;
 
@@ -130,4 +131,258 @@ public enum VendorQuoteStatus
     Received = 1,
     Awarded = 2,
     Rejected = 3,
+}
+
+/// <summary>
+/// A goods receipt entered without a purchase order, for example an invoice
+/// received first (IFU) or a miscellaneous charge. Such receipts require
+/// explicit approval before posting so they can be tied to a cost center /
+/// project budget (spec §6: Receipt-without-PO workflow).
+/// </summary>
+public class ReceiptWithoutPO : AuditableAggregateRoot
+{
+    private readonly List<ReceiptWithoutPOLine> _lines = [];
+
+    protected ReceiptWithoutPO() { }
+
+    public ReceiptWithoutPO(
+        string receiptNumber,
+        Guid companyId,
+        Guid vendorId,
+        DateTime receivedDate,
+        string? receivedBy,
+        string? packingSlipNumber,
+        string? notes)
+        : base(Guid.NewGuid())
+    {
+        if (string.IsNullOrWhiteSpace(receiptNumber))
+            throw new ArgumentException("Receipt number is required.", nameof(receiptNumber));
+
+        ReceiptNumber = receiptNumber;
+        CompanyId = companyId;
+        VendorId = vendorId;
+        ReceivedDate = receivedDate;
+        ReceivedBy = receivedBy;
+        PackingSlipNumber = packingSlipNumber;
+        Notes = notes;
+        Status = ReceiptWithoutPOStatus.Draft;
+    }
+
+    public string ReceiptNumber { get; private set; } = string.Empty;
+    public Guid CompanyId { get; private set; }
+    public Guid VendorId { get; private set; }
+    public DateTime ReceivedDate { get; private set; }
+    public string? ReceivedBy { get; private set; }
+    public string? PackingSlipNumber { get; private set; }
+    public string? Notes { get; private set; }
+    public ReceiptWithoutPOStatus Status { get; private set; }
+    public DateTime? PostedDate { get; private set; }
+    public bool IsReversed { get; private set; }
+    public DateTime? ReversedDate { get; private set; }
+    public string? ReversalReason { get; private set; }
+    public Guid? ApprovalRequestId { get; private set; }
+
+    public IReadOnlyList<ReceiptWithoutPOLine> Lines => _lines.AsReadOnly();
+
+    public void AddLine(ReceiptWithoutPOLine line)
+    {
+        if (Status != ReceiptWithoutPOStatus.Draft)
+            throw new InvalidOperationException($"Cannot add lines to a receipt in {Status} status.");
+        _lines.Add(line);
+    }
+
+    public void MarkPendingApproval(Guid approvalRequestId)
+    {
+        if (Status != ReceiptWithoutPOStatus.Draft)
+            throw new InvalidOperationException($"Cannot submit a receipt in {Status} status.");
+        if (_lines.Count == 0)
+            throw new InvalidOperationException("Cannot submit a receipt with no lines.");
+
+        ApprovalRequestId = approvalRequestId;
+        Status = ReceiptWithoutPOStatus.PendingApproval;
+    }
+
+    public void Post()
+    {
+        if (Status != ReceiptWithoutPOStatus.Approved)
+            throw new InvalidOperationException($"Cannot post receipt in {Status} status.");
+
+        if (_lines.Count == 0)
+            throw new InvalidOperationException("Cannot post receipt with no lines.");
+
+        Status = ReceiptWithoutPOStatus.Posted;
+        PostedDate = DateTime.UtcNow;
+
+        var lines = _lines
+            .Select(l => new GoodsReceivedLine
+            {
+                ReceiptLineId = l.Id,
+                PurchaseOrderLineId = null,
+                ItemId = l.ItemId,
+                Description = l.Description,
+                QuantityReceived = l.QuantityReceived,
+                UnitOfMeasure = l.UnitOfMeasure,
+                ProjectId = l.ProjectId,
+                TaskId = l.TaskId,
+            })
+            .ToList();
+
+        AddDomainEvent(new GoodsReceivedEvent(
+            Id, ReceiptNumber, CompanyId, null, VendorId, ReceivedDate, lines));
+    }
+
+    public void Approve(Guid approvedById)
+    {
+        if (Status != ReceiptWithoutPOStatus.PendingApproval)
+            throw new InvalidOperationException($"Cannot approve receipt in {Status} status.");
+
+        Status = ReceiptWithoutPOStatus.Approved;
+    }
+
+    public decimal GetTotalAmount() => Math.Round(_lines.Sum(l => l.ExtendedAmount), 2, MidpointRounding.AwayFromZero);
+
+    public void Reverse(string reason)
+    {
+        if (Status != ReceiptWithoutPOStatus.Posted)
+            throw new InvalidOperationException("Only posted receipts can be reversed.");
+
+        if (IsReversed)
+            throw new InvalidOperationException("Receipt is already reversed.");
+
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Reversal reason is required.", nameof(reason));
+
+        IsReversed = true;
+        ReversedDate = DateTime.UtcNow;
+        ReversalReason = reason;
+        Status = ReceiptWithoutPOStatus.Reversed;
+    }
+}
+
+public enum ReceiptWithoutPOStatus
+{
+    Draft = 0,
+    PendingApproval = 1,
+    Approved = 2,
+    Posted = 3,
+    Reversed = 4,
+}
+
+public class ReceiptWithoutPOLine : AuditableEntity
+{
+    protected ReceiptWithoutPOLine() { }
+
+    public ReceiptWithoutPOLine(
+        Guid receiptId,
+        int lineNumber,
+        string? itemId,
+        string description,
+        decimal quantityReceived,
+        string unitOfMeasure,
+        decimal unitPrice,
+        Guid? accountId,
+        Guid? projectId,
+        Guid? taskId)
+        : base(Guid.NewGuid())
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            throw new ArgumentException("Description is required.", nameof(description));
+
+        if (quantityReceived <= 0)
+            throw new ArgumentException("Quantity received must be greater than zero.", nameof(quantityReceived));
+
+        if (unitPrice < 0)
+            throw new ArgumentException("Unit price cannot be negative.", nameof(unitPrice));
+
+        if (string.IsNullOrWhiteSpace(unitOfMeasure))
+            throw new ArgumentException("Unit of measure is required.", nameof(unitOfMeasure));
+
+        ReceiptId = receiptId;
+        LineNumber = lineNumber;
+        ItemId = itemId;
+        Description = description;
+        QuantityReceived = quantityReceived;
+        UnitOfMeasure = unitOfMeasure;
+        UnitPrice = unitPrice;
+        AccountId = accountId;
+        ProjectId = projectId;
+        TaskId = taskId;
+    }
+
+    public Guid ReceiptId { get; private set; }
+    public int LineNumber { get; private set; }
+    public string? ItemId { get; private set; }
+    public string Description { get; private set; } = string.Empty;
+    public decimal QuantityReceived { get; private set; }
+    public string UnitOfMeasure { get; private set; } = string.Empty;
+    public decimal UnitPrice { get; private set; }
+    public Guid? AccountId { get; private set; }
+    public Guid? ProjectId { get; private set; }
+    public Guid? TaskId { get; private set; }
+
+    public decimal ExtendedAmount => Math.Round(QuantityReceived * UnitPrice, 2, MidpointRounding.AwayFromZero);
+}
+
+/// <summary>
+/// Record of an over-receipt that exceeded tolerance and requires buyer-manager
+/// approval before the receipt can be finalized (spec §6: Over-receipt exception
+/// approval workflow).
+/// </summary>
+public class OverReceiptApproval : AuditableEntity
+{
+    protected OverReceiptApproval() { }
+
+    public OverReceiptApproval(
+        Guid companyId,
+        Guid receiptId,
+        string receiptNumber,
+        Guid purchaseOrderId,
+        Guid purchaseOrderLineId,
+        decimal orderedQuantity,
+        decimal receivedQuantity,
+        decimal overReceiptTolerance)
+        : base(Guid.NewGuid())
+    {
+        CompanyId = companyId;
+        ReceiptId = receiptId;
+        ReceiptNumber = receiptNumber;
+        PurchaseOrderId = purchaseOrderId;
+        PurchaseOrderLineId = purchaseOrderLineId;
+        OrderedQuantity = orderedQuantity;
+        ReceivedQuantity = receivedQuantity;
+        OverReceiptTolerance = overReceiptTolerance;
+        Status = OverReceiptApprovalStatus.Pending;
+    }
+
+    public Guid CompanyId { get; private set; }
+    public Guid ReceiptId { get; private set; }
+    public string ReceiptNumber { get; private set; } = string.Empty;
+    public Guid PurchaseOrderId { get; private set; }
+    public Guid PurchaseOrderLineId { get; private set; }
+    public decimal OrderedQuantity { get; private set; }
+    public decimal ReceivedQuantity { get; private set; }
+    public decimal OverReceiptTolerance { get; private set; }
+    public OverReceiptApprovalStatus Status { get; private set; }
+    public Guid? ApprovalRequestId { get; private set; }
+
+    public bool IsWithinTolerance => ReceivedQuantity <= OrderedQuantity * (1 + OverReceiptTolerance);
+
+    public void SetApprovalRequest(Guid approvalRequestId)
+    {
+        ApprovalRequestId = approvalRequestId;
+    }
+
+    public void Resolve(OverReceiptApprovalStatus status)
+    {
+        if (Status != OverReceiptApprovalStatus.Pending)
+            throw new InvalidOperationException($"Cannot change status from {Status}.");
+        Status = status;
+    }
+}
+
+public enum OverReceiptApprovalStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
 }

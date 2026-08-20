@@ -54,6 +54,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.OrderManagement
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Payroll.Tests", "tests\ERP.Modules.Payroll.Tests\ERP.Modules.Payroll.Tests.csproj", "{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Purchasing.Tests", "tests\ERP.Modules.Purchasing.Tests\ERP.Modules.Purchasing.Tests.csproj", "{8A71AD9F-210F-413C-8790-D818D1C4CC0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Inventory.Tests", "tests\ERP.Modules.Inventory.Tests\ERP.Modules.Inventory.Tests.csproj", "{79345987-2D31-4E7F-A835-1F36CD90D9A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -160,6 +164,14 @@ Global
 		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A71AD9F-210F-413C-8790-D818D1C4CC0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A71AD9F-210F-413C-8790-D818D1C4CC0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A71AD9F-210F-413C-8790-D818D1C4CC0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A71AD9F-210F-413C-8790-D818D1C4CC0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79345987-2D31-4E7F-A835-1F36CD90D9A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79345987-2D31-4E7F-A835-1F36CD90D9A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79345987-2D31-4E7F-A835-1F36CD90D9A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79345987-2D31-4E7F-A835-1F36CD90D9A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -183,5 +195,7 @@ Global
 		{17879765-37A9-47EE-9200-153847E4D9BE} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 		{40434176-2550-469A-8574-C5F1A0E4A7AA} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
+		{8A71AD9F-210F-413C-8790-D818D1C4CC0C} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
+		{79345987-2D31-4E7F-A835-1F36CD90D9A8} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 	EndGlobalSection
 EndGlobal

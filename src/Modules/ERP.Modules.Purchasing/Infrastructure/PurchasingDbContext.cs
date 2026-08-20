@@ -47,6 +47,12 @@ public class PurchasingDbContext : DispatchableDbContext
 
     public DbSet<VendorQuote> VendorQuotes => Set<VendorQuote>();
 
+    public DbSet<ReceiptWithoutPO> ReceiptsWithoutPO => Set<ReceiptWithoutPO>();
+
+    public DbSet<ReceiptWithoutPOLine> ReceiptWithoutPOLines => Set<ReceiptWithoutPOLine>();
+
+    public DbSet<OverReceiptApproval> OverReceiptApprovals => Set<OverReceiptApproval>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -549,6 +555,91 @@ public class PurchasingDbContext : DispatchableDbContext
             entity.Property(e => e.UnitOfMeasure)
                 .IsRequired()
                 .HasMaxLength(20);
+        });
+
+        // ReceiptWithoutPO (spec §6: Receipt-without-PO workflow)
+        modelBuilder.Entity<ReceiptWithoutPO>(entity =>
+        {
+            entity.ToTable("ReceiptsWithoutPO");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ReceiptNumber)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ReceivedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.PackingSlipNumber)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.ReversalReason)
+                .HasMaxLength(500);
+
+            entity.HasIndex(e => new { e.CompanyId, e.ReceiptNumber })
+                .IsUnique();
+
+            entity.HasMany(e => e.Lines)
+                .WithOne()
+                .HasForeignKey(l => l.ReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ReceiptWithoutPOLine
+        modelBuilder.Entity<ReceiptWithoutPOLine>(entity =>
+        {
+            entity.ToTable("ReceiptsWithoutPOLines");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ItemId)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Description)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.QuantityReceived)
+                .HasColumnType("decimal(18,4)");
+
+            entity.Property(e => e.UnitOfMeasure)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.UnitPrice)
+                .HasColumnType("decimal(18,4)");
+
+            entity.HasIndex(e => new { e.ReceiptId, e.LineNumber })
+                .IsUnique();
+        });
+
+        // OverReceiptApproval (spec §6: Over-receipt exception approval workflow)
+        modelBuilder.Entity<OverReceiptApproval>(entity =>
+        {
+            entity.ToTable("OverReceiptApprovals");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ReceiptNumber)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.OrderedQuantity)
+                .HasColumnType("decimal(18,4)");
+
+            entity.Property(e => e.ReceivedQuantity)
+                .HasColumnType("decimal(18,4)");
+
+            entity.Property(e => e.OverReceiptTolerance)
+                .HasColumnType("decimal(8,4)");
+
+            entity.HasIndex(e => e.ReceiptId);
+        });
+
+        modelBuilder.Entity("ERP.Modules.Purchasing.Domain.Entities.ReceiptWithoutPO", b =>
+        {
+            b.Navigation("Lines");
         });
     }
 }

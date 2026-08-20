@@ -42,7 +42,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ProjectSummary, ProjectTask, BudgetLine, CostTransaction, ChangeOrder, ContractLine, WipSchedule, CostSummary } from '@/types/projectAccounting'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
-const PCT = (v: number) => `${v.toFixed(1)}%`
+const PCT = (v?: number | null) => (v != null && !Number.isNaN(v) ? `${v.toFixed(1)}%` : '—')
 
 export function ProjectsPage() {
   const queryClient = useQueryClient()

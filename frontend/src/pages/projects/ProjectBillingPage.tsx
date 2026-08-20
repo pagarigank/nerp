@@ -12,7 +12,7 @@ import { ProjectSectionPage } from './ProjectSectionPage'
 import type { ProjectSummary, ContractLine } from '@/types/projectAccounting'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
-const PCT = (v: number) => `${v.toFixed(1)}%`
+const PCT = (v?: number | null) => (v != null && !Number.isNaN(v) ? `${v.toFixed(1)}%` : '—')
 
 export function ProjectBillingPage() {
   return (
