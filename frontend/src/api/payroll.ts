@@ -69,20 +69,122 @@ export function accrueRun(runId: string, accrualDate: string) {
 export function reverseRun(runId: string, reversalDate: string) {
   return post(`/payroll/runs/${runId}/reverse`, { reversalDate })
 }
+export function editRunLine(runId: string, lineId: string, data: any) {
+  return post(`/payroll/runs/${runId}/lines/${lineId}/edit`, data)
+}
+export function voidRun(runId: string) {
+  return post(`/payroll/runs/${runId}/void`, {})
+}
+export function printChecks(runId: string, data: any) {
+  return post(`/payroll/runs/${runId}/print-checks`, data)
+}
+export function getNachaFile(runId: string) {
+  return get(`/payroll/runs/${runId}/ach-nacha`)
+}
 export function getCertifiedPayroll(runId: string) {
   return get(`/payroll/runs/${runId}/certified-payroll`)
 }
 
-// --- Garnishments (CCPA) ---
-export function createGarnishment(data: any) {
-  return post('/payroll/garnishments', data)
+// --- Expense reports ---
+export function createExpenseReport(data: any) {
+  return post('/payroll/expenses', data)
 }
-export function getGarnishmentsForEmployee(employeeId: string) {
-  return get(`/payroll/garnishments/employee/${employeeId}`)
+export function addExpenseLine(reportId: string, data: any) {
+  return post(`/payroll/expenses/${reportId}/lines`, data)
 }
-export function computeGarnishments(employeeId: string, disposableIncome: number) {
-  return post(`/payroll/garnishments/employee/${employeeId}/compute`, { disposableIncome })
+export function submitExpense(reportId: string) {
+  return post(`/payroll/expenses/${reportId}/submit`, {})
 }
-export function terminateGarnishment(id: string) {
-  return post(`/payroll/garnishments/${id}/terminate`, {})
+export function approveExpense(reportId: string, data: any) {
+  return post(`/payroll/expenses/${reportId}/approve`, data)
+}
+export function reimburseExpense(reportId: string) {
+  return post(`/payroll/expenses/${reportId}/reimburse`, {})
+}
+
+// --- Deductions / benefits ---
+export function createDeductionBenefit(data: any) {
+  return post('/payroll/deduction-benefits', data)
+}
+export function getDeductionBenefits() {
+  return get('/payroll/deduction-benefits')
+}
+export function enrollDeductionBenefit(employeeId: string, data: any) {
+  return post(`/payroll/employees/${employeeId}/deduction-benefits`, data)
+}
+
+// --- W-4 / withholding ---
+export function createW4(employeeId: string, data: any) {
+  return post(`/payroll/employees/${employeeId}/w4`, data)
+}
+export function getW4(employeeId: string) {
+  return get(`/payroll/employees/${employeeId}/w4`)
+}
+export function computeWithholding(employeeId: string, taxableWages: number, payFrequency: number) {
+  return post('/payroll/withholding/compute', { employeeId, taxableWages, payFrequency })
+}
+export function createWageBaseLimit(data: any) {
+  return post('/payroll/wage-base-limits', data)
+}
+export function getWageBaseLimits(year?: number) {
+  return get('/payroll/wage-base-limits', year ? { year } : {})
+}
+
+// --- Workers' comp ---
+export function createWorkersCompClassCode(data: any) {
+  return post('/payroll/workers-comp-class-codes', data)
+}
+
+// --- PTO ---
+export function createPtoLedger(employeeId: string, data: any) {
+  return post(`/payroll/employees/${employeeId}/pto-ledger`, data)
+}
+export function accruePto(ledgerId: string, hours: number, asOf: string) {
+  return post(`/payroll/pto-ledgers/${ledgerId}/accrue`, { hours, asOf })
+}
+export function usePto(ledgerId: string, hours: number, asOf: string) {
+  return post(`/payroll/pto-ledgers/${ledgerId}/use`, { hours, asOf })
+}
+export function getPtoLedgers(employeeId?: string) {
+  return get('/payroll/pto-ledgers', employeeId ? { employeeId } : {})
+}
+
+// --- Manual checks ---
+export function createManualCheck(data: any) {
+  return post('/payroll/manual-checks', data)
+}
+
+// --- Tax & compliance reports ---
+export function getFicaCap(runId: string) {
+  return post(`/payroll/runs/${runId}/fica-cap`, {})
+}
+export function getW2Register(companyId: string, year: number) {
+  return get('/payroll/w2-register', { companyId, year })
+}
+export function getForm941(companyId: string, year: number, quarter: number) {
+  return get('/payroll/form-941', { companyId, year, quarter })
+}
+export function getForm940(companyId: string, year: number) {
+  return get('/payroll/reports/form-940', { companyId, year })
+}
+export function getPayrollRegister(companyId: string, year?: number) {
+  return get('/payroll/reports/payroll-register', year ? { companyId, year } : { companyId })
+}
+export function getPayrollSummary(companyId: string, year: number) {
+  return get('/payroll/reports/payroll-summary', { companyId, year })
+}
+export function getLaborDistribution(companyId: string, year?: number) {
+  return get('/payroll/reports/labor-distribution', year ? { companyId, year } : { companyId })
+}
+export function getGarnishmentRegister(companyId: string) {
+  return get('/payroll/reports/garnishment-register', { companyId })
+}
+export function getWageBaseReport(companyId: string, year: number) {
+  return get('/payroll/reports/wage-base', { companyId, year })
+}
+export function getPtoReport(companyId: string) {
+  return get('/payroll/reports/pto', { companyId })
+}
+export function getDirectDepositRegister(companyId: string, runId?: string) {
+  return get('/payroll/reports/direct-deposit', runId ? { companyId, runId } : { companyId })
 }
