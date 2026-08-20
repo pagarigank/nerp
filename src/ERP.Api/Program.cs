@@ -16,6 +16,7 @@ using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.BillOfMaterials;
 using ERP.Modules.CashManagement;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.FieldService;
 using ERP.Modules.GeneralLedger;
 using ERP.Modules.GeneralLedger.Infrastructure;
 using ERP.Modules.Inventory;
@@ -295,6 +296,7 @@ public class Program
         builder.Services.AddBillOfMaterialsModule(builder.Configuration);
         builder.Services.AddProjectAccountingModule(builder.Configuration);
         builder.Services.AddPayrollModule(builder.Configuration);
+        builder.Services.AddFieldServiceModule(builder.Configuration);
 
         var app = builder.Build();
 
@@ -480,6 +482,7 @@ public class Program
             typeof(ERP.Modules.Purchasing.Infrastructure.PurchasingDbContext),
             typeof(ERP.Modules.Inventory.Infrastructure.InventoryDbContext),
             typeof(ERP.Modules.OrderManagement.Infrastructure.OmDbContext),
+            typeof(ERP.Modules.FieldService.Infrastructure.FieldServiceDbContext),
         })
         {
             using (var migrateScope = app.Services.CreateScope())

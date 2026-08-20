@@ -21,13 +21,17 @@
     <ProjectReference Include="..\Modules\ERP.Modules.BillOfMaterials\ERP.Modules.BillOfMaterials.csproj" />
     <ProjectReference Include="..\Modules\ERP.Modules.ProjectAccounting\ERP.Modules.ProjectAccounting.csproj" />
     <ProjectReference Include="..\Modules\ERP.Modules.Payroll\ERP.Modules.Payroll.csproj" />
-    <!-- <ProjectReference Include="..\Modules\ERP.Modules.FieldService\ERP.Modules.FieldService.csproj" /> -->
+    <ProjectReference Include="..\Modules\ERP.Modules.FieldService\ERP.Modules.FieldService.csproj" />
     <!-- <ProjectReference Include="..\Modules\ERP.Modules.Reporting\ERP.Modules.Reporting.csproj" /> -->
     <!-- <ProjectReference Include="..\Modules\ERP.Modules.Integration\ERP.Modules.Integration.csproj" /> -->
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
