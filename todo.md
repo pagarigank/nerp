@@ -947,12 +947,12 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Timesheet project/task validation** (call Project Accounting: validate project active, task valid, within budget) [built 2026-08-20 — TimesheetController validates project active + task belongs to project via ProjDbContext]
 - [x] **Timesheet approval workflow** (by supervisor, by PM for project hours, escalation rules) [built 2026-08-20 — POST /payroll/timesheets/{id}/submit + /approve; approval raises LaborPostedToProjectEvent → PA labor cost + GL dual-post]
 - [x] **Timesheet rejection** (return to employee with reason, correction required) [built 2026-08-20 — POST /payroll/timesheets/{id}/reject with reason]
-- [ ] **Expense report entry** (employee, expense type: mileage/meals/lodging/other, date, amount, receipt attachment)
-- [ ] **Expense report line detail** (project/task, GL account, client billable flag, markup %)
-- [ ] **Expense report approval workflow** (amount threshold routing, PM approval for project expenses)
-- [ ] **Mileage calculation** (miles driven × IRS rate per period, origin/destination tracking)
-- [ ] **Per diem calculation** (meals/lodging: by location, GSA rates, day count, partial-day rules)
-- [ ] **Expense reimbursement** (approved expenses → AP voucher for employee, post to GL and project)
+- [x] **Expense report entry** (employee, expense type: mileage/meals/lodging/other, date, amount, receipt attachment) [built 2026-08-20 — ExpenseReport/ExpenseReportLine entities + POST /payroll/expenses + /lines; verified]
+- [x] **Expense report line detail** (project/task, GL account, client billable flag, markup %) [built 2026-08-20 — ExpenseReportLine (ProjectId/TaskId/GlAccountNumber/ClientBillable); verified billable line posts to Project Accounting]
+- [x] **Expense report approval workflow** (amount threshold routing, PM approval for project expenses) [built 2026-08-20 — POST /expenses/{id}/approve with $500 manager-threshold routing; >$500 requires managerApproved (verified 400 vs 200)]
+- [x] **Mileage calculation** (miles driven × IRS rate per period, origin/destination tracking) [built 2026-08-20 — ExpenseReportLine auto-computes Amount = miles×rate on server; verified 100mi×$0.70=$70]
+- [x] **Per diem calculation** (meals/lodging: by location, GSA rates, day count, partial-day rules) [built 2026-08-20 — ExpenseReportLine auto-computes Amount = days×rate on server; verified 3d×$60=$180]
+- [x] **Expense reimbursement** (approved expenses → AP voucher for employee, post to GL and project) [built 2026-08-20 — POST /expenses/{id}/reimburse: GL Dr Expense 6000 / Cr AP Liab 2200 + billable line → Project Accounting CostTransaction (SourceReference=ExpenseReport); verified project cost row created]
 
 ### Transactional - Payroll Processing
 - [x] **Payroll calendar setup** (pay periods: weekly/bi-weekly/semi-monthly/monthly, pay dates, fiscal period mapping) [built 2026-08-20 — PayrollCalendar entity + POST /payroll/calendars; FICA/FUTA/SUTA rates]

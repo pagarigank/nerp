@@ -26,6 +26,8 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
     public DbSet<PayrollRunLine> PayrollRunLines => Set<PayrollRunLine>();
     public DbSet<Garnishment> Garnishments => Set<Garnishment>();
+    public DbSet<ExpenseReport> ExpenseReports => Set<ExpenseReport>();
+    public DbSet<ExpenseReportLine> ExpenseReportLines => Set<ExpenseReportLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -170,6 +172,32 @@ public class PayrollDbContext : DispatchableDbContext
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.EmployeeId);
             entity.HasIndex(e => new { e.EmployeeId, e.IsActive });
+        });
+
+        modelBuilder.Entity<ExpenseReport>(entity =>
+        {
+            entity.ToTable("ExpenseReports");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.RejectionReason).HasMaxLength(500);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.EmployeeId);
+            entity.HasIndex(e => e.Status);
+        });
+
+        modelBuilder.Entity<ExpenseReportLine>(entity =>
+        {
+            entity.ToTable("ExpenseReportLines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.GlAccountNumber).HasMaxLength(20);
+            entity.Property(e => e.MileageMiles).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.MileageRate).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.PerDiemDays).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PerDiemRate).HasColumnType("decimal(18,4)");
+            entity.HasIndex(e => e.ExpenseReportId);
+            entity.HasIndex(e => e.ProjectId);
         });
     }
 }
