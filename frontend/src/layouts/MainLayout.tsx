@@ -195,8 +195,11 @@ export function MainLayout() {
                 {hasSub && isExpanded && (
                   <ul className="mt-1 ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5">
                     {item.sub.map(sub => {
-                      const isSubActive =
-                        location.pathname === sub.to || location.pathname.startsWith(sub.to + '/')
+                      // Support both path-based and query-param-based sub-menu matching
+                      const subUrl = new URL(sub.to, window.location.origin)
+                      const isSubActive = subUrl.search
+                        ? (location.pathname === subUrl.pathname && location.search.includes(subUrl.search))
+                        : (location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
                       return (
                         <li key={sub.to}>
                           <Link

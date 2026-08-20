@@ -176,6 +176,10 @@ export interface ItemSummary {
   reorderQuantity?: number | null
   safetyStock?: number | null
   leadTimeDays?: number | null
+  isLotControlled?: boolean
+  isSerialControlled?: boolean
+  isKit?: boolean
+  abcClass?: string | null
 }
 
 export interface CreateItemRequest {
@@ -204,6 +208,32 @@ export interface CreateItemRequest {
   hsCode?: string | null
   storageCondition?: string | null
   isKit?: boolean
+  isLotControlled?: boolean
+  isSerialControlled?: boolean
+}
+
+export interface UpdateItemRequest {
+  description?: string | null
+  longDescription?: string | null
+  standardCost?: number | null
+  reorderPoint?: number | null
+  reorderQuantity?: number | null
+  safetyStock?: number | null
+  leadTimeDays?: number | null
+  weight?: number | null
+  length?: number | null
+  width?: number | null
+  height?: number | null
+  weightUnit?: string | null
+  isHazardousMaterial?: boolean
+  hazardClass?: string | null
+  countryOfOrigin?: string | null
+  hsCode?: string | null
+  storageCondition?: string | null
+  isKit?: boolean
+  isLotControlled?: boolean
+  isSerialControlled?: boolean
+  status?: string | null
 }
 
 // --- Warehouse (master) ---
@@ -225,6 +255,13 @@ export interface CreateWarehouseRequest {
   address?: string | null
 }
 
+export interface UpdateWarehouseRequest {
+  warehouseName?: string | null
+  address?: string | null
+  warehouseType?: string | null
+  isActive?: boolean | null
+}
+
 // --- Item categories ---
 export interface ItemCategorySummary {
   id: string
@@ -240,6 +277,13 @@ export interface CreateItemCategoryRequest {
   categoryCode: string
   description: string
   companyId: string
+  inventoryAccountId?: string | null
+  cogsAccountId?: string | null
+  varianceAccountId?: string | null
+}
+
+export interface UpdateItemCategoryRequest {
+  description?: string | null
   inventoryAccountId?: string | null
   cogsAccountId?: string | null
   varianceAccountId?: string | null

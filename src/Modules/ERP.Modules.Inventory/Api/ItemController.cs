@@ -54,10 +54,19 @@ public class ItemController : ControllerBase
             Id = i.Id,
             ItemCode = i.ItemCode,
             Description = i.Description,
+            LongDescription = i.LongDescription,
             ItemType = i.ItemType.ToString(),
             BaseUnitOfMeasure = i.BaseUnitOfMeasure,
+            CostingMethod = i.CostingMethod.ToString(),
             Status = i.Status.ToString(),
             StandardCost = i.StandardCost,
+            ReorderPoint = i.ReorderPoint,
+            ReorderQuantity = i.ReorderQuantity,
+            SafetyStock = i.SafetyStock,
+            LeadTimeDays = i.LeadTimeDays,
+            IsLotControlled = i.IsLotControlled,
+            IsSerialControlled = i.IsSerialControlled,
+            IsKit = i.IsKit,
         }).ToList();
 
         return Ok(ApiResponse<List<ItemDto>>.Success(dtos));
@@ -167,6 +176,120 @@ public class ItemController : ControllerBase
 
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, ApiResponse<ItemDto>.Success(dto));
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<ItemDto>>> Update(
+        Guid id, [FromBody] UpdateItemRequest request, CancellationToken cancellationToken)
+    {
+        var item = await _repository.GetByIdAsync(id, cancellationToken);
+        if (item is null)
+            return NotFound(ApiResponse<ItemDto>.Failure(["Item not found."]));
+
+        if (request.Description is not null)
+        {
+            item.UpdateDescription(request.Description, request.LongDescription);
+        }
+
+        if (request.StandardCost.HasValue)
+        {
+            item.UpdateStandardCost(request.StandardCost.Value);
+        }
+
+        item.UpdateReorderParameters(
+            request.ReorderPoint,
+            request.ReorderQuantity,
+            request.SafetyStock,
+            request.LeadTimeDays);
+
+        item.UpdatePhysicalAttributes(
+            request.Weight,
+            request.Length,
+            request.Width,
+            request.Height,
+            request.WeightUnit,
+            request.IsHazardousMaterial,
+            request.HazardClass,
+            request.CountryOfOrigin,
+            request.HsCode,
+            request.StorageCondition);
+
+        if (request.IsKit.HasValue)
+        {
+            item.SetKit(request.IsKit.Value);
+        }
+
+        if (request.IsLotControlled.HasValue)
+        {
+            item.SetLotControlled(request.IsLotControlled.Value);
+        }
+
+        if (request.IsSerialControlled.HasValue)
+        {
+            item.SetSerialControlled(request.IsSerialControlled.Value);
+        }
+
+        if (request.Status.HasValue)
+        {
+            switch (request.Status.Value)
+            {
+                case ItemStatus.Active:
+                    item.Activate();
+                    break;
+                case ItemStatus.Inactive:
+                    item.Deactivate();
+                    break;
+                case ItemStatus.Discontinued:
+                    item.Discontinue();
+                    break;
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var dto = new ItemDto
+        {
+            Id = item.Id,
+            ItemCode = item.ItemCode,
+            Description = item.Description,
+            LongDescription = item.LongDescription,
+            ItemType = item.ItemType.ToString(),
+            BaseUnitOfMeasure = item.BaseUnitOfMeasure,
+            CostingMethod = item.CostingMethod.ToString(),
+            Status = item.Status.ToString(),
+            StandardCost = item.StandardCost,
+            ReorderPoint = item.ReorderPoint,
+            ReorderQuantity = item.ReorderQuantity,
+            SafetyStock = item.SafetyStock,
+            LeadTimeDays = item.LeadTimeDays,
+            Weight = item.Weight,
+            Length = item.Length,
+            Width = item.Width,
+            Height = item.Height,
+            WeightUnit = item.WeightUnit,
+            IsHazardousMaterial = item.IsHazardousMaterial,
+            HazardClass = item.HazardClass,
+            CountryOfOrigin = item.CountryOfOrigin,
+            HsCode = item.HsCode,
+            StorageCondition = item.StorageCondition,
+            IsKit = item.IsKit,
+        };
+
+        return Ok(ApiResponse<ItemDto>.Success(dto));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> Delete(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var item = await _repository.GetByIdAsync(id, cancellationToken);
+        if (item is null)
+            return NotFound(ApiResponse<string>.Failure(["Item not found."]));
+
+        item.Deactivate();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<string>.Success("Item deactivated."));
+    }
 }
 
 public class ItemDto
@@ -195,6 +318,34 @@ public class ItemDto
     public string? HsCode { get; set; }
     public string? StorageCondition { get; set; }
     public bool IsKit { get; set; }
+    public bool IsLotControlled { get; set; }
+    public bool IsSerialControlled { get; set; }
+    public string? ABCClass { get; set; }
+}
+
+public class UpdateItemRequest
+{
+    public string? Description { get; set; }
+    public string? LongDescription { get; set; }
+    public decimal? StandardCost { get; set; }
+    public decimal? ReorderPoint { get; set; }
+    public decimal? ReorderQuantity { get; set; }
+    public decimal? SafetyStock { get; set; }
+    public int? LeadTimeDays { get; set; }
+    public decimal? Weight { get; set; }
+    public decimal? Length { get; set; }
+    public decimal? Width { get; set; }
+    public decimal? Height { get; set; }
+    public string? WeightUnit { get; set; }
+    public bool IsHazardousMaterial { get; set; }
+    public string? HazardClass { get; set; }
+    public string? CountryOfOrigin { get; set; }
+    public string? HsCode { get; set; }
+    public string? StorageCondition { get; set; }
+    public bool? IsKit { get; set; }
+    public bool? IsLotControlled { get; set; }
+    public bool? IsSerialControlled { get; set; }
+    public ItemStatus? Status { get; set; }
 }
 
 public class CreateItemRequest
@@ -223,4 +374,6 @@ public class CreateItemRequest
     public string? HsCode { get; set; }
     public string? StorageCondition { get; set; }
     public bool IsKit { get; set; }
+    public bool IsLotControlled { get; set; }
+    public bool IsSerialControlled { get; set; }
 }

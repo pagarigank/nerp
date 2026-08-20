@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CheckCircle } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { getShipment, getPackingSlip } from '@api/orderManagement'
+import { getShipment, getPackingSlip, confirmShipment } from '@api/orderManagement'
+import { getCustomers } from '@api/ar'
 import type { ShipmentDetail, PackingSlip } from '@/types/orderManagement'
+import type { ArCustomer } from '@/types/ar'
 
 export function ShipmentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +17,9 @@ export function ShipmentDetailPage() {
   const [packingSlip, setPackingSlip] = useState<PackingSlip | null>(null)
   const [slipLoading, setSlipLoading] = useState(false)
   const [slipError, setSlipError] = useState<string | null>(null)
+  const [customers, setCustomers] = useState<ArCustomer[]>([])
+  const [confirming, setConfirming] = useState(false)
+  const customerName = (id?: string | null) => id ? customers.find((c: ArCustomer) => c.id === id)?.name ?? id.slice(0, 8) : '—'
 
   useEffect(() => {
     if (!id) return
@@ -26,7 +31,9 @@ export function ShipmentDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      setShipment(await getShipment(id))
+      const [sh, custs] = await Promise.all([getShipment(id), getCustomers()])
+      setShipment(sh)
+      setCustomers(custs)
     } catch (e) {
       setError(getErrorMessage(e))
     } finally {
@@ -37,13 +44,32 @@ export function ShipmentDetailPage() {
   if (loading) return <p className="text-gray-500">Loading…</p>
   if (!shipment) return <p className="text-red-600">{error ?? 'Shipment not found.'}</p>
 
+  async function handleConfirm() {
+    if (!id) return
+    setConfirming(true)
+    try {
+      await confirmShipment(id)
+      await load()
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setConfirming(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate('/om/shipments')}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <Button
+        <div className="flex items-center gap-2">
+          {shipment.status === 'Draft' && (
+            <Button variant="success" disabled={confirming} onClick={handleConfirm}>
+              <CheckCircle className="h-4 w-4" /> Confirm Shipment
+            </Button>
+          )}
+          <Button
           variant="outline"
           disabled={slipLoading}
           onClick={async () => {
@@ -61,12 +87,15 @@ export function ShipmentDetailPage() {
         >
           {slipLoading ? 'Loading…' : 'Packing Slip'}
         </Button>
+        </div>
       </div>
 
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{shipment.shipmentNumber}</h2>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Status: <span className="font-medium">{shipment.status}</span> · {shipment.shipmentDate}
+          {shipment.carrier && <> · Carrier: {shipment.carrier}</>}
+          {shipment.trackingNumber && <> · Tracking: {shipment.trackingNumber}</>}
         </p>
       </div>
 
@@ -75,6 +104,11 @@ export function ShipmentDetailPage() {
           {error}
         </div>
       )}
+
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-4">
+        <div><span className="text-gray-500">Customer:</span> <span className="font-medium">{customerName(shipment.customerId)}</span></div>
+        <div><span className="text-gray-500">Freight:</span> <span className="font-medium">${shipment.freightCost.toFixed(2)}</span></div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

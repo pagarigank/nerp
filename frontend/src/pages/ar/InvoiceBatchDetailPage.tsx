@@ -42,12 +42,13 @@ interface AddInvoiceModalProps {
   isOpen: boolean
   onClose: () => void
   customers: ArCustomer[]
+  accountOptions: { value: string; label: string }[]
   onSave: (invoice: ArInvoiceBatchLineItem) => void
   isSaving: boolean
   error: string | null
 }
 
-function AddInvoiceModal({ isOpen, onClose, customers, onSave, isSaving, error }: AddInvoiceModalProps) {
+function AddInvoiceModal({ isOpen, onClose, customers, accountOptions, onSave, isSaving, error }: AddInvoiceModalProps) {
   const [customerId, setCustomerId] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10))
@@ -643,6 +644,7 @@ export function InvoiceBatchDetailPage() {
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         customers={customers}
+        accountOptions={accountOptions}
         onSave={invoice => addLinesMutation.mutate(invoice)}
         isSaving={addLinesMutation.isPending}
         error={actionError}

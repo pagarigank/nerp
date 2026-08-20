@@ -11,7 +11,8 @@ import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { getErrorMessage } from '@api/client'
 import { createSalesOrder, DEMO_COMPANY_ID, getShippingMethods, getSalesOrderTypes, evaluatePrice, getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
-import { getItems, getItemUomConversions } from '@api/inventory'
+import { getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
+import { getAccounts } from '@api/platform'
 import { UomSelect } from '@components/ui/UomSelect'
 import { getPaymentTerms } from '@api/ap'
 import type { ArCustomer } from '@/types/ar'
@@ -32,6 +33,7 @@ const lineSchema = z.object({
   projectId: z.string().optional(),
   accountId: z.string().optional(),
   itemCategoryId: z.string().optional(),
+  isDropShip: z.boolean().optional(),
 })
 
 const orderSchema = z.object({
@@ -119,6 +121,16 @@ export function SalesOrderFormPage() {
     queryFn: () => getItems(),
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['inventory', 'warehouses'],
+    queryFn: () => getWarehouses(),
+  })
+
+  const { data: glAccounts = [] } = useQuery({
+    queryKey: ['platform', 'accounts'],
+    queryFn: () => getAccounts(),
+  })
+
   const { data: shippingMethods = [] } = useQuery({
     queryKey: ['om', 'shipping-methods'],
     queryFn: () => getShippingMethods(),
@@ -182,6 +194,16 @@ export function SalesOrderFormPage() {
   const itemOptions = useMemo(
     () => items.map((i: ItemSummary) => ({ value: i.id, label: `${i.itemCode} - ${i.description}` })),
     [items]
+  )
+
+  const warehouseOptions = useMemo(
+    () => warehouses.map((w: any) => ({ value: w.id, label: `${w.warehouseCode} - ${w.warehouseName}` })),
+    [warehouses]
+  )
+
+  const accountOptions = useMemo(
+    () => glAccounts.map((a: any) => ({ value: a.id, label: `${a.accountNumber} - ${a.description}` })),
+    [glAccounts]
   )
 
   const shippingOptions = useMemo(
@@ -315,6 +337,8 @@ export function SalesOrderFormPage() {
           projectId: l.projectId || null,
           accountId: l.accountId || null,
           itemCategoryId: l.itemCategoryId || null,
+          isDropShip: l.isDropShip ?? false,
+          dropShipVendorId: null,
         })),
       }
       const id = await createSalesOrder(payload)
@@ -485,8 +509,11 @@ export function SalesOrderFormPage() {
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Qty</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Price</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">UOM</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Warehouse</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Account</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Disc%</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Tax%</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Drop-Ship</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Line Total</th>
                     <th className="px-3 py-2 w-10" />
                   </tr>
@@ -554,6 +581,24 @@ export function SalesOrderFormPage() {
                           />
                         </td>
                         <td className="px-3 py-2">
+                          <select
+                            {...register(`lines.${index}.warehouseId`)}
+                            className="w-32 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
+                          >
+                            <option value="">None</option>
+                            {warehouseOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            {...register(`lines.${index}.accountId`)}
+                            className="w-32 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
+                          >
+                            <option value="">None</option>
+                            {accountOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
                           <input
                             type="number"
                             step="0.01"
@@ -568,6 +613,12 @@ export function SalesOrderFormPage() {
                             {...register(`lines.${index}.taxPercent`)}
                             className="w-16 text-sm text-right rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 tabular-nums"
                           />
+                        </td>
+                        <td className="px-3 py-2">
+                          <label className="flex items-center gap-1 text-sm">
+                            <input type="checkbox" {...register(`lines.${index}.isDropShip`)} className="h-3.5 w-3.5" />
+                            <span className="text-gray-500">Drop</span>
+                          </label>
                         </td>
                         <td className="px-3 py-2 text-right text-sm font-medium tabular-nums text-gray-900 dark:text-white">
                           {formatCurrency(lineTotal)}

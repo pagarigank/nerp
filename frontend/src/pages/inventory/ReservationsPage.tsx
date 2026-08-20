@@ -100,8 +100,8 @@ export function ReservationsPage() {
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                     {rows.map((r: ReservationSummary) => (
                       <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.itemId.slice(0, 8)}</td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.warehouseId.slice(0, 8)}</td>
+                        <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{items.find((i: ItemSummary) => i.id === r.itemId)?.itemCode ?? r.itemId.slice(0, 8)}</td>
+                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{warehouses.find((w: WarehouseSummary) => w.id === r.warehouseId)?.warehouseCode ?? r.warehouseId.slice(0, 8)}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{r.quantity}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.unitOfMeasure}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.sourceType}</td>

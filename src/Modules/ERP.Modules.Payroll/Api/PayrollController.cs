@@ -54,6 +54,34 @@ public class PayrollController : ControllerBase
         return Ok(ApiResponse<List<EmployeeDto>>.Success(list));
     }
 
+    [HttpPut("employees/{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> UpdateEmployee(
+        Guid id, [FromBody] UpdateEmployeeRequest request, CancellationToken cancellationToken)
+    {
+        var emp = await _context.Employees.FindAsync(new object[] { id }, cancellationToken);
+        if (emp is null)
+            return NotFound(ApiResponse<string>.Failure(["Employee not found."]));
+
+        emp.Update(
+            firstName: request.FirstName,
+            lastName: request.LastName,
+            email: request.Email,
+            defaultProjectId: null,
+            defaultRole: null,
+            allocationPercentage: null,
+            isBillable: null);
+
+        if (request.Status.HasValue)
+        {
+            var status = (EmployeeStatus)request.Status.Value;
+            if (status == EmployeeStatus.Active) emp.Reactivate();
+            else if (status == EmployeeStatus.Terminated) emp.Terminate(DateTime.UtcNow);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<string>.Success("Employee updated."));
+    }
+
     // --- Employee direct-deposit accounts ---
     [HttpPost("employees/{employeeId:guid}/direct-deposits")]
     public async Task<ActionResult<ApiResponse<Guid>>> CreateDirectDeposit(
@@ -138,6 +166,24 @@ public class PayrollController : ControllerBase
                 GlAccountNumber = p.GlAccountNumber,
             }).ToListAsync(cancellationToken);
         return Ok(ApiResponse<List<PayCodeDto>>.Success(list));
+    }
+
+    [HttpPut("pay-codes/{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> UpdatePayCode(
+        Guid id, [FromBody] UpdatePayCodeRequest request, CancellationToken cancellationToken)
+    {
+        var payCode = await _context.PayCodes.FindAsync(new object[] { id }, cancellationToken);
+        if (payCode is null)
+            return NotFound(ApiResponse<string>.Failure(["Pay code not found."]));
+
+        payCode.Update(
+            description: request.Description,
+            glAccountNumber: request.GlAccountNumber,
+            isOvertime: null,
+            countsAsHoursWorked: null);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<string>.Success("Pay code updated."));
     }
 
     // --- Union / certified-payroll profile (prevailing wage + fringe) ---
@@ -260,6 +306,14 @@ public class EmployeeDto
     public bool IsBillable { get; set; }
 }
 
+public class UpdateEmployeeRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public int? Status { get; set; }
+}
+
 public class CreatePayCodeRequest
 {
     public Guid CompanyId { get; set; }
@@ -275,6 +329,12 @@ public class PayCodeDto
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
+    public string? GlAccountNumber { get; set; }
+}
+
+public class UpdatePayCodeRequest
+{
+    public string? Description { get; set; }
     public string? GlAccountNumber { get; set; }
 }
 

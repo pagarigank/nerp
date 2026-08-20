@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Settings2, Plus, Trash2, Package } from 'lucide-react'
+import { Settings2, Plus, Trash2, Package, Pencil } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
@@ -14,6 +14,7 @@ import {
   deleteBomHeader,
   getBomComponents,
   addBomComponent,
+  updateBomComponent,
   deleteBomComponent,
   getCostRollup,
 } from '@api/bom'
@@ -31,7 +32,10 @@ export function BomsPage() {
   const queryClient = useQueryClient()
   const [selectedBomId, setSelectedBomId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [showComponentModal, setShowComponentModal] = useState(false)
+  const [showEditComponent, setShowEditComponent] = useState(false)
+  const [editComponentId, setEditComponentId] = useState<string | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -77,6 +81,27 @@ export function BomsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bom', 'headers'] })
       setShowCreate(false)
+    },
+    onError: (e: any) => setError(getErrorMessage(e)),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateBomHeader(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bom', 'headers'] })
+      queryClient.invalidateQueries({ queryKey: ['bom', 'components'] })
+      setShowEdit(false)
+    },
+    onError: (e: any) => setError(getErrorMessage(e)),
+  })
+
+  const updateComponentMutation = useMutation({
+    mutationFn: ({ bomHeaderId, lineId, data }: { bomHeaderId: string; lineId: string; data: any }) =>
+      updateBomComponent(bomHeaderId, lineId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bom', 'components'] })
+      setShowEditComponent(false)
+      setEditComponentId(null)
     },
     onError: (e: any) => setError(getErrorMessage(e)),
   })
@@ -163,11 +188,19 @@ export function BomsPage() {
       key: 'actions',
       header: '',
       render: (_: unknown, row: BomComponentLine) => (
-        <Button size="sm" variant="destructive" onClick={() => {
-          if (selectedBomId) deleteComponentMutation.mutate({ bomHeaderId: selectedBomId, lineId: row.id })
-        }}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" onClick={() => {
+            setEditComponentId(row.id)
+            setShowEditComponent(true)
+          }}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => {
+            if (selectedBomId) deleteComponentMutation.mutate({ bomHeaderId: selectedBomId, lineId: row.id })
+          }}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -219,6 +252,9 @@ export function BomsPage() {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Edit BOM
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setShowComponentModal(true)}>
                       <Plus className="h-3.5 w-3.5 mr-1" /> Add Component
                     </Button>
@@ -256,6 +292,16 @@ export function BomsPage() {
         itemOptions={itemOptions}
       />
 
+      {/* Edit BOM Modal */}
+      {showEdit && selectedBom && (
+        <EditBomModal
+          open={showEdit}
+          onClose={() => setShowEdit(false)}
+          bom={selectedBom}
+          onSubmit={(data) => updateMutation.mutate({ id: selectedBom.id, data })}
+        />
+      )}
+
       {/* Add Component Modal */}
       <AddComponentModal
         open={showComponentModal}
@@ -266,6 +312,18 @@ export function BomsPage() {
         itemOptions={itemOptions}
         wcOptions={wcOptions}
       />
+
+      {/* Edit Component Modal */}
+      {showEditComponent && editComponentId && selectedBomId && (
+        <EditComponentModal
+          open={showEditComponent}
+          onClose={() => { setShowEditComponent(false); setEditComponentId(null) }}
+          component={(components as BomComponentLine[]).find((c: BomComponentLine) => c.id === editComponentId)!}
+          onSubmit={(data) => updateComponentMutation.mutate({ bomHeaderId: selectedBomId, lineId: editComponentId, data })}
+          itemOptions={itemOptions}
+          wcOptions={wcOptions}
+        />
+      )}
 
       {/* Cost Rollup Modal */}
       {showCostModal && selectedBomId && (
@@ -321,6 +379,9 @@ function CreateBomModal({ open, onClose, onSubmit, itemOptions }: {
   const [bomType, setBomType] = useState('Standard')
   const [description, setDescription] = useState('')
   const [yieldPct, setYieldPct] = useState(100)
+  const [effFrom, setEffFrom] = useState('')
+  const [effTo, setEffTo] = useState('')
+  const [altCode, setAltCode] = useState('')
 
   if (!open) return null
 
@@ -334,7 +395,10 @@ function CreateBomModal({ open, onClose, onSubmit, itemOptions }: {
           placeholder="Select item..."
           options={itemOptions}
         />
-        <Input label="Revision" value={revision} onChange={(e) => setRevision(e.target.value)} />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Revision" value={revision} onChange={(e) => setRevision(e.target.value)} />
+          <Input label="Alternate Code" value={altCode} onChange={(e) => setAltCode(e.target.value)} placeholder="Optional" />
+        </div>
         <Select
           value={bomType}
           onChange={(e) => setBomType(e.target.value)}
@@ -346,7 +410,11 @@ function CreateBomModal({ open, onClose, onSubmit, itemOptions }: {
           ]}
         />
         <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <Input label="Yield %" type="number" value={yieldPct} onChange={(e) => setYieldPct(Number(e.target.value))} />
+        <div className="grid grid-cols-3 gap-4">
+          <Input label="Yield %" type="number" value={yieldPct} onChange={(e) => setYieldPct(Number(e.target.value))} />
+          <Input label="Effective From" type="date" value={effFrom} onChange={(e) => setEffFrom(e.target.value)} />
+          <Input label="Effective To" type="date" value={effTo} onChange={(e) => setEffTo(e.target.value)} />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => onSubmit({
@@ -356,6 +424,9 @@ function CreateBomModal({ open, onClose, onSubmit, itemOptions }: {
             bomType,
             description: description || null,
             yieldPercentage: yieldPct,
+            effectiveFrom: effFrom || null,
+            effectiveTo: effTo || null,
+            alternateCode: altCode || null,
           })}>Create</Button>
         </div>
       </div>
@@ -432,6 +503,139 @@ function AddComponentModal({ open, onClose, onSubmit, itemOptions, wcOptions }: 
             isCritical,
             notes: notes || null,
           })}>Add Component</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// --- Edit BOM Modal ---
+function EditBomModal({ open, onClose, bom, onSubmit }: {
+  open: boolean
+  onClose: () => void
+  bom: BomHeaderSummary
+  onSubmit: (data: any) => void
+}) {
+  const [description, setDescription] = useState(bom.description ?? '')
+  const [bomType, setBomType] = useState(bom.bomType)
+  const [status, setStatus] = useState(bom.status)
+  const [yieldPct, setYieldPct] = useState(bom.yieldPercentage)
+  const [effFrom, setEffFrom] = useState(bom.effectiveFrom?.slice(0, 10) ?? '')
+  const [effTo, setEffTo] = useState(bom.effectiveTo?.slice(0, 10) ?? '')
+  const [altCode, setAltCode] = useState('')
+
+  if (!open) return null
+
+  return (
+    <Modal title="Edit BOM" isOpen={open} onClose={onClose}>
+      <div className="space-y-4">
+        <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            value={bomType}
+            onChange={(e) => setBomType(e.target.value)}
+            label="BOM Type"
+            options={[
+              { value: 'Standard', label: 'Standard' },
+              { value: 'Phantom', label: 'Phantom' },
+              { value: 'Alternate', label: 'Alternate' },
+            ]}
+          />
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            label="Status"
+            options={[
+              { value: 'Draft', label: 'Draft' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Obsolete', label: 'Obsolete' },
+            ]}
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <Input label="Yield %" type="number" value={yieldPct} onChange={(e) => setYieldPct(Number(e.target.value))} />
+          <Input label="Effective From" type="date" value={effFrom} onChange={(e) => setEffFrom(e.target.value)} />
+          <Input label="Effective To" type="date" value={effTo} onChange={(e) => setEffTo(e.target.value)} />
+        </div>
+        <Input label="Alternate Code" value={altCode} onChange={(e) => setAltCode(e.target.value)} placeholder="Optional" />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSubmit({
+            description: description || null,
+            bomType,
+            status,
+            yieldPercentage: yieldPct,
+            effectiveFrom: effFrom || null,
+            effectiveTo: effTo || null,
+            alternateCode: altCode || null,
+          })}>Save</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// --- Edit Component Modal ---
+function EditComponentModal({ open, onClose, component, onSubmit, itemOptions, wcOptions }: {
+  open: boolean
+  onClose: () => void
+  component: BomComponentLine
+  onSubmit: (data: any) => void
+  itemOptions: { value: string; label: string }[]
+  wcOptions: { value: string; label: string }[]
+}) {
+  const [qty, setQty] = useState(component.quantityPerParent)
+  const [uom, setUom] = useState(component.unitOfMeasure)
+  const [scrap, setScrap] = useState(component.scrapFactor)
+  const [opSeq, setOpSeq] = useState(component.operationSequence)
+  const [workCenterId, setWorkCenterId] = useState(component.workCenterId ?? '')
+  const [isPhantom, setIsPhantom] = useState(component.isPhantom)
+  const [isCritical, setIsCritical] = useState(component.isCritical)
+  const [notes, setNotes] = useState(component.notes ?? '')
+
+  if (!open) return null
+
+  return (
+    <Modal title="Edit Component" isOpen={open} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Quantity per Parent" type="number" value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+          <Input label="UOM" value={uom} onChange={(e) => setUom(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Scrap Factor %" type="number" value={scrap} onChange={(e) => setScrap(Number(e.target.value))} />
+          <Input label="Operation Sequence" type="number" value={opSeq} onChange={(e) => setOpSeq(Number(e.target.value))} />
+        </div>
+        <Select
+          value={workCenterId}
+          onChange={(e) => setWorkCenterId(e.target.value)}
+          label="Work Center"
+          placeholder="Optional..."
+          options={wcOptions}
+        />
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={isPhantom} onChange={(e) => setIsPhantom(e.target.checked)} className="rounded" />
+            Phantom
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={isCritical} onChange={(e) => setIsCritical(e.target.checked)} className="rounded" />
+            Critical
+          </label>
+        </div>
+        <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSubmit({
+            quantityPerParent: qty,
+            unitOfMeasure: uom,
+            scrapFactor: scrap,
+            operationSequence: opSeq,
+            workCenterId: workCenterId || null,
+            isPhantom,
+            isCritical,
+            notes: notes || null,
+          })}>Save</Button>
         </div>
       </div>
     </Modal>

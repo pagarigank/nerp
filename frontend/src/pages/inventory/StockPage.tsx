@@ -42,6 +42,8 @@ export function StockPage() {
                   <th className="px-3 py-2 font-medium text-gray-500">Warehouse</th><th className="px-3 py-2 font-medium text-gray-500 text-right">On Hand</th>
                   <th className="px-3 py-2 font-medium text-gray-500 text-right">Allocated</th><th className="px-3 py-2 font-medium text-gray-500 text-right">On Order</th>
                   <th className="px-3 py-2 font-medium text-gray-500 text-right">Available</th>
+                  <th className="px-3 py-2 font-medium text-gray-500 text-right">Unit Cost</th>
+                  <th className="px-3 py-2 font-medium text-gray-500 text-right">Valuation</th>
                 </tr></thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                   {filtered.map(r => (
@@ -53,6 +55,8 @@ export function StockPage() {
                       <td className="px-3 py-3 text-right text-gray-700 dark:text-gray-300">{money(r.quantityAllocated)}</td>
                       <td className="px-3 py-3 text-right text-gray-700 dark:text-gray-300">{money(r.quantityOnOrder)}</td>
                       <td className="px-3 py-3 text-right font-medium text-gray-900 dark:text-white">{money(r.quantityAvailable)}</td>
+                      <td className="px-3 py-3 text-right text-gray-700 dark:text-gray-300">{('unitCost' in r && r.unitCost != null) ? `$${(r as any).unitCost.toFixed(2)}` : '—'}</td>
+                      <td className="px-3 py-3 text-right text-gray-900 dark:text-white font-medium">{('unitCost' in r && (r as any).unitCost != null) ? `$${(r.quantityOnHand * (r as any).unitCost).toFixed(2)}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

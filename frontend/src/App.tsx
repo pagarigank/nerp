@@ -160,8 +160,29 @@ import { BomsPage } from '@pages/bom/BomsPage'
 import { BuildOrdersPage } from '@pages/bom/BuildOrdersPage'
 import { WorkCentersPage } from '@pages/bom/WorkCentersPage'
 import { BomReportsPage } from '@pages/bom/BomReportsPage'
-import { ProjectsPage } from '@pages/projects/ProjectsPage'
-import { PayrollPage } from '@pages/payroll/PayrollPage'
+import { ProjectsLayout } from '@pages/projects/ProjectsLayout'
+import { ProjectsListPage } from '@pages/projects/ProjectsListPage'
+import { ProjectOverviewPage } from '@pages/projects/ProjectOverviewPage'
+import { ProjectTasksPage } from '@pages/projects/ProjectTasksPage'
+import { ProjectBudgetPage } from '@pages/projects/ProjectBudgetPage'
+import { ProjectCostsPage } from '@pages/projects/ProjectCostsPage'
+import { ProjectBillingPage } from '@pages/projects/ProjectBillingPage'
+import { ProjectChangeOrdersPage } from '@pages/projects/ProjectChangeOrdersPage'
+import { ProjectAnalysisPage } from '@pages/projects/ProjectAnalysisPage'
+import { PayrollLayout } from '@pages/payroll/PayrollLayout'
+import { EmployeesPage } from '@pages/payroll/EmployeesPage'
+import { PayCodesPage } from '@pages/payroll/PayCodesPage'
+import { UnionPage } from '@pages/payroll/UnionPage'
+import { TimesheetsPage } from '@pages/payroll/TimesheetsPage'
+import { RunsPage } from '@pages/payroll/RunsPage'
+import { ExpensesPage } from '@pages/payroll/ExpensesPage'
+import { TaxPage } from '@pages/payroll/TaxPage'
+import { DeductionsPage } from '@pages/payroll/DeductionsPage'
+import { PtoPage } from '@pages/payroll/PtoPage'
+import { ManualChecksPage } from '@pages/payroll/ManualChecksPage'
+import { ReportsPage as PayrollReportsPage } from '@pages/payroll/ReportsPage'
+import { GarnishmentsPage } from '@pages/payroll/GarnishmentsPage'
+import { SetupPage } from '@pages/payroll/SetupPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -367,8 +388,32 @@ function App() {
           <Route path="build-orders" element={<BuildOrdersPage />} />
           <Route path="reports" element={<BomReportsPage />} />
         </Route>
-        <Route path="projects/*" element={<ProjectsPage />} />
-        <Route path="payroll/*" element={<PayrollPage />} />
+        <Route path="projects" element={<ProjectsLayout />}>
+          <Route index element={<ProjectsListPage />} />
+          <Route path="overview" element={<ProjectOverviewPage />} />
+          <Route path="tasks" element={<ProjectTasksPage />} />
+          <Route path="budget" element={<ProjectBudgetPage />} />
+          <Route path="costs" element={<ProjectCostsPage />} />
+          <Route path="billing" element={<ProjectBillingPage />} />
+          <Route path="change-orders" element={<ProjectChangeOrdersPage />} />
+          <Route path="analysis" element={<ProjectAnalysisPage />} />
+        </Route>
+        <Route path="payroll" element={<PayrollLayout />}>
+          <Route index element={<Navigate to="employees" replace />} />
+          <Route path="employees" element={<EmployeesPage />} />
+          <Route path="paycodes" element={<PayCodesPage />} />
+          <Route path="union" element={<UnionPage />} />
+          <Route path="timesheets" element={<TimesheetsPage />} />
+          <Route path="runs" element={<RunsPage />} />
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="tax" element={<TaxPage />} />
+          <Route path="deductions" element={<DeductionsPage />} />
+          <Route path="pto" element={<PtoPage />} />
+          <Route path="manual" element={<ManualChecksPage />} />
+          <Route path="reports" element={<PayrollReportsPage />} />
+          <Route path="garnishments" element={<GarnishmentsPage />} />
+          <Route path="setup" element={<SetupPage />} />
+        </Route>
         <Route path="field-service/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Field Service</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="reporting/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Reporting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />

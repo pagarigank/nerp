@@ -9,10 +9,11 @@ import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { getErrorMessage } from '@api/client'
-import { companyId as getCompanyId } from '@api/orderManagement'
+import { getAccounts } from '@api/platform'
+import { companyId as currentCompanyId } from '@api/orderManagement'
 import {
-  getEmployees, createEmployee,
-  getPayCodes, createPayCode,
+  getEmployees, createEmployee, editEmployee,
+  getPayCodes, createPayCode, editPayCode,
   getUnionProfiles, createUnionProfile, validatePrevailingWage,
   createTimesheet, submitTimesheet, approveTimesheet,
   createDraftRun, postRun, accrueRun, reverseRun, getCertifiedPayroll,
@@ -28,6 +29,7 @@ import {
   getGarnishmentRegister, getWageBaseReport, getPtoReport, getDirectDepositRegister,
   createGarnishment, getGarnishmentsForEmployee, computeGarnishments,
 } from '@api/payroll'
+import { getProjects, getProjectTasks } from '@api/projectAccounting'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
@@ -66,32 +68,57 @@ export function PayrollPage() {
   )
 }
 
-function EmployeesTab({ qc }: { qc: any }) {
+export function EmployeesTab({ qc }: { qc: any }) {
   const [show, setShow] = useState(false)
-  const [form, setForm] = useState({ employeeCode: '', firstName: '', lastName: '', email: '' })
+  const [editEmp, setEditEmp] = useState<any>(null)
+  const [form, setForm] = useState({ employeeCode: '', firstName: '', lastName: '', email: '', hireDate: '', employmentType: '0', status: '1' })
   const [selId, setSelId] = useState('')
+  const [search, setSearch] = useState('')
   const { data = [], isLoading } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
   const mutation = useMutation({
-    mutationFn: () => createEmployee({ companyId: getCompanyId(), ...form, employmentType: 0, hireDate: new Date().toISOString().slice(0, 10), isBillable: true }),
+    mutationFn: () => createEmployee({ companyId: currentCompanyId(), ...form, employmentType: 0, hireDate: new Date().toISOString().slice(0, 10), isBillable: true }),
     onSuccess: () => { setShow(false); qc.invalidateQueries({ queryKey: ['payroll', 'employees'] }) },
   })
+  const updateMut = useMutation({
+    mutationFn: () => editEmployee(editEmp.id, { firstName: form.firstName, lastName: form.lastName, email: form.email, status: Number(form.status) }),
+    onSuccess: () => { setShow(false); setEditEmp(null); qc.invalidateQueries({ queryKey: ['payroll', 'employees'] }) },
+  })
+
   const { data: dds = [], refetch: refetchDd } = useQuery({ queryKey: ['payroll', 'dd', selId], queryFn: () => getDirectDeposits(selId), enabled: !!selId })
   const [ddForm, setDdForm] = useState({ bankName: '', routingNumber: '', accountNumber: '', accountType: 'Checking', allocationPercentage: '', fixedAmount: '', isRemainder: false })
   const ddMut = useMutation({
-    mutationFn: () => createDirectDeposit(selId, { companyId: getCompanyId(), ...ddForm, allocationPercentage: ddForm.allocationPercentage ? Number(ddForm.allocationPercentage) : null, fixedAmount: ddForm.fixedAmount ? Number(ddForm.fixedAmount) : null }),
+    mutationFn: () => createDirectDeposit(selId, { companyId: currentCompanyId(), ...ddForm, allocationPercentage: ddForm.allocationPercentage ? Number(ddForm.allocationPercentage) : null, fixedAmount: ddForm.fixedAmount ? Number(ddForm.fixedAmount) : null }),
     onSuccess: () => { setDdForm({ bankName: '', routingNumber: '', accountNumber: '', accountType: 'Checking', allocationPercentage: '', fixedAmount: '', isRemainder: false }); refetchDd() },
   })
   const delMut = useMutation({ mutationFn: (id: string) => deleteDirectDeposit(id), onSuccess: () => refetchDd() })
+  const filtered = (data as any[]).filter((e: any) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return (e.employeeCode ?? '').toLowerCase().includes(q) || (e.fullName ?? '').toLowerCase().includes(q) || (e.email ?? '').toLowerCase().includes(q)
+  })
+
   const cols: DataTableColumn<any>[] = [
     { key: 'employeeCode', header: 'Code' },
     { key: 'fullName', header: 'Name' },
-    { key: 'status', header: 'Status' },
     { key: 'email', header: 'Email' },
+    { key: 'status', header: 'Status', render: (r: any) => (
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${r.status === 1 || r.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{r.status === 1 || r.status === 'Active' ? 'Active' : 'Inactive'}</span>
+    )},
+    { key: 'id', header: '', render: (_: unknown, r: any) => (
+      <Button size="sm" variant="outline" onClick={() => {
+        setEditEmp(r)
+        setForm({ employeeCode: r.employeeCode, firstName: r.firstName ?? '', lastName: r.lastName ?? '', email: r.email ?? '', hireDate: r.hireDate?.slice(0, 10) ?? '', employmentType: String(r.employmentType ?? 0), status: String(r.status ?? 1) })
+        setShow(true)
+      }}>Edit</Button>
+    )},
   ]
   return (
     <div className="space-y-3">
       <div className="flex justify-end"><Button onClick={() => setShow(true)}><Plus className="h-4 w-4" /> New Employee</Button></div>
       <DataTable columns={cols} data={data as any[]} loading={isLoading}
+        onRowClick={(row: any) => setSelId(row.id)} />
+      <Input label="Search" value={search} onChange={(e: any) => setSearch(e.target.value)} placeholder="Search employees..." />
+      <DataTable columns={cols} data={filtered as any[]} loading={isLoading}
         onRowClick={(row: any) => setSelId(row.id)} />
       {selId && (
         <div className="border rounded p-3 space-y-2">
@@ -118,50 +145,69 @@ function EmployeesTab({ qc }: { qc: any }) {
           </div>
         </div>
       )}
-      <Modal isOpen={show} onClose={() => setShow(false)} title="New Employee">
+      <Modal isOpen={show} onClose={() => { setShow(false); setEditEmp(null) }} title={editEmp ? 'Edit Employee' : 'New Employee'}>
         <div className="space-y-2">
-          <Input label="Code" value={form.employeeCode} onChange={(e: any) => setForm({ ...form, employeeCode: e.target.value })} />
-          <Input label="First Name" value={form.firstName} onChange={(e: any) => setForm({ ...form, firstName: e.target.value })} />
-          <Input label="Last Name" value={form.lastName} onChange={(e: any) => setForm({ ...form, lastName: e.target.value })} />
+          {!editEmp && <Input label="Code" value={form.employeeCode} onChange={(e: any) => setForm({ ...form, employeeCode: e.target.value })} />}
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="First Name" value={form.firstName} onChange={(e: any) => setForm({ ...form, firstName: e.target.value })} />
+            <Input label="Last Name" value={form.lastName} onChange={(e: any) => setForm({ ...form, lastName: e.target.value })} />
+          </div>
           <Input label="Email" value={form.email} onChange={(e: any) => setForm({ ...form, email: e.target.value })} />
+          {!editEmp && <>
+            <Input label="Hire Date" type="date" value={form.hireDate} onChange={(e: any) => setForm({ ...form, hireDate: e.target.value })} />
+            <Select label="Employment Type" value={form.employmentType} onChange={(e: any) => setForm({ ...form, employmentType: e.target.value })} options={[{ value: '0', label: 'Full-Time' }, { value: '1', label: 'Part-Time' }, { value: '2', label: 'Contractor' }]} />
+          </>}
+          {editEmp && <Select label="Status" value={form.status} onChange={(e: any) => setForm({ ...form, status: e.target.value })} options={[{ value: '1', label: 'Active' }, { value: '2', label: 'Inactive' }, { value: '3', label: 'Terminated' }]} />}
           {mutation.isError && <p className="text-sm text-red-600">{getErrorMessage(mutation.error)}</p>}
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>Create</Button>
+          <Button onClick={() => editEmp ? updateMut.mutate() : mutation.mutate()} disabled={mutation.isPending || updateMut.isPending}>{editEmp ? 'Save' : 'Create'}</Button>
         </div>
       </Modal>
     </div>
   )
 }
 
-function PayCodesTab({ qc }: { qc: any }) {
+export function PayCodesTab({ qc }: { qc: any }) {
   const [show, setShow] = useState(false)
-  const [form, setForm] = useState({ code: '', description: '', type: '0' })
+  const [editPC, setEditPC] = useState<any>(null)
+  const [form, setForm] = useState({ code: '', description: '', type: '0', glAccountNumber: '6000' })
   const { data = [], isLoading } = useQuery({ queryKey: ['payroll', 'paycodes'], queryFn: () => getPayCodes() })
+  const { data: glAccounts = [] } = useQuery({ queryKey: ['platform', 'accounts'], queryFn: () => getAccounts() })
+  const glOptions = (glAccounts as any[]).map((a: any) => ({ value: a.accountNumber, label: `${a.accountNumber} - ${a.description}` }))
   const mutation = useMutation({
-    mutationFn: () => createPayCode({ companyId: currentCompanyId(), code: form.code, description: form.description, type: Number(form.type), glAccountNumber: '6000' }),
-    onSuccess: () => { setShow(false); qc.invalidateQueries({ queryKey: ['payroll', 'paycodes'] }) },
+    mutationFn: () => createPayCode({ companyId: currentCompanyId(), code: form.code, description: form.description, type: Number(form.type), glAccountNumber: form.glAccountNumber }),
+    onSuccess: () => { setShow(false); setEditPC(null); qc.invalidateQueries({ queryKey: ['payroll', 'paycodes'] }) },
+  })
+  const updateMut = useMutation({
+    mutationFn: () => editPayCode(editPC.id, { description: form.description, glAccountNumber: form.glAccountNumber }),
+    onSuccess: () => { setShow(false); setEditPC(null); qc.invalidateQueries({ queryKey: ['payroll', 'paycodes'] }) },
   })
   const cols: DataTableColumn<any>[] = [
     { key: 'code', header: 'Code' },
     { key: 'description', header: 'Description' },
     { key: 'type', header: 'Type' },
+    { key: 'glAccountNumber', header: 'GL Account' },
+    { key: 'id', header: '', render: (_: unknown, r: any) => (
+      <Button size="sm" variant="outline" onClick={() => { setEditPC(r); setForm({ code: r.code, description: r.description, type: String(r.type), glAccountNumber: r.glAccountNumber ?? '6000' }); setShow(true) }}>Edit</Button>
+    )},
   ]
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><Button onClick={() => setShow(true)}><Plus className="h-4 w-4" /> New Pay Code</Button></div>
+      <div className="flex justify-end"><Button onClick={() => { setEditPC(null); setForm({ code: '', description: '', type: '0', glAccountNumber: '6000' }); setShow(true) }}><Plus className="h-4 w-4" /> New Pay Code</Button></div>
       <DataTable columns={cols} data={data as any[]} loading={isLoading} />
-      <Modal isOpen={show} onClose={() => setShow(false)} title="New Pay Code">
+      <Modal isOpen={show} onClose={() => { setShow(false); setEditPC(null) }} title={editPC ? 'Edit Pay Code' : 'New Pay Code'}>
         <div className="space-y-2">
-          <Input label="Code" value={form.code} onChange={(e: any) => setForm({ ...form, code: e.target.value })} />
+          <Input label="Code" value={form.code} onChange={(e: any) => setForm({ ...form, code: e.target.value })} disabled={!!editPC} />
           <Input label="Description" value={form.description} onChange={(e: any) => setForm({ ...form, description: e.target.value })} />
-          <Select label="Type" value={form.type} onChange={(e: any) => setForm({ ...form, type: e.target.value })} options={[{ value: '0', label: 'Earnings' }, { value: '1', label: 'Deduction' }, { value: '2', label: 'Tax' }]} />
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>Create</Button>
+          <Select label="Type" value={form.type} onChange={(e: any) => setForm({ ...form, type: e.target.value })} options={[{ value: '0', label: 'Earnings' }, { value: '1', label: 'Deduction' }, { value: '2', label: 'Tax' }]} disabled={!!editPC} />
+          <Select label="GL Account" value={form.glAccountNumber} onChange={(e: any) => setForm({ ...form, glAccountNumber: e.target.value })} options={glOptions} placeholder="Select account..." />
+          <Button onClick={() => editPC ? updateMut.mutate() : mutation.mutate()} disabled={mutation.isPending || updateMut.isPending}>{editPC ? 'Save' : 'Create'}</Button>
         </div>
       </Modal>
     </div>
   )
 }
 
-function UnionTab() {
+export function UnionTab() {
   const [show, setShow] = useState(false)
   const [validate, setValidate] = useState({ trade: 'Electrician', jurisdiction: 'CA', wage: '55' })
   const [showValidate, setShowValidate] = useState(false)
@@ -215,57 +261,145 @@ function UnionTab() {
   )
 }
 
-function TimesheetsTab({ qc }: { qc: any }) {
+export function TimesheetsTab({ qc }: { qc: any }) {
   const [employeeId, setEmployeeId] = useState('')
   const [weekEnding, setWeekEnding] = useState(new Date().toISOString().slice(0, 10))
+  const [lines, setLines] = useState<{ payCodeId: string; hours: number; projectId: string; taskId: string; description: string }[]>([{ payCodeId: '', hours: 8, projectId: '', taskId: '', description: '' }])
   const [msg, setMsg] = useState('')
+  const [tsId, setTsId] = useState<string | null>(null)
   const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
+  const { data: payCodes = [] } = useQuery({ queryKey: ['payroll', 'paycodes'], queryFn: () => getPayCodes() })
+  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: () => getProjects() })
+
+  // Collect unique project IDs across all lines to prefetch tasks
+  const lineProjectIds = [...new Set(lines.map(l => l.projectId).filter(Boolean))]
+  // For simplicity, we fetch tasks per-project only when user picks a project
+  // Store tasks map: projectId -> tasks[]
+  const [taskMap, setTaskMap] = useState<Record<string, any[]>>({})
+  const fetchTasks = async (projId: string) => {
+    if (!projId || taskMap[projId]) return
+    try {
+      const tasks = await getProjectTasks(projId)
+      setTaskMap(prev => ({ ...prev, [projId]: tasks as any[] }))
+    } catch { /* ignore */ }
+  }
+
   const createMut = useMutation({
     mutationFn: async () => {
       const ts: any = await createTimesheet({ companyId: currentCompanyId(), employeeId, weekEnding })
-      await submitTimesheet(ts.data, employeeId)
-      await approveTimesheet(ts.data, employeeId)
-      return ts
+      const id = ts.data ?? ts
+      setTsId(id)
+      for (const line of lines) {
+        if (line.payCodeId && line.hours > 0) {
+          await addTimesheetLine(id, {
+            payCodeId: line.payCodeId,
+            hours: line.hours,
+            projectId: line.projectId || null,
+            taskId: line.taskId || null,
+            description: line.description || null,
+          })
+        }
+      }
+      await submitTimesheet(id, employeeId)
+      await approveTimesheet(id, employeeId)
+      return id
     },
-    onSuccess: (ts: any) => { setMsg(`Timesheet ${ts.data} approved → labor cost posted to Project Accounting + GL.`); qc.invalidateQueries({ queryKey: ['payroll', 'employees'] }) },
+    onSuccess: (id: any) => { setMsg(`Timesheet ${id} created, submitted, and approved → labor cost posted to Project Accounting + GL.`); qc.invalidateQueries({ queryKey: ['payroll', 'employees'] }) },
     onError: (e) => setMsg(getErrorMessage(e)),
   })
+
+  function addLine() { setLines(prev => [...prev, { payCodeId: '', hours: 8, projectId: '', taskId: '', description: '' }]) }
+  function removeLine(i: number) { setLines(prev => prev.filter((_, idx) => idx !== i)) }
+  function updateLine(i: number, field: string, value: any) {
+    setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
+  }
+
+  const payCodeOpts = (payCodes as any[]).map((p: any) => ({ value: p.id, label: `${p.code} - ${p.description}` }))
+  const projectOpts = (projects as any[]).map((p: any) => ({ value: p.id, label: `${p.projectCode} - ${p.name}` }))
+
   return (
-    <div className="space-y-3 max-w-lg">
-      <p className="text-sm text-gray-600">Create + submit + approve a timesheet. Approving posts approved labor hours to the project ledger and GL (wired to Phase 10).</p>
-      <Select label="Employee" value={employeeId} onChange={(e: any) => setEmployeeId(e.target.value)} options={(employees as any[]).map((e: any) => ({ value: e.id, label: `${e.employeeCode} — ${e.fullName}` }))} />
-      <Input label="Week Ending" type="date" value={weekEnding} onChange={(e: any) => setWeekEnding(e.target.value)} />
+    <div className="space-y-3 max-w-2xl">
+      <p className="text-sm text-gray-600">Create a timesheet with line entries (pay code, hours, project, task). Submitting + approving posts labor cost to Project Accounting and GL.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Select label="Employee" value={employeeId} onChange={(e: any) => setEmployeeId(e.target.value)} options={(employees as any[]).map((e: any) => ({ value: e.id, label: `${e.employeeCode} — ${e.fullName}` }))} />
+        <Input label="Week Ending" type="date" value={weekEnding} onChange={(e: any) => setWeekEnding(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium">Timesheet Lines</span>
+          <Button size="sm" variant="outline" onClick={addLine}>+ Add Line</Button>
+        </div>
+        {lines.map((line, i) => {
+          const lineTasks = line.projectId ? (taskMap[line.projectId] || []) : []
+          return (
+          <div key={i} className="border rounded p-2 space-y-2">
+            <div className="grid grid-cols-3 gap-2 items-end">
+              <Select label="Pay Code" value={line.payCodeId} onChange={(e: any) => updateLine(i, 'payCodeId', e.target.value)} options={payCodeOpts} placeholder="Select..." />
+              <Input label="Hours" type="number" step="0.25" value={line.hours} onChange={(e: any) => updateLine(i, 'hours', Number(e.target.value))} />
+              <Select label="Project (billable)" value={line.projectId} onChange={(e: any) => { updateLine(i, 'projectId', e.target.value); if (e.target.value) fetchTasks(e.target.value); updateLine(i, 'taskId', ''); }} options={[{ value: '', label: '— None —' }, ...projectOpts]} placeholder="Optional..." />
+            </div>
+            <div className="grid grid-cols-2 gap-2 items-end">
+              <Select label="Task" value={line.taskId} onChange={(e: any) => updateLine(i, 'taskId', e.target.value)} options={[{ value: '', label: '— None —' }, ...lineTasks.map((t: any) => ({ value: t.id, label: `${t.taskCode} - ${t.description}` }))]} placeholder="Select task..." />
+              <Input label="Description" value={line.description} onChange={(e: any) => updateLine(i, 'description', e.target.value)} placeholder="Line description..." />
+            </div>
+            {lines.length > 1 && <Button size="sm" variant="ghost" className="text-red-600" onClick={() => removeLine(i)}>Remove</Button>}
+          </div>
+          )
+        })}
+      </div>
       <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !employeeId}>Create / Submit / Approve</Button>
-      {msg && <p className="text-sm">{msg}</p>}
+      {msg && <p className="text-sm text-green-700">{msg}</p>}
     </div>
   )
 }
 
-function RunsTab({ qc }: { qc: any }) {
+export function RunsTab({ qc }: { qc: any }) {
   const [runId, setRunId] = useState('')
   const [report, setReport] = useState<any>(null)
+  const [runForm, setRunForm] = useState({ calendarId: '', periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10), payDate: new Date().toISOString().slice(0, 10) })
+  const [postById, setPostById] = useState('')
+  const [accrualDate, setAccrualDate] = useState(new Date().toISOString().slice(0, 10))
+  const [reversalDate, setReversalDate] = useState('')
+  const [checkDate, setCheckDate] = useState(new Date().toISOString().slice(0, 10))
+  const [startingCheckNo, setStartingCheckNo] = useState('1001')
+  const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
   const createMut = useMutation({
-    mutationFn: () => createDraftRun({ companyId: currentCompanyId(), calendarId: '00000000-0000-0000-0000-000000000000', periodStart: '2026-08-01', periodEnd: '2026-08-31', payDate: '2026-08-20' }),
+    mutationFn: () => createDraftRun({
+      companyId: currentCompanyId(),
+      calendarId: runForm.calendarId || '00000000-0000-0000-0000-000000000000',
+      periodStart: runForm.periodStart,
+      periodEnd: runForm.periodEnd,
+      payDate: runForm.payDate,
+    }),
     onSuccess: (r: any) => setRunId(r.data),
   })
-  const postMut = useMutation({ mutationFn: () => postRun(runId, '00000000-0000-0000-0000-000000000000'), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'runs'] }) })
-  const accrueMut = useMutation({ mutationFn: () => accrueRun(runId, '2026-08-31') })
-  const reverseMut = useMutation({ mutationFn: () => reverseRun(runId, '2026-09-01') })
+  const postMut = useMutation({ mutationFn: () => postRun(runId, postById || currentCompanyId()), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'runs'] }) })
+  const accrueMut = useMutation({ mutationFn: () => accrueRun(runId, accrualDate) })
+  const reverseMut = useMutation({ mutationFn: () => reverseRun(runId, reversalDate || new Date().toISOString().slice(0, 10)) })
   const voidMut = useMutation({ mutationFn: () => voidRun(runId), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'runs'] }) })
-  const printMut = useMutation({ mutationFn: () => printChecks(runId, { checkDate: '2026-08-20', startingCheckNumber: 1001, directDeposit: true }) })
+  const printMut = useMutation({ mutationFn: () => printChecks(runId, { checkDate, startingCheckNumber: Number(startingCheckNo), directDeposit: true }) })
   const [nacha, setNacha] = useState<string | null>(null)
   const certQ = useQuery({ queryKey: ['payroll', 'certified', runId], queryFn: () => getCertifiedPayroll(runId), enabled: !!runId })
   const nachaQ = useQuery({ queryKey: ['payroll', 'nacha', runId], queryFn: () => getNachaFile(runId), enabled: false })
   const loadNacha = () => { nachaQ.refetch().then((r) => setNacha((r.data as any)?.data ?? null)) }
-  const cid = getCompanyId()
+  const cid = currentCompanyId()
   const depositsQ = useQuery({ queryKey: ['payroll', 'tax-deposits', cid], queryFn: () => getTaxDeposits(cid) })
   const genMut = useMutation({ mutationFn: () => generateTaxDeposits(runId, 'Monthly'), onSuccess: () => depositsQ.refetch() })
   const depMut = useMutation({ mutationFn: (id: string) => markTaxDeposited(id, { depositedAmount: 0, depositedOn: new Date().toISOString().slice(0, 10) }), onSuccess: () => depositsQ.refetch() })
 
   return (
     <div className="space-y-3 max-w-2xl">
-      <div className="flex gap-2 flex-wrap">
+      <div className="border rounded p-3 space-y-2">
+        <div className="font-semibold text-sm">Run Parameters</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input label="Period Start" type="date" value={runForm.periodStart} onChange={(e: any) => setRunForm(p => ({ ...p, periodStart: e.target.value }))} />
+          <Input label="Period End" type="date" value={runForm.periodEnd} onChange={(e: any) => setRunForm(p => ({ ...p, periodEnd: e.target.value }))} />
+          <Input label="Pay Date" type="date" value={runForm.payDate} onChange={(e: any) => setRunForm(p => ({ ...p, payDate: e.target.value }))} />
+          <Input label="Calendar Id (optional)" value={runForm.calendarId} onChange={(e: any) => setRunForm(p => ({ ...p, calendarId: e.target.value }))} placeholder="Leave empty for auto" />
+        </div>
         <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>Build Draft Run</Button>
+      </div>
+      <div className="flex gap-2 flex-wrap">
         <Button variant="secondary" disabled={!runId || postMut.isPending} onClick={() => postMut.mutate()}>Post Run (→ GL)</Button>
         <Button variant="secondary" disabled={!runId || accrueMut.isPending} onClick={() => accrueMut.mutate()}>Accrue</Button>
         <Button variant="secondary" disabled={!runId || reverseMut.isPending} onClick={() => reverseMut.mutate()}>Reverse</Button>
@@ -315,7 +449,7 @@ function RunsTab({ qc }: { qc: any }) {
   )
 }
 
-function ExpensesTab({ qc }: { qc: any }) {
+export function ExpensesTab({ qc }: { qc: any }) {
   const [reportId, setReportId] = useState('')
   const [form, setForm] = useState({ employeeId: '', description: '' })
   const [line, setLine] = useState({ expenseType: '0', amount: '0', description: 'Mileage', miles: '100', perDiemDays: '0', projectId: '' })
@@ -351,20 +485,20 @@ function ExpensesTab({ qc }: { qc: any }) {
   )
 }
 
-function TaxTab({ qc }: { qc: any }) {
+export function TaxTab({ qc }: { qc: any }) {
   const [employeeId, setEmployeeId] = useState('')
   const [w4, setW4] = useState({ filingStatus: '0', multipleJobs: false, dependentsCredit: '2000', otherIncome: '0', deductions: '0' })
   const [calc, setCalc] = useState({ taxableWages: '2000', payFrequency: '2' })
   const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
-  const { data: taxTables = [] } = useQuery({ queryKey: ['payroll', 'tax-tables'], queryFn: () => getTaxTables(getCompanyId()) })
-  const { data: jurisdictions = [] } = useQuery({ queryKey: ['payroll', 'tax-jurisdictions'], queryFn: () => getTaxJurisdictions(getCompanyId()) })
+  const { data: taxTables = [] } = useQuery({ queryKey: ['payroll', 'tax-tables'], queryFn: () => getTaxTables(currentCompanyId()) })
+  const { data: jurisdictions = [] } = useQuery({ queryKey: ['payroll', 'tax-jurisdictions'], queryFn: () => getTaxJurisdictions(currentCompanyId()) })
   const [profile, setProfile] = useState({ residentState: '', workState: '', addFed: '0', addState: '0', exemptFed: false, exemptState: false })
-  const { data: empProfile } = useQuery({ queryKey: ['payroll', 'tax-profile', employeeId], queryFn: () => getEmployeeTaxProfile(employeeId, getCompanyId()), enabled: !!employeeId })
+  const { data: empProfile } = useQuery({ queryKey: ['payroll', 'tax-profile', employeeId], queryFn: () => getEmployeeTaxProfile(employeeId, currentCompanyId()), enabled: !!employeeId })
   const createMut = useMutation({ mutationFn: () => createW4(employeeId, { filingStatus: Number(w4.filingStatus), multipleJobs: w4.multipleJobs, dependentsCredit: Number(w4.dependentsCredit), otherIncome: Number(w4.otherIncome), deductions: Number(w4.deductions) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'w4', employeeId] }) })
   const profileMut = useMutation({
     mutationFn: () => empProfile
-      ? updateEmployeeTaxProfile(employeeId, { companyId: getCompanyId(), ...profile })
-      : createEmployeeTaxProfile(employeeId, { companyId: getCompanyId(), ...profile }),
+      ? updateEmployeeTaxProfile(employeeId, { companyId: currentCompanyId(), ...profile })
+      : createEmployeeTaxProfile(employeeId, { companyId: currentCompanyId(), ...profile }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'tax-profile', employeeId] }),
   })
   const withholdQ = useQuery({ queryKey: ['payroll', 'withhold', employeeId, calc.taxableWages, calc.payFrequency], queryFn: () => computeWithholding(employeeId, Number(calc.taxableWages), Number(calc.payFrequency)), enabled: !!employeeId })
@@ -439,7 +573,7 @@ function TaxTab({ qc }: { qc: any }) {
   )
 }
 
-function DeductionsTab({ qc }: { qc: any }) {
+export function DeductionsTab({ qc }: { qc: any }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ description: '', deductionType: '0', isPercent: false, percentRate: '0', flatAmount: '0', glAccountNumber: '2200' })
   const { data: items = [] } = useQuery({ queryKey: ['payroll', 'deductions'], queryFn: () => getDeductionBenefits() })
@@ -480,7 +614,7 @@ function DeductionsTab({ qc }: { qc: any }) {
   )
 }
 
-function PtoTab({ qc }: { qc: any }) {
+export function PtoTab({ qc }: { qc: any }) {
   const [form, setForm] = useState({ employeeId: '', policyName: 'Vacation', accrualRate: '1.5', maxAccrual: '120', carryoverLimit: '40' })
   const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
   const { data: ledgers = [] } = useQuery({ queryKey: ['payroll', 'pto-ledgers'], queryFn: () => getPtoLedgers() })
@@ -500,7 +634,7 @@ function PtoTab({ qc }: { qc: any }) {
   )
 }
 
-function ManualChecksTab({ qc }: { qc: any }) {
+export function ManualChecksTab({ qc }: { qc: any }) {
   const [form, setForm] = useState({ employeeId: '', payDate: '2026-08-20', grossPay: '500', netPay: '450', isDirectDeposit: false, checkNumber: '' })
   const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
   const createMut = useMutation({ mutationFn: () => createManualCheck({ companyId: currentCompanyId(), employeeId: form.employeeId, payDate: form.payDate, grossPay: Number(form.grossPay), netPay: Number(form.netPay), isDirectDeposit: form.isDirectDeposit, checkNumber: form.checkNumber || null }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'manual-checks'] }) })
@@ -519,7 +653,7 @@ function ManualChecksTab({ qc }: { qc: any }) {
   )
 }
 
-function ReportsTab({ qc }: { qc: any }) {
+export function ReportsTab({ qc }: { qc: any }) {
   const company = currentCompanyId()
   const [year, setYear] = useState('2026')
   const y = Number(year)
@@ -632,7 +766,7 @@ function ComplianceSection({ qc, company, year }: { qc: any; company: string; ye
   )
 }
 
-function GarnishmentsTab({ qc }: { qc: any }) {
+export function GarnishmentsTab({ qc }: { qc: any }) {
   const [employeeId, setEmployeeId] = useState('')
   const [di, setDi] = useState('1000')
   const [form, setForm] = useState({ type: '0', disposableIncomePercent: '50', caseNumber: '' })
@@ -686,8 +820,8 @@ function GarnishmentsTab({ qc }: { qc: any }) {
 
 
 // --- Setup tab: company payroll setup, PTO policies, new-hire configs, ACH returns ---
-function SetupTab({ qc }: { qc: any }) {
-  const cid = getCompanyId()
+export function SetupTab({ qc }: { qc: any }) {
+  const cid = currentCompanyId()
   const { data: setup } = useQuery({ queryKey: ['payroll', 'company-setup', cid], queryFn: () => getCompanySetup(cid) })
   const [form, setForm] = useState({ ein: '', federalTaxId: '', stateTaxId: '', sutAState: '', eftpsPin: '', depositSchedule: 'Monthly', socialSecurityRate: '0.062', medicareRate: '0.0145', futaRate: '0.006', sutARate: '0.027' })
   const setupMut = useMutation({ mutationFn: () => createCompanySetup({ companyId: cid, ...form, socialSecurityRate: Number(form.socialSecurityRate), medicareRate: Number(form.medicareRate), futaRate: Number(form.futaRate), sutARate: Number(form.sutARate) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'company-setup', cid] }) })

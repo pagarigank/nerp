@@ -2,10 +2,15 @@ import { useState, useMemo } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { getErrorMessage } from '@api/client'
-import { getBomListing, getBuildHistory, getBomAccuracy } from '@api/bom'
+import { getBomListing, getBuildHistory, getBomAccuracy, getComponentShortage, getRevisionHistory, getBuildVariance, getWorkCenterUtilization } from '@api/bom'
 import { getItems } from '@api/inventory'
 import { useQuery } from '@tanstack/react-query'
 import type { BomListingItem, BuildHistoryEntry, BomAccuracyItem } from '@/types/bom'
+
+interface ComponentShortageItem { componentItemId: string; itemCode: string; onHand: number; allocated: number; available: number; required: number; shortage: number }
+interface RevisionHistoryItem { bomHeaderId: string; parentItemId: string; revision: string; changeDate: string; changeType: string; description: string | null; changedBy: string | null }
+interface BuildVarianceItem { buildOrderId: string; buildNumber: string; parentItemId: string; plannedYield: number; actualYield: number | null; variance: number; totalScrapCost: number; status: string }
+interface WorkCenterUtilItem { workCenterId: string; code: string; name: string; department: string | null; totalHoursUsed: number; capacityHours: number; utilizationPercent: number; totalCost: number }
 import type { ItemSummary } from '@/types/inventory'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toFixed(4)}` : '—')
@@ -33,6 +38,10 @@ export function BomReportsPage() {
           { key: 'listing' as const, label: 'BOM Listing' },
           { key: 'history' as const, label: 'Build History' },
           { key: 'accuracy' as const, label: 'Accuracy Report' },
+          { key: 'shortage' as const, label: 'Component Shortage' },
+          { key: 'revision' as const, label: 'Revision History' },
+          { key: 'variance' as const, label: 'Build Variance' },
+          { key: 'utilization' as const, label: 'WC Utilization' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-2 text-sm font-medium ${
@@ -44,6 +53,10 @@ export function BomReportsPage() {
       {tab === 'listing' && <ListingReport itemMap={itemMap} />}
       {tab === 'history' && <HistoryReport itemMap={itemMap} />}
       {tab === 'accuracy' && <AccuracyReport itemMap={itemMap} />}
+      {tab === 'shortage' && <ShortageReport />}
+      {tab === 'revision' && <RevisionHistoryReport itemMap={itemMap} />}
+      {tab === 'variance' && <VarianceReport itemMap={itemMap} />}
+      {tab === 'utilization' && <UtilizationReport />}
     </div>
   )
 }
@@ -120,4 +133,90 @@ function AccuracyReport({ itemMap }: { itemMap: Record<string, ItemSummary> }) {
   ]
 
   return <DataTable data={issues as BomAccuracyItem[]} columns={columns} isLoading={isLoading} emptyMessage="No BOM accuracy issues found. All BOMs look healthy!" />
+}
+
+function ShortageReport() {
+  const { data: shortages = [], isLoading } = useQuery({
+    queryKey: ['bom', 'shortage'],
+    queryFn: () => getComponentShortage(),
+  })
+
+  const columns: DataTableColumn<ComponentShortageItem>[] = [
+    { key: 'itemCode', header: 'Component Item', sortable: true },
+    { key: 'onHand', header: 'On Hand', align: 'right' },
+    { key: 'allocated', header: 'Allocated', align: 'right' },
+    { key: 'available', header: 'Available', align: 'right' },
+    { key: 'required', header: 'Required', align: 'right' },
+    { key: 'shortage', header: 'Shortage', align: 'right', render: (r: ComponentShortageItem) => (
+      <span className="text-red-600 font-medium">{r.shortage}</span>
+    )},
+  ]
+
+  return <DataTable data={shortages as ComponentShortageItem[]} columns={columns} isLoading={isLoading} emptyMessage="No component shortages found." />
+}
+
+function RevisionHistoryReport({ itemMap }: { itemMap: Record<string, ItemSummary> }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ['bom', 'revisionHistory'],
+    queryFn: () => getRevisionHistory(),
+  })
+
+  const columns: DataTableColumn<RevisionHistoryItem>[] = [
+    {
+      key: 'parentItemId', header: 'Parent Item',
+      render: (r: RevisionHistoryItem) => itemMap[r.parentItemId]?.itemCode ?? r.parentItemId.slice(0, 8),
+    },
+    { key: 'revision', header: 'Rev' },
+    { key: 'changeType', header: 'Change Type' },
+    { key: 'description', header: 'Description', render: (r: RevisionHistoryItem) => r.description ?? '—' },
+    { key: 'changedBy', header: 'Changed By', render: (r: RevisionHistoryItem) => r.changedBy ?? '—' },
+    { key: 'changeDate', header: 'Date', render: (r: RevisionHistoryItem) => new Date(r.changeDate).toLocaleDateString() },
+  ]
+
+  return <DataTable data={history as RevisionHistoryItem[]} columns={columns} isLoading={isLoading} emptyMessage="No revision history found." />
+}
+
+function VarianceReport({ itemMap }: { itemMap: Record<string, ItemSummary> }) {
+  const { data: variances = [], isLoading } = useQuery({
+    queryKey: ['bom', 'buildVariance'],
+    queryFn: () => getBuildVariance(),
+  })
+
+  const columns: DataTableColumn<BuildVarianceItem>[] = [
+    { key: 'buildNumber', header: 'Build #', sortable: true },
+    {
+      key: 'parentItemId', header: 'Parent Item',
+      render: (r: BuildVarianceItem) => itemMap[r.parentItemId]?.itemCode ?? r.parentItemId.slice(0, 8),
+    },
+    { key: 'plannedYield', header: 'Planned', align: 'right' },
+    { key: 'actualYield', header: 'Actual', align: 'right', render: (r: BuildVarianceItem) => r.actualYield?.toFixed(0) ?? '—' },
+    { key: 'variance', header: 'Variance', align: 'right', render: (r: BuildVarianceItem) => (
+      <span className={r.variance < 0 ? 'text-red-600 font-medium' : r.variance > 0 ? 'text-green-600 font-medium' : ''}>{r.variance > 0 ? '+' : ''}{r.variance}</span>
+    )},
+    { key: 'totalScrapCost', header: 'Scrap Cost', align: 'right', render: (r: BuildVarianceItem) => MONEY(r.totalScrapCost || null) },
+    { key: 'status', header: 'Status' },
+  ]
+
+  return <DataTable data={variances as BuildVarianceItem[]} columns={columns} isLoading={isLoading} emptyMessage="No build variance data found." />
+}
+
+function UtilizationReport() {
+  const { data: utils = [], isLoading } = useQuery({
+    queryKey: ['bom', 'wcUtilization'],
+    queryFn: () => getWorkCenterUtilization(),
+  })
+
+  const columns: DataTableColumn<WorkCenterUtilItem>[] = [
+    { key: 'code', header: 'Code', sortable: true },
+    { key: 'name', header: 'Name' },
+    { key: 'department', header: 'Department', render: (r: WorkCenterUtilItem) => r.department ?? '—' },
+    { key: 'totalHoursUsed', header: 'Hours Used', align: 'right' },
+    { key: 'capacityHours', header: 'Capacity Hrs', align: 'right' },
+    { key: 'utilizationPercent', header: 'Utilization %', align: 'right', render: (r: WorkCenterUtilItem) => (
+      <span className={r.utilizationPercent > 100 ? 'text-red-600 font-medium' : ''}>{r.utilizationPercent.toFixed(1)}%</span>
+    )},
+    { key: 'totalCost', header: 'Total Cost', align: 'right', render: (r: WorkCenterUtilItem) => MONEY(r.totalCost || null) },
+  ]
+
+  return <DataTable data={utils as WorkCenterUtilItem[]} columns={columns} isLoading={isLoading} emptyMessage="No work center utilization data found." />
 }

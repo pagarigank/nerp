@@ -27,6 +27,8 @@ const MONEY = (v: number | null) => (v != null ? `$${Number(v).toFixed(4)}` : 'â
 export function BuildOrdersPage() {
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
+  const [completeId, setCompleteId] = useState<string | null>(null)
+  const [actualYield, setActualYield] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
 
@@ -115,7 +117,7 @@ export function BuildOrdersPage() {
             </Button>
           )}
           {(row.status === 'Released' || row.status === 'InProgress') && (
-            <Button size="sm" onClick={() => completeMutation.mutate({ id: row.id })}>
+            <Button size="sm" onClick={() => { setCompleteId(row.id); setActualYield('') }}>
               <Package className="h-3.5 w-3.5 mr-1" /> Complete
             </Button>
           )}
@@ -176,6 +178,32 @@ export function BuildOrdersPage() {
         itemMap={itemMap}
         warehouses={warehouses as WarehouseSummary[]}
       />
+
+      {/* Complete Build Order Modal */}
+      <Modal title="Complete Build Order" isOpen={!!completeId} onClose={() => setCompleteId(null)}>
+        <div className="space-y-4">
+          <Input
+            label="Actual Yield (optional)"
+            type="number"
+            step="0.01"
+            min="0"
+            value={actualYield}
+            onChange={(e) => setActualYield(e.target.value)}
+            placeholder="Enter actual quantity produced..."
+          />
+          <p className="text-sm text-gray-500">Leave blank to use the planned quantity.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setCompleteId(null)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!completeId) return
+              const payload: any = {}
+              if (actualYield) payload.actualYield = Number(actualYield)
+              completeMutation.mutate({ id: completeId, data: payload })
+              setCompleteId(null)
+            }}>Complete</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -194,6 +222,7 @@ function CreateBuildOrderModal({ open, onClose, onSubmit, boms, itemMap, warehou
   const [qty, setQty] = useState(1)
   const [whId, setWhId] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [notes, setNotes] = useState('')
 
   const selectedBom = boms.find(b => b.id === bomId)
 
@@ -233,6 +262,7 @@ function CreateBuildOrderModal({ open, onClose, onSubmit, boms, itemMap, warehou
           placeholder="Select warehouse..."
           options={warehouses.map(w => ({ value: w.id, label: `${w.warehouseCode} - ${w.warehouseName}` }))}
         />
+        <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes..." />
         {selectedBom && (
           <p className="text-sm text-gray-500">
             BOM: {itemMap[selectedBom.parentItemId]?.itemCode} Rev {selectedBom.revision} â€” {selectedBom.componentCount} components
@@ -252,6 +282,7 @@ function CreateBuildOrderModal({ open, onClose, onSubmit, boms, itemMap, warehou
               unitOfMeasure: 'EA',
               warehouseId: whId,
               buildDate: date,
+              notes: notes || null,
             })
           }}>Create</Button>
         </div>

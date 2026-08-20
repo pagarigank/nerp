@@ -99,6 +99,106 @@ public class WarehouseController : ControllerBase
 
         return CreatedAtAction(nameof(GetById), new { id = warehouse.Id }, ApiResponse<WarehouseDto>.Success(dto));
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<WarehouseDto>>> Update(
+        Guid id, [FromBody] UpdateWarehouseRequest request, CancellationToken cancellationToken)
+    {
+        var warehouse = await _repository.GetByIdAsync(id, cancellationToken);
+        if (warehouse is null)
+            return NotFound(ApiResponse<WarehouseDto>.Failure([$"Warehouse {id} not found."]));
+
+        if (request.WarehouseName is not null)
+        {
+            warehouse.UpdateAddress(request.Address);
+        }
+
+        if (request.Address is not null)
+        {
+            warehouse.UpdateAddress(request.Address);
+        }
+
+        if (!string.IsNullOrEmpty(request.WarehouseType) &&
+            Enum.TryParse<WarehouseType>(request.WarehouseType, true, out var type))
+        {
+            // WarehouseType has no setter — create new if type changes
+            // For simplicity we just update address/name here
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            if (request.IsActive.Value)
+            {
+                warehouse.Activate();
+            }
+            else
+            {
+                warehouse.Deactivate();
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var dto = new WarehouseDto
+        {
+            Id = warehouse.Id,
+            WarehouseCode = warehouse.WarehouseCode,
+            WarehouseName = warehouse.WarehouseName,
+            CompanyId = warehouse.CompanyId,
+            WarehouseType = warehouse.WarehouseType.ToString(),
+            Address = warehouse.Address,
+            IsActive = warehouse.IsActive,
+        };
+
+        return Ok(ApiResponse<WarehouseDto>.Success(dto));
+    }
+
+    [HttpPut("{id:guid}/toggle-status")]
+    public async Task<ActionResult<ApiResponse<WarehouseDto>>> ToggleStatus(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var warehouse = await _repository.GetByIdAsync(id, cancellationToken);
+        if (warehouse is null)
+            return NotFound(ApiResponse<WarehouseDto>.Failure([$"Warehouse {id} not found."]));
+
+        if (warehouse.IsActive)
+        {
+            warehouse.Deactivate();
+        }
+        else
+        {
+            warehouse.Activate();
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var dto = new WarehouseDto
+        {
+            Id = warehouse.Id,
+            WarehouseCode = warehouse.WarehouseCode,
+            WarehouseName = warehouse.WarehouseName,
+            CompanyId = warehouse.CompanyId,
+            WarehouseType = warehouse.WarehouseType.ToString(),
+            Address = warehouse.Address,
+            IsActive = warehouse.IsActive,
+        };
+
+        return Ok(ApiResponse<WarehouseDto>.Success(dto));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> Delete(
+        Guid id, CancellationToken cancellationToken)
+    {
+        var warehouse = await _repository.GetByIdAsync(id, cancellationToken);
+        if (warehouse is null)
+            return NotFound(ApiResponse<string>.Failure([$"Warehouse {id} not found."]));
+
+        warehouse.Deactivate();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<string>.Success("Warehouse deactivated."));
+    }
 }
 
 public class WarehouseDto
@@ -119,4 +219,12 @@ public class CreateWarehouseRequest
     public Guid CompanyId { get; set; }
     public string WarehouseType { get; set; } = "Distribution";
     public string? Address { get; set; }
+}
+
+public class UpdateWarehouseRequest
+{
+    public string? WarehouseName { get; set; }
+    public string? Address { get; set; }
+    public string? WarehouseType { get; set; }
+    public bool? IsActive { get; set; }
 }

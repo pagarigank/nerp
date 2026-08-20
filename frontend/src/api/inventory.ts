@@ -15,6 +15,12 @@ export function getItems(companyIdParam?: string): Promise<import('@/types/inven
 export function createItem(body: import('@/types/inventory').CreateItemRequest): Promise<string> {
   return post('/inventory/items', body)
 }
+export function updateItem(id: string, body: import('@/types/inventory').UpdateItemRequest): Promise<string> {
+  return put(`/inventory/items/${id}`, body)
+}
+export function deleteItem(id: string): Promise<string> {
+  return del(`/inventory/items/${id}`)
+}
 
 // --- Item categories ---
 export function getItemCategories(companyIdParam?: string): Promise<import('@/types/inventory').ItemCategorySummary[]> {
@@ -23,6 +29,12 @@ export function getItemCategories(companyIdParam?: string): Promise<import('@/ty
 export function createItemCategory(body: import('@/types/inventory').CreateItemCategoryRequest): Promise<string> {
   return post('/inventory/item-categories', body)
 }
+export function updateItemCategory(id: string, body: import('@/types/inventory').UpdateItemCategoryRequest): Promise<string> {
+  return put(`/inventory/item-categories/${id}`, body)
+}
+export function deleteItemCategory(id: string): Promise<string> {
+  return del(`/inventory/item-categories/${id}`)
+}
 
 // --- Warehouses (master) ---
 export function getWarehouses(companyIdParam?: string): Promise<import('@/types/inventory').WarehouseSummary[]> {
@@ -30,6 +42,15 @@ export function getWarehouses(companyIdParam?: string): Promise<import('@/types/
 }
 export function createWarehouse(body: import('@/types/inventory').CreateWarehouseRequest): Promise<string> {
   return post('/inventory/warehouses', body)
+}
+export function updateWarehouse(id: string, body: import('@/types/inventory').UpdateWarehouseRequest): Promise<string> {
+  return put(`/inventory/warehouses/${id}`, body)
+}
+export function toggleWarehouseStatus(id: string): Promise<string> {
+  return put(`/inventory/warehouses/${id}/toggle-status`, {})
+}
+export function deleteWarehouse(id: string): Promise<string> {
+  return del(`/inventory/warehouses/${id}`)
 }
 
 // --- Warehouse bins ---

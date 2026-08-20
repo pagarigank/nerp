@@ -4,7 +4,9 @@ import { ArrowLeft, CheckCircle } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
 import { confirmReturn, getReturn } from '@api/orderManagement'
+import { getCustomers } from '@api/ar'
 import type { ReturnDetail } from '@/types/orderManagement'
+import type { ArCustomer } from '@/types/ar'
 
 export function ReturnDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +15,8 @@ export function ReturnDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
+  const [customers, setCustomers] = useState<ArCustomer[]>([])
+  const customerName = (id?: string | null) => id ? customers.find((c: ArCustomer) => c.id === id)?.name ?? id.slice(0, 8) : '—'
 
   useEffect(() => {
     if (!id) return
@@ -24,7 +28,9 @@ export function ReturnDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      setReturn(await getReturn(id))
+      const [ret, custs] = await Promise.all([getReturn(id), getCustomers()])
+      setReturn(ret)
+      setCustomers(custs)
     } catch (e) {
       setError(getErrorMessage(e))
     } finally {
@@ -68,6 +74,11 @@ export function ReturnDetailPage() {
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Status: <span className="font-medium">{returnEntity.status}</span> · {returnEntity.returnDate}
         </p>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div><span className="text-gray-500">Customer:</span> <span className="font-medium">{customerName(returnEntity.customerId)}</span></div>
+          <div><span className="text-gray-500">Reason:</span> <span className="font-medium">{returnEntity.reasonCode ?? '—'}</span></div>
+          <div><span className="text-gray-500">Total:</span> <span className="font-medium">${returnEntity.lines.reduce((sum, l) => sum + l.lineTotal, 0).toFixed(2)}</span></div>
+        </div>
       </div>
 
       {error && (

@@ -287,8 +287,7 @@ export function ReturnsPage() {
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                     {filtered.map((r: ReturnSummary) => (
                       <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.returnNumber}</td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.customerId.slice(0, 8)}</td>
+                        <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.returnNumber}</td>                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{customers.find((c: ArCustomer) => c.id === r.customerId)?.name ?? r.customerId.slice(0, 8)}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{new Date(r.returnDate).toLocaleDateString()}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(r.totalAmount)}</td>
                         <td className="px-3 py-3"><Badge variant={r.status === 'Confirmed' ? 'success' : r.status === 'Draft' ? 'neutral' : 'info'} size="sm" dot>{r.status}</Badge></td>

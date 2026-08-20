@@ -1,5 +1,5 @@
 // Payroll module API client (Phase 11).
-import { get, post, put } from './client'
+import { get, post, put, del } from './client'
 import { companyId as defaultCompanyId } from './inventory'
 
 // --- Employees ---
@@ -9,6 +9,9 @@ export function getEmployees(companyIdParam?: string) {
 export function createEmployee(data: any) {
   return post('/payroll/employees', data)
 }
+export function editEmployee(id: string, data: any) {
+  return put(`/payroll/employees/${id}`, data)
+}
 
 // --- Pay codes ---
 export function getPayCodes(companyIdParam?: string) {
@@ -16,6 +19,9 @@ export function getPayCodes(companyIdParam?: string) {
 }
 export function createPayCode(data: any) {
   return post('/payroll/pay-codes', data)
+}
+export function editPayCode(id: string, data: any) {
+  return put(`/payroll/pay-codes/${id}`, data)
 }
 
 // --- Union / certified-payroll profiles (prevailing wage + fringe) ---

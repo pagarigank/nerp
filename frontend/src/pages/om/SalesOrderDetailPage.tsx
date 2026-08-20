@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle, ArrowLeft, Lock, Unlock } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { confirmSalesOrder, getSalesOrder, placeCreditHold, releaseCreditHold, getPickList, approveDiscount } from '@api/orderManagement'
-import type { SalesOrderDetail, PickList } from '@/types/orderManagement'
+import { confirmSalesOrder, getSalesOrder, placeCreditHold, releaseCreditHold, getPickList, approveDiscount, getSalesReps, getSalesOrderTypes } from '@api/orderManagement'
+import { getCustomers } from '@api/ar'
+import type { SalesOrderDetail, PickList, SalesRepSummary, SalesOrderTypeSummary } from '@/types/orderManagement'
+import type { ArCustomer } from '@/types/ar'
 
 export function SalesOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -16,6 +18,12 @@ export function SalesOrderDetailPage() {
   const [pickList, setPickList] = useState<PickList | null>(null)
   const [pickLoading, setPickLoading] = useState(false)
   const [pickError, setPickError] = useState<string | null>(null)
+  const [customers, setCustomers] = useState<ArCustomer[]>([])
+  const [salesReps, setSalesReps] = useState<SalesRepSummary[]>([])
+  const [orderTypes, setOrderTypes] = useState<SalesOrderTypeSummary[]>([])
+  const customerName = (id?: string | null) => id ? customers.find((c: ArCustomer) => c.id === id)?.name ?? id.slice(0, 8) : '—'
+  const repName = (id?: string | null) => id ? salesReps.find((r: SalesRepSummary) => r.id === id)?.name ?? id.slice(0, 8) : '—'
+  const typeName = (id?: string | null) => id ? orderTypes.find((t: SalesOrderTypeSummary) => t.id === id)?.code ?? id.slice(0, 8) : '—'
 
   useEffect(() => {
     if (!id) return
@@ -27,7 +35,16 @@ export function SalesOrderDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      setOrder(await getSalesOrder(id))
+      const [ord, custs, reps, types] = await Promise.all([
+        getSalesOrder(id),
+        getCustomers(),
+        getSalesReps(),
+        getSalesOrderTypes(),
+      ])
+      setOrder(ord)
+      setCustomers(custs)
+      setSalesReps(reps)
+      setOrderTypes(types)
     } catch (e) {
       setError(getErrorMessage(e))
     } finally {
@@ -191,16 +208,28 @@ export function SalesOrderDetailPage() {
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-4">
         <div>
+          <span className="text-gray-500">Customer:</span>{' '}
+          <span className="font-medium">{customerName(order.customerId)}</span>
+        </div>
+        <div>
           <span className="text-gray-500">Order Type:</span>{' '}
-          <span className="font-medium">{order.salesOrderTypeId ?? '—'}</span>
+          <span className="font-medium">{typeName(order.salesOrderTypeId)}</span>
         </div>
         <div>
-          <span className="text-gray-500">Tax Code:</span>{' '}
-          <span className="font-medium">{order.taxCodeId ?? '—'}</span>
+          <span className="text-gray-500">Sales Rep:</span>{' '}
+          <span className="font-medium">{repName(order.salesRepId)}</span>
         </div>
         <div>
-          <span className="text-gray-500">Tax Exemption:</span>{' '}
-          <span className="font-medium">{order.taxExemptionCertificateId ?? '—'}</span>
+          <span className="text-gray-500">PO #:</span>{' '}
+          <span className="font-medium">{order.customerPoNumber ?? '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Ship To:</span>{' '}
+          <span className="font-medium">{order.shipToAddress ?? '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Bill To:</span>{' '}
+          <span className="font-medium">{order.billToAddress ?? '—'}</span>
         </div>
       </div>
 

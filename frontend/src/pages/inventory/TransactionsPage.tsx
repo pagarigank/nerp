@@ -127,8 +127,8 @@ export function TransactionsPage() {
                     <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{new Date(r.transactionDate).toLocaleDateString()}</td>
                       <td className="px-3 py-3"><Badge variant="neutral" size="sm">{r.transactionType}</Badge></td>
-                      <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.itemId.slice(0, 8)}</td>
-                      <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.warehouseId.slice(0, 8)}</td>
+                      <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{items.find((i: any) => i.id === r.itemId)?.itemCode ?? r.itemId.slice(0, 8)}</td>
+                      <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{warehouses.find((w: any) => w.id === r.warehouseId)?.warehouseCode ?? r.warehouseId.slice(0, 8)}</td>
                       <td className="px-3 py-3 text-right text-gray-900 dark:text-white">{r.quantity}</td>
                       <td className="px-3 py-3 text-right text-gray-700 dark:text-gray-300">{r.unitCost.toFixed(2)}</td>
                     </tr>

@@ -332,9 +332,9 @@ export function ShipmentsPage() {
                     {filtered.map((s: ShipmentSummary) => (
                       <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{s.shipmentNumber}</td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{s.customerId.slice(0, 8)}</td>
+                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{customers.find((c: ArCustomer) => c.id === s.customerId)?.name ?? s.customerId.slice(0, 8)}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{new Date(s.shipmentDate).toLocaleDateString()}</td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{s.salesOrderId ? s.salesOrderId.slice(0, 8) : '—'}</td>
+                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{s.salesOrderId ? (salesOrders.find((o: SalesOrderSummary) => o.id === s.salesOrderId)?.orderNumber ?? s.salesOrderId.slice(0, 8)) : '—'}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(s.totalAmount)}</td>
                         <td className="px-3 py-3"><Badge variant={s.status === 'Confirmed' ? 'success' : s.status === 'Draft' ? 'neutral' : 'info'} size="sm" dot>{s.status}</Badge></td>
                         <td className="px-3 py-3 text-right">

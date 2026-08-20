@@ -50,7 +50,16 @@ export function ProjectsPage() {
   const sectionParam = searchParams.get('section') as 'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis' | null
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis'>(sectionParam ?? 'overview')
+
+  // Sync tab with URL query param when navigating via sidebar submenu
+  useEffect(() => {
+    if (sectionParam && sectionParam !== tab) {
+      setTab(sectionParam)
+    }
+  }, [sectionParam])
+
   const [showCreate, setShowCreate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
 
@@ -154,6 +163,11 @@ export function ProjectsPage() {
       )}
 
       <CreateProjectModal open={showCreate} onClose={() => setShowCreate(false)} onSubmit={(d) => createMutation.mutate(d)} customers={customers as any[]} />
+      {showEdit && selectedProject && (
+        <EditProjectModal open={showEdit} onClose={() => setShowEdit(false)} project={selectedProject}
+          onSubmit={(d) => updateProject(selectedProject.id, d).then(() => { queryClient.invalidateQueries({ queryKey: ['projects'] }); setShowEdit(false) }).catch((e: any) => setError(getErrorMessage(e)))}
+          customers={customers as any[]} />
+      )}
     </div>
   )
 }
@@ -176,10 +190,11 @@ function ProjectDetail({ project, tab, setTab, onBack, setError, queryClient }: 
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={onBack}>← Back</Button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{project.projectCode} — {project.name}</h2>
           <p className="text-sm text-gray-500">Type: {project.projectType} | PM: {project.projectManager ?? '—'} | {project.status}</p>
         </div>
+        <Button variant="outline" onClick={() => setShowEdit(true)}>Edit Project</Button>
       </div>
 
       {/* KPI Cards */}
@@ -251,6 +266,7 @@ function OverviewTab({ project }: { project: ProjectSummary }) {
 
 function TasksTab({ project, setError, queryClient }: { project: ProjectSummary; setError: (e: string | null) => void; queryClient: any }) {
   const [showAdd, setShowAdd] = useState(false)
+  const [editTask, setEditTask] = useState<ProjectTask | null>(null)
   const [form, setForm] = useState({ taskCode: '', description: '', budgetedHours: 0, budgetedCost: 0 })
 
   const { data: tasks = [] } = useQuery({
@@ -270,6 +286,12 @@ function TasksTab({ project, setError, queryClient }: { project: ProjectSummary;
     onError: (e: any) => setError(getErrorMessage(e)),
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string; data: any }) => updateProjectTask(project.id, taskId, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['projects', project.id, 'tasks'] }); setEditTask(null) },
+    onError: (e: any) => setError(getErrorMessage(e)),
+  })
+
   const columns: DataTableColumn<ProjectTask>[] = [
     { key: 'taskCode', header: 'Code', sortable: true },
     { key: 'description', header: 'Description' },
@@ -279,7 +301,10 @@ function TasksTab({ project, setError, queryClient }: { project: ProjectSummary;
     { key: 'actualCost', header: 'Actual Cost', align: 'right', render: (r: ProjectTask) => MONEY(r.actualCost) },
     { key: 'percentComplete', header: '% Done', align: 'right', render: (r: ProjectTask) => PCT(r.percentComplete) },
     { key: 'actions', header: '', render: (_: unknown, r: ProjectTask) => (
-      <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+      <div className="flex gap-1">
+        <Button size="sm" variant="outline" onClick={() => { setEditTask(r); setForm({ taskCode: r.taskCode, description: r.description, budgetedHours: r.budgetedHours, budgetedCost: r.budgetedCost }) }}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+      </div>
     )},
   ]
 
@@ -289,18 +314,24 @@ function TasksTab({ project, setError, queryClient }: { project: ProjectSummary;
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" /> Add Task</Button>
       </div>
       <DataTable data={tasks as ProjectTask[]} columns={columns} emptyMessage="No tasks defined." />
-      {showAdd && (
-        <Modal title="Add Task" isOpen={showAdd} onClose={() => setShowAdd(false)}>
+      {(showAdd || editTask) && (
+        <Modal title={editTask ? 'Edit Task' : 'Add Task'} isOpen={showAdd || !!editTask} onClose={() => { setShowAdd(false); setEditTask(null) }}>
           <div className="space-y-4">
-            <Input label="Task Code" value={form.taskCode} onChange={e => setForm(f => ({ ...f, taskCode: e.target.value }))} />
+            <Input label="Task Code" value={form.taskCode} onChange={e => setForm(f => ({ ...f, taskCode: e.target.value }))} disabled={!!editTask} />
             <Input label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             <div className="grid grid-cols-2 gap-4">
               <Input label="Budgeted Hours" type="number" value={form.budgetedHours} onChange={e => setForm(f => ({ ...f, budgetedHours: Number(e.target.value) }))} />
               <Input label="Budgeted Cost" type="number" step="0.01" value={form.budgetedCost} onChange={e => setForm(f => ({ ...f, budgetedCost: Number(e.target.value) }))} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button onClick={() => addMutation.mutate(form)}>Add</Button>
+              <Button variant="outline" onClick={() => { setShowAdd(false); setEditTask(null) }}>Cancel</Button>
+              <Button onClick={() => {
+                if (editTask) {
+                  updateMutation.mutate({ taskId: editTask.id, data: { description: form.description, budgetedHours: form.budgetedHours, budgetedCost: form.budgetedCost } })
+                } else {
+                  addMutation.mutate(form)
+                }
+              }}>{editTask ? 'Save' : 'Add'}</Button>
             </div>
           </div>
         </Modal>
@@ -311,6 +342,7 @@ function TasksTab({ project, setError, queryClient }: { project: ProjectSummary;
 
 function BudgetTab({ project, setError, queryClient }: { project: ProjectSummary; setError: (e: string | null) => void; queryClient: any }) {
   const [showAdd, setShowAdd] = useState(false)
+  const [editLine, setEditLine] = useState<BudgetLine | null>(null)
   const [form, setForm] = useState({ taskId: '', category: 'Labor', budgetAmount: 0, budgetedHours: 0, description: '' })
   const { data: tasks = [] } = useQuery({ queryKey: ['projects', project.id, 'tasks'], queryFn: () => getProjectTasks(project.id) })
   const { data: budgetLines = [] } = useQuery({ queryKey: ['projects', project.id, 'budget'], queryFn: () => getBudgetLines(project.id) })
@@ -327,6 +359,12 @@ function BudgetTab({ project, setError, queryClient }: { project: ProjectSummary
     onError: (e: any) => setError(getErrorMessage(e)),
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ lineId, data }: { lineId: string; data: any }) => updateBudgetLine(project.id, lineId, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['projects', project.id, 'budget'] }); setEditLine(null) },
+    onError: (e: any) => setError(getErrorMessage(e)),
+  })
+
   const taskMap = Object.fromEntries((tasks as ProjectTask[]).map(t => [t.id, t]))
 
   const columns: DataTableColumn<BudgetLine>[] = [
@@ -338,7 +376,10 @@ function BudgetTab({ project, setError, queryClient }: { project: ProjectSummary
     { key: 'variance', header: 'Variance', align: 'right', render: (r: BudgetLine) => <span className={r.variance < 0 ? 'text-red-600' : 'text-green-600'}>{MONEY(r.variance)}</span> },
     { key: 'description', header: 'Description' },
     { key: 'actions', header: '', render: (_: unknown, r: BudgetLine) => (
-      <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+      <div className="flex gap-1">
+        <Button size="sm" variant="outline" onClick={() => { setEditLine(r); setForm({ taskId: r.taskId, category: r.category, budgetAmount: r.budgetAmount, budgetedHours: r.budgetedHours, description: r.description ?? '' }) }}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+      </div>
     )},
   ]
 
@@ -349,20 +390,26 @@ function BudgetTab({ project, setError, queryClient }: { project: ProjectSummary
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" /> Add Budget Line</Button>
       </div>
       <DataTable data={budgetLines as BudgetLine[]} columns={columns} emptyMessage="No budget lines." />
-      {showAdd && (
-        <Modal title="Add Budget Line" isOpen={showAdd} onClose={() => setShowAdd(false)}>
+      {(showAdd || editLine) && (
+        <Modal title={editLine ? 'Edit Budget Line' : 'Add Budget Line'} isOpen={showAdd || !!editLine} onClose={() => { setShowAdd(false); setEditLine(null) }}>
           <div className="space-y-4">
-            <Select label="Task" value={form.taskId} onChange={e => setForm(f => ({ ...f, taskId: e.target.value }))} options={(tasks as ProjectTask[]).map(t => ({ value: t.id, label: `${t.taskCode} - ${t.description}` }))} placeholder="Select task..." />
+            <Select label="Task" value={form.taskId} onChange={e => setForm(f => ({ ...f, taskId: e.target.value }))} options={(tasks as ProjectTask[]).map(t => ({ value: t.id, label: `${t.taskCode} - ${t.description}` }))} placeholder="Select task..." disabled={!!editLine} />
             <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-              options={['Labor', 'Materials', 'Subcontract', 'Equipment', 'Overhead', 'Other'].map(c => ({ value: c, label: c }))} />
+              options={['Labor', 'Materials', 'Subcontract', 'Equipment', 'Overhead', 'Other'].map(c => ({ value: c, label: c }))} disabled={!!editLine} />
             <div className="grid grid-cols-2 gap-4">
               <Input label="Budget Amount" type="number" step="0.01" value={form.budgetAmount} onChange={e => setForm(f => ({ ...f, budgetAmount: Number(e.target.value) }))} />
               <Input label="Budgeted Hours" type="number" value={form.budgetedHours} onChange={e => setForm(f => ({ ...f, budgetedHours: Number(e.target.value) }))} />
             </div>
             <Input label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button onClick={() => addMutation.mutate({ ...form, taskId: form.taskId || '00000000-0000-0000-0000-000000000000' })}>Add</Button>
+              <Button variant="outline" onClick={() => { setShowAdd(false); setEditLine(null) }}>Cancel</Button>
+              <Button onClick={() => {
+                if (editLine) {
+                  updateMutation.mutate({ lineId: editLine.id, data: { budgetAmount: form.budgetAmount, budgetedHours: form.budgetedHours, description: form.description || null } })
+                } else {
+                  addMutation.mutate({ ...form, taskId: form.taskId || '00000000-0000-0000-0000-000000000000' })
+                }
+              }}>{editLine ? 'Save' : 'Add'}</Button>
             </div>
           </div>
         </Modal>
@@ -402,19 +449,46 @@ function CostsTab({ project, setError, queryClient }: { project: ProjectSummary;
       </div>
 
       {summary && (
-        <div className="grid grid-cols-4 gap-4 text-sm">
-          <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-gray-500">Total Costs</p><p className="font-semibold">{MONEY(summary.totalCosts)}</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-4 text-sm">
+            <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+              <p className="text-gray-500">Total Costs</p><p className="font-semibold">{MONEY(summary.totalCosts)}</p>
+            </div>
+            <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+              <p className="text-gray-500">Budget</p><p className="font-semibold">{MONEY(summary.totalBudget)}</p>
+            </div>
+            <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+              <p className="text-gray-500">Remaining</p><p className="font-semibold">{MONEY(summary.remaining)}</p>
+            </div>
+            <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+              <p className="text-gray-500">% Complete</p><p className="font-semibold">{PCT(summary.percentComplete)}</p>
+            </div>
           </div>
-          <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-gray-500">Budget</p><p className="font-semibold">{MONEY(summary.totalBudget)}</p>
-          </div>
-          <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-gray-500">Remaining</p><p className="font-semibold">{MONEY(summary.remaining)}</p>
-          </div>
-          <div className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-gray-500">% Complete</p><p className="font-semibold">{PCT(summary.percentComplete)}</p>
-          </div>
+          {summary.byCategory && Object.keys(summary.byCategory).length > 0 && (
+            <div className="rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Costs by Category</h4>
+              <table className="w-full text-sm">
+                <thead><tr className="border-b dark:border-gray-700">
+                  <th className="px-2 py-1 text-left text-gray-500">Category</th>
+                  <th className="px-2 py-1 text-right text-gray-500">Actual</th>
+                  <th className="px-2 py-1 text-right text-gray-500">Budget</th>
+                  <th className="px-2 py-1 text-right text-gray-500">Hours</th>
+                  <th className="px-2 py-1 text-right text-gray-500">Variance</th>
+                </tr></thead>
+                <tbody>
+                  {Object.entries(summary.byCategory).map(([cat, data]) => (
+                    <tr key={cat} className="border-b dark:border-gray-700/50">
+                      <td className="px-2 py-1 font-medium">{cat}</td>
+                      <td className="px-2 py-1 text-right">{MONEY(data.actual)}</td>
+                      <td className="px-2 py-1 text-right">{MONEY(data.budget)}</td>
+                      <td className="px-2 py-1 text-right">{data.hours}</td>
+                      <td className={`px-2 py-1 text-right font-medium ${data.variance < 0 ? 'text-red-600' : 'text-green-600'}`}>{MONEY(data.variance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -524,8 +598,16 @@ function ChangeOrdersTab({ project, setError, queryClient }: { project: ProjectS
 }
 
 function BillingTab({ project, setError, queryClient }: { project: ProjectSummary; setError: (e: string | null) => void; queryClient: any }) {
+  const [showAddContract, setShowAddContract] = useState(false)
+  const [contractForm, setContractForm] = useState({ description: '', billingMethod: 'TimeAndMaterials', contractAmount: 0, unitPrice: 0, unitQuantity: 0, feePercentage: 0, notToExceed: 0, notes: '' })
   const { data: contracts = [] } = useQuery({ queryKey: ['projects', project.id, 'contracts'], queryFn: () => getContractLines(project.id) })
   const { data: wip } = useQuery({ queryKey: ['projects', project.id, 'wip'], queryFn: () => getWipSchedule(project.id) })
+
+  const addContractMutation = useMutation({
+    mutationFn: (data: any) => addContractLine(project.id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['projects', project.id, 'contracts'] }); setShowAddContract(false) },
+    onError: (e: any) => setError(getErrorMessage(e)),
+  })
 
   const generateMutation = useMutation({
     mutationFn: () => generateInvoice(project.id),
@@ -565,9 +647,46 @@ function BillingTab({ project, setError, queryClient }: { project: ProjectSummar
 
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-900 dark:text-white">Contract Lines</h3>
-        <Button onClick={() => generateMutation.mutate()}><DollarSign className="h-4 w-4 mr-1" /> Generate Invoice</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAddContract(true)}><Plus className="h-4 w-4 mr-1" /> Add Line</Button>
+          <Button onClick={() => generateMutation.mutate()}><DollarSign className="h-4 w-4 mr-1" /> Generate Invoice</Button>
+        </div>
       </div>
       <DataTable data={contracts as ContractLine[]} columns={contractColumns} emptyMessage="No contract lines defined." />
+
+      {showAddContract && (
+        <Modal title="Add Contract Line" isOpen={showAddContract} onClose={() => setShowAddContract(false)}>
+          <div className="space-y-4">
+            <Input label="Description" value={contractForm.description} onChange={e => setContractForm(f => ({ ...f, description: e.target.value }))} />
+            <Select label="Billing Method" value={contractForm.billingMethod} onChange={e => setContractForm(f => ({ ...f, billingMethod: e.target.value }))}
+              options={['TimeAndMaterials', 'CostPlus', 'FixedPrice', 'UnitPrice', 'Milestone'].map(m => ({ value: m, label: m }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Contract Amount" type="number" step="0.01" value={contractForm.contractAmount} onChange={e => setContractForm(f => ({ ...f, contractAmount: Number(e.target.value) }))} />
+              <Input label="Not-to-Exceed" type="number" step="0.01" value={contractForm.notToExceed} onChange={e => setContractForm(f => ({ ...f, notToExceed: Number(e.target.value) }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Unit Price" type="number" step="0.01" value={contractForm.unitPrice} onChange={e => setContractForm(f => ({ ...f, unitPrice: Number(e.target.value) }))} />
+              <Input label="Unit Quantity" type="number" value={contractForm.unitQuantity} onChange={e => setContractForm(f => ({ ...f, unitQuantity: Number(e.target.value) }))} />
+            </div>
+            <Input label="Fee % (Cost-Plus)" type="number" step="0.01" value={contractForm.feePercentage} onChange={e => setContractForm(f => ({ ...f, feePercentage: Number(e.target.value) }))} />
+            <Input label="Notes" value={contractForm.notes} onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))} />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAddContract(false)}>Cancel</Button>
+              <Button onClick={() => addContractMutation.mutate({
+                companyId: currentCompanyId(),
+                description: contractForm.description,
+                billingMethod: contractForm.billingMethod,
+                contractAmount: contractForm.contractAmount,
+                unitPrice: contractForm.unitPrice || null,
+                unitQuantity: contractForm.unitQuantity || null,
+                feePercentage: contractForm.feePercentage || null,
+                notToExceed: contractForm.notToExceed || null,
+                notes: contractForm.notes || null,
+              })}>Add Line</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -651,6 +770,7 @@ function CreateProjectModal({ open, onClose, onSubmit, customers }: { open: bool
   const [form, setForm] = useState({
     projectCode: '', name: '', description: '', projectType: 'TimeAndMaterials',
     customerId: '', projectManager: '', contractValue: '', retainagePercentage: 0,
+    plannedStartDate: '', plannedEndDate: '',
   })
   if (!open) return null
 
@@ -673,6 +793,10 @@ function CreateProjectModal({ open, onClose, onSubmit, customers }: { open: bool
         </div>
         <Select label="Customer" value={form.customerId} onChange={e => setForm(f => ({ ...f, customerId: e.target.value }))}
           options={customers.map((c: any) => ({ value: c.id, label: `${c.customerId} - ${c.name}` }))} placeholder="Optional..." />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Planned Start Date" type="date" value={form.plannedStartDate} onChange={e => setForm(f => ({ ...f, plannedStartDate: e.target.value }))} />
+          <Input label="Planned End Date" type="date" value={form.plannedEndDate} onChange={e => setForm(f => ({ ...f, plannedEndDate: e.target.value }))} />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => onSubmit({
@@ -685,7 +809,71 @@ function CreateProjectModal({ open, onClose, onSubmit, customers }: { open: bool
             projectManager: form.projectManager || null,
             contractValue: form.contractValue ? Number(form.contractValue) : null,
             retainagePercentage: form.retainagePercentage || null,
+            plannedStartDate: form.plannedStartDate || null,
+            plannedEndDate: form.plannedEndDate || null,
           })}>Create</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// --- Edit Project Modal ---
+function EditProjectModal({ open, onClose, project, onSubmit, customers }: {
+  open: boolean; onClose: () => void; project: ProjectSummary; onSubmit: (d: any) => void; customers: any[]
+}) {
+  const [form, setForm] = useState({
+    name: project.name,
+    description: project.description ?? '',
+    projectType: project.projectType,
+    customerId: project.customerId ?? '',
+    projectManager: project.projectManager ?? '',
+    contractValue: project.contractValue?.toString() ?? '',
+    retainagePercentage: project.retainagePercentage,
+    status: project.status,
+    plannedStartDate: project.plannedStartDate?.slice(0, 10) ?? '',
+    plannedEndDate: project.plannedEndDate?.slice(0, 10) ?? '',
+  })
+  if (!open) return null
+
+  return (
+    <Modal title="Edit Project" isOpen={open} onClose={onClose}>
+      <div className="space-y-4">
+        <Input label="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        <Input label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        <div className="grid grid-cols-2 gap-4">
+          <Select label="Project Type" value={form.projectType} onChange={e => setForm(f => ({ ...f, projectType: e.target.value }))}
+            options={['TimeAndMaterials', 'CostPlus', 'FixedPrice', 'UnitPrice'].map(t => ({ value: t, label: t }))} />
+          <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+            options={['Planning', 'Active', 'OnHold', 'Completed', 'Closed'].map(s => ({ value: s, label: s }))} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Project Manager" value={form.projectManager} onChange={e => setForm(f => ({ ...f, projectManager: e.target.value }))} />
+          <Select label="Customer" value={form.customerId} onChange={e => setForm(f => ({ ...f, customerId: e.target.value }))}
+            options={[{ value: '', label: '— None —' }, ...customers.map((c: any) => ({ value: c.id, label: `${c.customerId} - ${c.name}` }))]} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Contract Value" type="number" step="0.01" value={form.contractValue} onChange={e => setForm(f => ({ ...f, contractValue: e.target.value }))} />
+          <Input label="Retainage %" type="number" step="0.01" value={form.retainagePercentage} onChange={e => setForm(f => ({ ...f, retainagePercentage: Number(e.target.value) }))} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Planned Start Date" type="date" value={form.plannedStartDate} onChange={e => setForm(f => ({ ...f, plannedStartDate: e.target.value }))} />
+          <Input label="Planned End Date" type="date" value={form.plannedEndDate} onChange={e => setForm(f => ({ ...f, plannedEndDate: e.target.value }))} />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSubmit({
+            name: form.name,
+            description: form.description || null,
+            projectType: form.projectType,
+            customerId: form.customerId || null,
+            projectManager: form.projectManager || null,
+            contractValue: form.contractValue ? Number(form.contractValue) : null,
+            retainagePercentage: form.retainagePercentage || null,
+            status: form.status,
+            plannedStartDate: form.plannedStartDate || null,
+            plannedEndDate: form.plannedEndDate || null,
+          })}>Save</Button>
         </div>
       </div>
     </Modal>

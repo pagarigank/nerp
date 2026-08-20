@@ -184,7 +184,7 @@ export function CycleCountsPage() {
                     {filtered.map((r: CycleCountSummary) => (
                       <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => setViewId(r.id)}>
                         <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.countNumber}</td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.warehouseId.slice(0, 8)}</td>
+                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{warehouses.find((w: WarehouseSummary) => w.id === r.warehouseId)?.warehouseCode ?? r.warehouseId.slice(0, 8)}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{new Date(r.countDate).toLocaleDateString()}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{r.lines?.length ?? 0}</td>
                         <td className="px-3 py-3"><Badge variant={r.status === 'Posted' ? 'success' : r.status === 'InProgress' ? 'warning' : r.status === 'Completed' ? 'info' : 'neutral'} size="sm" dot>{r.status}</Badge></td>
