@@ -575,6 +575,59 @@ function ReportsTab({ qc }: { qc: any }) {
       {(f940Q.data as any) && (
         <div className="border rounded p-2 text-sm">Form 940 — FUTA wages: <b>{MONEY((f940Q.data as any).futaWages)}</b> | FUTA tax: <b>{MONEY((f940Q.data as any).futaTax)}</b></div>
       )}
+
+      {/* Batch E: compliance & statutory reporting */}
+      <ComplianceSection qc={qc} company={company} year={y} />
+    </div>
+  )
+}
+
+function ComplianceSection({ qc, company, year }: { qc: any; company: string; year: number }) {
+  const ppQ = useQuery({ queryKey: ['payroll', 'report', 'positive-pay', company], queryFn: () => getPositivePay(company) })
+  const necQ = useQuery({ queryKey: ['payroll', 'report', '1099', company, year], queryFn: () => get1099Nec(company, year) })
+  const unionQ = useQuery({ queryKey: ['payroll', 'report', 'union', company], queryFn: () => getUnionReport(company) })
+  const wcQ = useQuery({ queryKey: ['payroll', 'report', 'wc', company], queryFn: () => getWorkersCompReport(company) })
+  const [msEmp, setMsEmp] = useState('')
+  const [msWages, setMsWages] = useState('1000')
+  const msQ = useQuery({ queryKey: ['payroll', 'report', 'ms', msEmp, msWages], queryFn: () => getMultiStateWithholding(msEmp, Number(msWages)), enabled: !!msEmp })
+  return (
+    <div className="space-y-3 border-t pt-3 mt-3">
+      <div className="font-semibold">Compliance &amp; Statutory (Batch E)</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Positive Pay (issued checks)</div>
+          <DataTable columns={[{ key: 'checkNumber', header: 'Check' }, { key: 'employeeId', header: 'Employee' }, { key: 'amount', header: 'Amount', render: (r: any) => MONEY(r.amount) }, { key: 'isDirectDeposit', header: 'DD', render: (r: any) => (r.isDirectDeposit ? 'Yes' : 'No') }]} data={(ppQ.data as any)?.data || []} loading={ppQ.isLoading} />
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">1099-NEC ({year})</div>
+          <DataTable columns={[{ key: 'recipientId', header: 'Recipient' }, { key: 'nonemployeeCompensation', header: 'NEC', render: (r: any) => MONEY(r.nonemployeeCompensation) }, { key: 'federalIncomeTaxWithheld', header: 'FIT WH', render: (r: any) => MONEY(r.federalIncomeTaxWithheld) }]} data={(necQ.data as any)?.data || []} loading={necQ.isLoading} />
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Union Prevailing Wage</div>
+          <DataTable columns={[{ key: 'tradeClassification', header: 'Trade' }, { key: 'jurisdiction', header: 'Jurisdiction' }, { key: 'prevailingWageRate', header: 'Rate', render: (r: any) => MONEY(r.prevailingWageRate) }, { key: 'fringeBenefitRate', header: 'Fringe', render: (r: any) => MONEY(r.fringeBenefitRate) }]} data={(unionQ.data as any)?.data || []} loading={unionQ.isLoading} />
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Workers' Comp Class Codes</div>
+          <DataTable columns={[{ key: 'classCode', header: 'Code' }, { key: 'state', header: 'State' }, { key: 'ratePer100', header: 'Rate/100' }, { key: 'effectiveRatePer100', header: 'Eff Rate', render: (r: any) => MONEY(r.effectiveRatePer100) }]} data={(wcQ.data as any)?.data || []} loading={wcQ.isLoading} />
+        </div>
+      </div>
+      <div className="border rounded p-2">
+        <div className="font-semibold mb-1">Multi-State Withholding Estimator</div>
+        <div className="flex items-end gap-2 mb-2">
+          <Input label="Employee Id" value={msEmp} onChange={(v: any) => setMsEmp(v)} />
+          <Input type="number" label="Taxable Wages" value={msWages} onChange={(v: any) => setMsWages(v)} />
+        </div>
+        {(msQ.data as any) && (
+          <div className="text-sm">
+            Federal WH: <b>{MONEY((msQ.data as any).federalWithholding)}</b>
+            <div className="mt-1">
+              {(msQ.data as any).states?.map((s: any, i: number) => (
+                <span key={i} className="inline-block mr-3 border rounded px-2 py-1">{s.state}: {MONEY(s.stateWithholding)}{s.exempt ? ' (exempt)' : ''}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

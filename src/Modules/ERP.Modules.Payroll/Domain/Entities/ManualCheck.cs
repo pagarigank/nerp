@@ -17,6 +17,8 @@ public class ManualCheck : AuditableEntity
         CompanyId = companyId;
         EmployeeId = employeeId;
         Amount = amount;
+        GrossPay = amount;
+        NetPay = amount;
         CheckDate = checkDate;
         Reason = reason;
         CheckNumber = checkNumber;
@@ -26,11 +28,19 @@ public class ManualCheck : AuditableEntity
     public Guid CompanyId { get; private set; }
     public Guid EmployeeId { get; private set; }
     public decimal Amount { get; private set; }
+    /// <summary>Gross pay for the off-cycle check (used by 1099-NEC reporting).</summary>
+    public decimal GrossPay { get; private set; }
+    /// <summary>Net pay (after withholding) for the off-cycle check.</summary>
+    public decimal NetPay { get; private set; }
+    /// <summary>When true, the check represents non-employee (contractor) compensation for 1099-NEC.</summary>
+    public bool Is1099 { get; private set; }
+    public bool IsDirectDeposit { get; private set; }
     public DateTime CheckDate { get; private set; }
     public string? Reason { get; private set; }
     public string? CheckNumber { get; private set; }
     public ManualCheckStatus Status { get; private set; }
 
+    public void Mark1099(bool is1099) => Is1099 = is1099;
     public void Void() => Status = ManualCheckStatus.Void;
 }
 

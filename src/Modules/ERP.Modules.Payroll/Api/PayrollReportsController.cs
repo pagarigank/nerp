@@ -11,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ERP.Modules.Payroll.Api;
 
 /// <summary>Read-only payroll reporting endpoints: register, summary, labor distribution,
-/// garnishment register, wage-base report, PTO report, direct-deposit register, 940 worksheet.</summary>
+/// garnishment register, wage-base report, PTO report, direct-deposit register, 940 worksheet,
+/// plus Batch E: positive-pay, 1099-NEC, multi-state withholding, union, workers-comp, termination.</summary>
 [ApiController]
 [Route("api/v1/payroll")]
 public class PayrollReportsController : ControllerBase
@@ -217,6 +218,142 @@ public class PayrollReportsController : ControllerBase
             FutaTax = futaTax,
         }));
     }
+
+    // --- Batch E: Positive pay file (issued checks for bank reconciliation) ---
+    [HttpGet("reports/positive-pay")]
+    public async Task<ActionResult<ApiResponse<List<PositivePayRowDto>>>> PositivePay(
+        [FromQuery] Guid companyId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken cancellationToken)
+    {
+        var runs = await _context.PayrollRuns.Where(r => r.CompanyId == companyId).Select(r => r.Id).ToListAsync(cancellationToken);
+        var q = _context.PayrollChecks.Where(c => runs.Contains(c.PayrollRunId));
+        if (from.HasValue) q = q.Where(c => c.CheckDate >= from.Value);
+        if (to.HasValue) q = q.Where(c => c.CheckDate <= to.Value);
+        var rows = await q.OrderBy(c => c.CheckNumber)
+            .Select(c => new PositivePayRowDto
+            {
+                EmployeeId = c.EmployeeId,
+                CheckNumber = c.CheckNumber,
+                CheckDate = c.CheckDate,
+                Amount = c.NetPay,
+                IsDirectDeposit = c.IsDirectDeposit,
+                AchTraceNumber = c.AchTraceNumber,
+            }).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<PositivePayRowDto>>.Success(rows));
+    }
+
+    // --- Batch E: 1099-NEC report (contractor wages from 1099-flagged manual checks) ---
+    [HttpGet("reports/1099-nec")]
+    public async Task<ActionResult<ApiResponse<List<Form1099NecRowDto>>>> Form1099Nec(
+        [FromQuery] Guid companyId, [FromQuery] int year, CancellationToken cancellationToken)
+    {
+        var rows = await _context.ManualChecks
+            .Where(m => m.CompanyId == companyId && m.Is1099 && m.CheckDate.Year == year)
+            .GroupBy(m => m.EmployeeId)
+            .Select(g => new Form1099NecRowDto
+            {
+                RecipientId = g.Key,
+                NonemployeeCompensation = g.Sum(m => m.GrossPay),
+                FederalIncomeTaxWithheld = g.Sum(m => m.GrossPay - m.NetPay),
+            }).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<Form1099NecRowDto>>.Success(rows));
+    }
+
+    // --- Batch E: Multi-state withholding estimate for an employee (resident + work state) ---
+    [HttpGet("reports/multi-state-withholding")]
+    public async Task<ActionResult<ApiResponse<MultiStateWithholdingDto>>> MultiStateWithholding(
+        [FromQuery] Guid employeeId, [FromQuery] decimal taxableWages, CancellationToken cancellationToken)
+    {
+        var profile = await _context.EmployeeTaxProfiles.FirstOrDefaultAsync(p => p.EmployeeId == employeeId, cancellationToken);
+        var result = new MultiStateWithholdingDto { EmployeeId = employeeId, TaxableWages = taxableWages, States = new List<StateWithholdingDto>() };
+        if (profile is null)
+            return Ok(ApiResponse<MultiStateWithholdingDto>.Success(result));
+
+        var states = new[] { profile.ResidentState, profile.WorkState }.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+        foreach (var st in states)
+        {
+            var table = await _context.TaxTables
+                .Where(t => t.StateCode == st && t.Level == TaxJurisdictionLevel.State)
+                .OrderByDescending(t => t.Year)
+                .FirstOrDefaultAsync(cancellationToken);
+            decimal wh;
+            if (table is null)
+            {
+                wh = Math.Round(taxableWages * 0.05m, 2);
+            }
+            else
+            {
+                var bracket = table.Brackets
+                    .FirstOrDefault(b => taxableWages >= b.LowerBound && (b.UpperBound == null || taxableWages <= b.UpperBound));
+                wh = bracket is null
+                    ? Math.Round(taxableWages * 0.05m, 2)
+                    : Math.Round((bracket.FixedAmount ?? 0m) + (taxableWages * bracket.Rate), 2);
+            }
+
+            wh += profile.AdditionalStateWithholding;
+            result.States.Add(new StateWithholdingDto
+            {
+                State = st!,
+                StateWithholding = wh,
+                Exempt = st == profile.ResidentState && profile.ExemptState,
+            });
+        }
+
+        result.FederalWithholding = profile.ExemptFederal ? 0m : Math.Round(taxableWages * 0.10m, 2) + profile.AdditionalFederalWithholding;
+        return Ok(ApiResponse<MultiStateWithholdingDto>.Success(result));
+    }
+
+    // --- Batch E: Union prevailing-wage report (Davis-Bacon) ---
+    [HttpGet("reports/union")]
+    public async Task<ActionResult<ApiResponse<List<UnionReportRowDto>>>> UnionReport(
+        [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var rows = await _context.UnionCertifiedProfiles
+            .Where(p => p.CompanyId == companyId)
+            .Select(p => new UnionReportRowDto
+            {
+                TradeClassification = p.TradeClassification,
+                Jurisdiction = p.Jurisdiction ?? "(any)",
+                PrevailingWageRate = p.PrevailingWageRate,
+                FringeBenefitRate = p.FringeBenefitRate,
+                TotalPrevailingRate = p.TotalPrevailingRate,
+                UnionLocal = p.UnionLocal,
+            }).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<UnionReportRowDto>>.Success(rows));
+    }
+
+    // --- Batch E: Workers' compensation premium report (basis by class code) ---
+    [HttpGet("reports/workers-comp")]
+    public async Task<ActionResult<ApiResponse<List<WorkersCompReportRowDto>>>> WorkersCompReport(
+        [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var rows = await _context.WorkersCompClassCodes
+            .Where(c => c.CompanyId == companyId)
+            .Select(c => new WorkersCompReportRowDto
+            {
+                ClassCode = c.ClassCode,
+                Description = c.Description,
+                State = c.State,
+                RatePer100 = c.RatePer100,
+                ExperienceModification = c.ExperienceModification,
+                EffectiveRatePer100 = Math.Round(c.RatePer100 * c.ExperienceModification, 4),
+            }).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<List<WorkersCompReportRowDto>>.Success(rows));
+    }
+
+    // --- Batch E: Termination / final pay: create an off-cycle manual check for a terminated employee ---
+    [HttpPost("employees/{employeeId:guid}/terminate")]
+    public async Task<ActionResult<ApiResponse<Guid>>> TerminateEmployee(
+        Guid employeeId, [FromBody] TerminateRequest request, CancellationToken cancellationToken)
+    {
+        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, cancellationToken);
+        if (employee is null) return NotFound(ApiResponse.Failure(new[] { "Employee not found." }, 404));
+        employee.Terminate(request.TerminationDate);
+        var final = new ManualCheck(employee.CompanyId, employeeId, request.FinalGross, request.PayDate, "Final pay on termination", request.CheckNumber);
+        final.Mark1099(false);
+        _context.ManualChecks.Add(final);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(final.Id));
+    }
 }
 
 // DTOs
@@ -307,4 +444,67 @@ public class Form940Dto
     public decimal TotalWages { get; set; }
     public decimal FutaWages { get; set; }
     public decimal FutaTax { get; set; }
+}
+
+// Batch E DTOs
+public class PositivePayRowDto
+{
+    public Guid EmployeeId { get; set; }
+    public string CheckNumber { get; set; } = string.Empty;
+    public DateTime CheckDate { get; set; }
+    public decimal Amount { get; set; }
+    public bool IsDirectDeposit { get; set; }
+    public string? AchTraceNumber { get; set; }
+}
+
+public class Form1099NecRowDto
+{
+    public Guid RecipientId { get; set; }
+    public decimal NonemployeeCompensation { get; set; }
+    public decimal FederalIncomeTaxWithheld { get; set; }
+}
+
+public class StateWithholdingDto
+{
+    public string State { get; set; } = string.Empty;
+    public decimal StateWithholding { get; set; }
+    public bool Exempt { get; set; }
+}
+
+public class MultiStateWithholdingDto
+{
+    public Guid EmployeeId { get; set; }
+    public decimal TaxableWages { get; set; }
+    public decimal FederalWithholding { get; set; }
+    public List<StateWithholdingDto> States { get; set; } = new();
+}
+
+public class UnionReportRowDto
+{
+    public string TradeClassification { get; set; } = string.Empty;
+    public string Jurisdiction { get; set; } = string.Empty;
+    public decimal PrevailingWageRate { get; set; }
+    public decimal FringeBenefitRate { get; set; }
+    public decimal TotalPrevailingRate { get; set; }
+    public string? UnionLocal { get; set; }
+}
+
+public class WorkersCompReportRowDto
+{
+    public string ClassCode { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public decimal RatePer100 { get; set; }
+    public decimal ExperienceModification { get; set; }
+    public decimal EffectiveRatePer100 { get; set; }
+}
+
+public class TerminateRequest
+{
+    public DateTime TerminationDate { get; set; }
+    public DateTime PayDate { get; set; }
+    public decimal FinalGross { get; set; }
+    public decimal FinalNet { get; set; }
+    public bool IsDirectDeposit { get; set; }
+    public string? CheckNumber { get; set; }
 }

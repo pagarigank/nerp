@@ -283,3 +283,24 @@ export function generateTaxDeposits(runId: string, frequency: string) {
 export function markTaxDeposited(id: string, data: any) {
   return post(`/payroll/tax-deposits/${id}/deposit`, data)
 }
+
+// --- Batch E: compliance & statutory reporting ---
+export function getPositivePay(companyId: string, from?: string, to?: string) {
+  const p = `companyId=${companyId}${from ? '&from=' + from : ''}${to ? '&to=' + to : ''}`
+  return get(`/payroll/reports/positive-pay?${p}`)
+}
+export function get1099Nec(companyId: string, year: number) {
+  return get(`/payroll/reports/1099-nec?companyId=${companyId}&year=${year}`)
+}
+export function getMultiStateWithholding(employeeId: string, taxableWages: number) {
+  return get(`/payroll/reports/multi-state-withholding?employeeId=${employeeId}&taxableWages=${taxableWages}`)
+}
+export function getUnionReport(companyId: string) {
+  return get(`/payroll/reports/union?companyId=${companyId}`)
+}
+export function getWorkersCompReport(companyId: string) {
+  return get(`/payroll/reports/workers-comp?companyId=${companyId}`)
+}
+export function terminateEmployee(employeeId: string, body: any) {
+  return post(`/payroll/employees/${employeeId}/terminate`, body)
+}

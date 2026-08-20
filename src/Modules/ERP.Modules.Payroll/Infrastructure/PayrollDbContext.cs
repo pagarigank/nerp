@@ -345,6 +345,8 @@ public class PayrollDbContext : DispatchableDbContext
             entity.ToTable("ManualChecks");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.GrossPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.NetPay).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Reason).HasMaxLength(300);
             entity.Property(e => e.CheckNumber).HasMaxLength(30);
             entity.HasIndex(e => e.CompanyId);
