@@ -25,6 +25,14 @@ public static class ModuleExtensions
 
         services.AddScoped<IPayrollUnitOfWork, PayrollUnitOfWork>();
 
+        // Phase 11 background jobs (Batch F): scheduled payroll operations.
+        services.AddHostedService<Application.Jobs.PayrollRunTriggerJob>();
+        services.AddHostedService<Application.Jobs.PtoAccrualJob>();
+        services.AddHostedService<Application.Jobs.TaxDepositReminderJob>();
+        services.AddHostedService<Application.Jobs.YearEndProcessingJob>();
+        services.AddHostedService<Application.Jobs.AchReturnMonitorJob>();
+        services.AddHostedService<Application.Jobs.BenefitRemittanceJob>();
+
         return services;
     }
 }

@@ -52,6 +52,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.CashManagement.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.OrderManagement.Tests", "tests\ERP.Modules.OrderManagement.Tests\ERP.Modules.OrderManagement.Tests.csproj", "{40434176-2550-469A-8574-C5F1A0E4A7AA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Payroll.Tests", "tests\ERP.Modules.Payroll.Tests\ERP.Modules.Payroll.Tests.csproj", "{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -154,6 +156,10 @@ Global
 		{40434176-2550-469A-8574-C5F1A0E4A7AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40434176-2550-469A-8574-C5F1A0E4A7AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{40434176-2550-469A-8574-C5F1A0E4A7AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -176,5 +182,6 @@ Global
 		{30DD5210-BD54-451B-966B-6298F4E8AF11} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 		{17879765-37A9-47EE-9200-153847E4D9BE} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 		{40434176-2550-469A-8574-C5F1A0E4A7AA} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
+		{FC3DBB17-4E04-4C7C-9DA2-8CA908EF177C} = {CAC0B3D3-8B4A-4E26-9FC9-516599A50B4B}
 	EndGlobalSection
 EndGlobal
