@@ -1,5 +1,5 @@
 // Payroll module API client (Phase 11).
-import { get, post } from './client'
+import { get, post, put } from './client'
 import { companyId as defaultCompanyId } from './inventory'
 
 // --- Employees ---
@@ -197,4 +197,32 @@ export function getPtoReport(companyId: string) {
 }
 export function getDirectDepositRegister(companyId: string, runId?: string) {
   return get('/payroll/reports/direct-deposit', runId ? { companyId, runId } : { companyId })
+}
+
+// --- Tax tables / jurisdictions / employee tax profile (Batch A) ---
+export function getTaxTables(companyId: string, year?: number, stateCode?: string) {
+  const p: any = { companyId }
+  if (year) p.year = year
+  if (stateCode) p.stateCode = stateCode
+  return get('/payroll/tax-tables', p)
+}
+export function createTaxTable(data: any) {
+  return post('/payroll/tax-tables', data)
+}
+export function getTaxJurisdictions(companyId: string, stateCode?: string) {
+  const p: any = { companyId }
+  if (stateCode) p.stateCode = stateCode
+  return get('/payroll/tax-jurisdictions', p)
+}
+export function createTaxJurisdiction(data: any) {
+  return post('/payroll/tax-jurisdictions', data)
+}
+export function getEmployeeTaxProfile(employeeId: string, companyId: string) {
+  return get(`/payroll/employees/${employeeId}/tax-profile`, { companyId })
+}
+export function createEmployeeTaxProfile(employeeId: string, data: any) {
+  return post(`/payroll/employees/${employeeId}/tax-profile`, data)
+}
+export function updateEmployeeTaxProfile(employeeId: string, data: any) {
+  return put(`/payroll/employees/${employeeId}/tax-profile`, data)
 }

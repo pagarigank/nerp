@@ -134,6 +134,20 @@ export function ProjectsPage() {
 
       {selectedProject ? (
         <ProjectDetail project={selectedProject} tab={tab} setTab={setTab} onBack={() => setSelectedId(null)} setError={setError} queryClient={queryClient} />
+      ) : sectionParam ? (
+        // A sub-menu section was requested but no project is selected yet: show the first
+        // project's detail (so the section renders) with a switcher to pick another project.
+        (projects as ProjectSummary[]).length > 0 ? (
+          <div className="space-y-3">
+            <Select label="Project" value={(projects as ProjectSummary[])[0].id}
+              onChange={(e: any) => setSelectedId(e)}
+              options={(projects as ProjectSummary[]).map((p: ProjectSummary) => ({ value: p.id, label: `${p.projectCode} — ${p.name}` }))} />
+            <ProjectDetail project={(projects as ProjectSummary[])[0]} tab={tab} setTab={setTab} onBack={() => setSelectedId(null)} setError={setError} queryClient={queryClient} />
+          </div>
+        ) : (
+          <DataTable data={projects as ProjectSummary[]} columns={statusColumns} isLoading={isLoading}
+            onRowClick={(row) => setSelectedId(row.id)} emptyMessage="No projects yet." />
+        )
       ) : (
         <DataTable data={projects as ProjectSummary[]} columns={statusColumns} isLoading={isLoading}
           onRowClick={(row) => setSelectedId(row.id)} emptyMessage="No projects yet." />

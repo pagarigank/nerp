@@ -1,7 +1,7 @@
 // Payroll module page (Phase 11): employees, pay codes, union/certified profiles,
 // timesheets (with PA project validation + labor dual-post), payroll runs (draft/post/
 // accrue/reverse + certified payroll report), and garnishments (CCPA).
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { UserCheck, Clock, CalendarRange, FileSpreadsheet, Scale, BadgeDollarSign, Plus } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
@@ -9,7 +9,7 @@ import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { getErrorMessage } from '@api/client'
-import { companyId as currentCompanyId } from '@api/orderManagement'
+import { companyId as getCompanyId } from '@api/orderManagement'
 import {
   getEmployees, createEmployee,
   getPayCodes, createPayCode,
@@ -304,14 +304,65 @@ function TaxTab({ qc }: { qc: any }) {
   const [w4, setW4] = useState({ filingStatus: '0', multipleJobs: false, dependentsCredit: '2000', otherIncome: '0', deductions: '0' })
   const [calc, setCalc] = useState({ taxableWages: '2000', payFrequency: '2' })
   const { data: employees = [] } = useQuery({ queryKey: ['payroll', 'employees'], queryFn: () => getEmployees() })
+  const { data: taxTables = [] } = useQuery({ queryKey: ['payroll', 'tax-tables'], queryFn: () => getTaxTables(getCompanyId()) })
+  const { data: jurisdictions = [] } = useQuery({ queryKey: ['payroll', 'tax-jurisdictions'], queryFn: () => getTaxJurisdictions(getCompanyId()) })
+  const [profile, setProfile] = useState({ residentState: '', workState: '', addFed: '0', addState: '0', exemptFed: false, exemptState: false })
+  const { data: empProfile } = useQuery({ queryKey: ['payroll', 'tax-profile', employeeId], queryFn: () => getEmployeeTaxProfile(employeeId, getCompanyId()), enabled: !!employeeId })
   const createMut = useMutation({ mutationFn: () => createW4(employeeId, { filingStatus: Number(w4.filingStatus), multipleJobs: w4.multipleJobs, dependentsCredit: Number(w4.dependentsCredit), otherIncome: Number(w4.otherIncome), deductions: Number(w4.deductions) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'w4', employeeId] }) })
+  const profileMut = useMutation({
+    mutationFn: () => empProfile
+      ? updateEmployeeTaxProfile(employeeId, { companyId: getCompanyId(), ...profile })
+      : createEmployeeTaxProfile(employeeId, { companyId: getCompanyId(), ...profile }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll', 'tax-profile', employeeId] }),
+  })
   const withholdQ = useQuery({ queryKey: ['payroll', 'withhold', employeeId, calc.taxableWages, calc.payFrequency], queryFn: () => computeWithholding(employeeId, Number(calc.taxableWages), Number(calc.payFrequency)), enabled: !!employeeId })
+
+  // Seed profile fields from loaded employee profile.
+  useEffect(() => { if (empProfile) setProfile({ residentState: empProfile.residentState ?? '', workState: empProfile.workState ?? '', addFed: String(empProfile.additionalFederalWithholding ?? 0), addState: String(empProfile.additionalStateWithholding ?? 0), exemptFed: empProfile.exemptFederal ?? false, exemptState: empProfile.exemptState ?? false }) }, [empProfile])
+
   return (
-    <div className="space-y-3 max-w-2xl">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border rounded p-3 space-y-2">
+          <div className="font-semibold">Tax Tables</div>
+          {(taxTables as any[]).length === 0 ? <p className="text-sm text-gray-500">No tax tables configured.</p> : (
+            <DataTable data={taxTables as any[]} columns={[
+              { key: 'name', header: 'Name' },
+              { key: 'level', header: 'Level' },
+              { key: 'year', header: 'Year' },
+              { key: 'bracketCount', header: 'Brackets', align: 'right' },
+            ]} emptyMessage="No tax tables." />
+          )}
+        </div>
+        <div className="border rounded p-3 space-y-2">
+          <div className="font-semibold">Tax Jurisdictions</div>
+          {(jurisdictions as any[]).length === 0 ? <p className="text-sm text-gray-500">No jurisdictions configured.</p> : (
+            <DataTable data={jurisdictions as any[]} columns={[
+              { key: 'code', header: 'Code' },
+              { key: 'name', header: 'Name' },
+              { key: 'level', header: 'Level' },
+              { key: 'hasReciprocalAgreement', header: 'Reciprocal', render: (v: boolean) => (v ? 'Yes' : 'No') },
+            ]} emptyMessage="No jurisdictions." />
+          )}
+        </div>
+      </div>
+
       <Select label="Employee" value={employeeId} onChange={(e: any) => setEmployeeId(e.target.value)} options={(employees as any[]).map((e: any) => ({ value: e.id, label: `${e.employeeCode} — ${e.fullName}` }))} />
       {employeeId && (
         <>
-          <div className="border rounded p-3 space-y-2">
+          <div className="border rounded p-3 space-y-2 max-w-2xl">
+            <div className="font-semibold">Employee Tax Profile</div>
+            <Input label="Resident State" value={profile.residentState} onChange={(v: any) => setProfile({ ...profile, residentState: v })} />
+            <Input label="Work State" value={profile.workState} onChange={(v: any) => setProfile({ ...profile, workState: v })} />
+            <Input type="number" label="Additional Federal Withholding ($)" value={profile.addFed} onChange={(v: any) => setProfile({ ...profile, addFed: v })} />
+            <Input type="number" label="Additional State Withholding ($)" value={profile.addState} onChange={(v: any) => setProfile({ ...profile, addState: v })} />
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.exemptFed} onChange={(e: any) => setProfile({ ...profile, exemptFed: e.target.checked })} /> Exempt Federal</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.exemptState} onChange={(e: any) => setProfile({ ...profile, exemptState: e.target.checked })} /> Exempt State</label>
+            </div>
+            <Button onClick={() => profileMut.mutate()} disabled={profileMut.isPending}>Save Tax Profile</Button>
+          </div>
+          <div className="border rounded p-3 space-y-2 max-w-2xl">
             <div className="font-semibold">2020+ W-4 (Pub 15-T Percentage Method)</div>
             <Select label="Filing Status" value={w4.filingStatus} onChange={(e: any) => setW4({ ...w4, filingStatus: e.target.value })} options={[{ value: '0', label: 'Single' }, { value: '1', label: 'Married' }, { value: '2', label: 'Head of Household' }]} />
             <Input type="number" label="Dependents Credit ($)" value={w4.dependentsCredit} onChange={(v: any) => setW4({ ...w4, dependentsCredit: v })} />
@@ -319,7 +370,7 @@ function TaxTab({ qc }: { qc: any }) {
             <Input type="number" label="Deductions (annual)" value={w4.deductions} onChange={(v: any) => setW4({ ...w4, deductions: v })} />
             <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>Save W-4</Button>
           </div>
-          <div className="border rounded p-3 space-y-2">
+          <div className="border rounded p-3 space-y-2 max-w-2xl">
             <div className="font-semibold">Compute Withholding</div>
             <Input type="number" label="Taxable Wages" value={calc.taxableWages} onChange={(v: any) => setCalc({ ...calc, taxableWages: v })} />
             <Select label="Pay Frequency" value={calc.payFrequency} onChange={(e: any) => setCalc({ ...calc, payFrequency: e.target.value })} options={[{ value: '0', label: 'Weekly' }, { value: '1', label: 'Biweekly' }, { value: '2', label: 'Semimonthly' }, { value: '3', label: 'Monthly' }]} />

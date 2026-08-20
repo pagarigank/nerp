@@ -33,6 +33,9 @@ public class PayrollDbContext : DispatchableDbContext
     public DbSet<W4Record> W4Records => Set<W4Record>();
     public DbSet<WageBaseLimit> WageBaseLimits => Set<WageBaseLimit>();
     public DbSet<WorkersCompClassCode> WorkersCompClassCodes => Set<WorkersCompClassCode>();
+    public DbSet<TaxTable> TaxTables => Set<TaxTable>();
+    public DbSet<TaxJurisdiction> TaxJurisdictions => Set<TaxJurisdiction>();
+    public DbSet<EmployeeTaxProfile> EmployeeTaxProfiles => Set<EmployeeTaxProfile>();
     public DbSet<PtoLedger> PtoLedgers => Set<PtoLedger>();
     public DbSet<ManualCheck> ManualChecks => Set<ManualCheck>();
     public DbSet<PayrollCheck> PayrollChecks => Set<PayrollCheck>();
@@ -263,6 +266,51 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.RatePer100).HasColumnType("decimal(9,4)");
             entity.Property(e => e.ExperienceModification).HasColumnType("decimal(9,4)");
             entity.HasIndex(e => e.CompanyId);
+        });
+
+        modelBuilder.Entity<TaxTable>(entity =>
+        {
+            entity.ToTable("TaxTables");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.StateCode).HasMaxLength(10);
+            entity.Property(e => e.StandardDeduction).HasColumnType("decimal(18,2)");
+            entity.HasMany(e => e.Brackets).WithOne().HasForeignKey("TaxTableId").OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.CompanyId, e.Year, e.Level, e.StateCode, e.FilingStatus });
+        });
+
+        modelBuilder.Entity<TaxBracket>(entity =>
+        {
+            entity.ToTable("TaxBrackets");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Rate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.LowerBound).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.UpperBound).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.FixedAmount).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.TaxTableId);
+        });
+
+        modelBuilder.Entity<TaxJurisdiction>(entity =>
+        {
+            entity.ToTable("TaxJurisdictions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.StateCode).HasMaxLength(10);
+            entity.Property(e => e.ReciprocalWithState).HasMaxLength(10);
+            entity.Property(e => e.LocalRate).HasColumnType("decimal(9,6)");
+            entity.HasIndex(e => new { e.CompanyId, e.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<EmployeeTaxProfile>(entity =>
+        {
+            entity.ToTable("EmployeeTaxProfiles");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ResidentState).HasMaxLength(10);
+            entity.Property(e => e.WorkState).HasMaxLength(10);
+            entity.Property(e => e.AdditionalFederalWithholding).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.AdditionalStateWithholding).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => new { e.CompanyId, e.EmployeeId }).IsUnique();
         });
 
         modelBuilder.Entity<PtoLedger>(entity =>
