@@ -161,6 +161,7 @@ import { BuildOrdersPage } from '@pages/bom/BuildOrdersPage'
 import { WorkCentersPage } from '@pages/bom/WorkCentersPage'
 import { BomReportsPage } from '@pages/bom/BomReportsPage'
 import { ProjectsPage } from '@pages/projects/ProjectsPage'
+import { PayrollPage } from '@pages/payroll/PayrollPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -367,7 +368,7 @@ function App() {
           <Route path="reports" element={<BomReportsPage />} />
         </Route>
         <Route path="projects/*" element={<ProjectsPage />} />
-        <Route path="payroll/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Payroll</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
+        <Route path="payroll/*" element={<PayrollPage />} />
         <Route path="field-service/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Field Service</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="reporting/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Reporting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
