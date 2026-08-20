@@ -4,6 +4,7 @@
 
 using ERP.Modules.BillOfMaterials.Domain.Entities;
 using ERP.Modules.BillOfMaterials.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,8 +31,7 @@ public class WorkCenterController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.WorkCenters.AsQueryable();
-        if (companyId.HasValue)
-            query = query.Where(w => w.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, w => w.CompanyId, companyId);
 
         var centers = await query.OrderBy(w => w.Code).ToListAsync(cancellationToken);
         var dtos = centers.Select(w => new WorkCenterDto

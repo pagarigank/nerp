@@ -4,6 +4,7 @@
 
 using ERP.Modules.BillOfMaterials.Domain.Entities;
 using ERP.Modules.BillOfMaterials.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -40,10 +41,7 @@ public class BomReportsController : ControllerBase
             .Include(h => h.Components)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(h => h.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId);
 
         var headers = await query.OrderBy(h => h.ParentItemId).ToListAsync(cancellationToken);
         var result = headers.Select(header => new BomListingDto
@@ -84,10 +82,7 @@ public class BomReportsController : ControllerBase
             .Include(b => b.Lines)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(b => b.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
 
         if (parentItemId.HasValue)
         {
@@ -133,10 +128,7 @@ public class BomReportsController : ControllerBase
             .Include(h => h.Components)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(h => h.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId);
 
         var headers = await query.ToListAsync(cancellationToken);
         var itemIds = headers.Select(h => h.ParentItemId)
@@ -255,7 +247,7 @@ public class BomReportsController : ControllerBase
         if (companyId.HasValue)
         {
             var headerIds = await _bomContext.BomHeaders
-                .Where(h => h.CompanyId == companyId.Value)
+                .ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId)
                 .Select(h => h.Id)
                 .ToListAsync(cancellationToken);
             query = query.Where(r => headerIds.Contains(r.BomHeaderId));

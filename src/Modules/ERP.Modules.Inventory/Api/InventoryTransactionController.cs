@@ -7,6 +7,7 @@ using ERP.Core.Domain.Events;
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Domain.Events;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -43,10 +44,7 @@ public class InventoryTransactionController : ControllerBase
     {
         var query = _context.InventoryTransactions.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(t => t.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, t => t.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

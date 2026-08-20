@@ -40,6 +40,7 @@ public class PayrollController : ControllerBase
     public async Task<ActionResult<ApiResponse<List<EmployeeDto>>>> GetEmployees(CancellationToken cancellationToken)
     {
         var list = await _context.Employees
+            .ApplyCompanyScope(HttpContext, e => e.CompanyId)
             .Select(e => new EmployeeDto
             {
                 Id = e.Id,

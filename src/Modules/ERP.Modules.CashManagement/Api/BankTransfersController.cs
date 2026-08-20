@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,10 +30,7 @@ public class BankTransfersController : ControllerBase
     {
         var query = _context.BankTransfers.AsNoTracking();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(t => t.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, t => t.CompanyId, companyId);
 
         var transfers = await query
             .OrderByDescending(t => t.TransferDate)

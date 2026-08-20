@@ -8,6 +8,7 @@ using ERP.Modules.BillOfMaterials.Infrastructure;
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Domain.Events;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -51,10 +52,7 @@ public class BuildOrderController : ControllerBase
             .Include(b => b.Lines)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(b => b.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
 
         if (status.HasValue)
         {

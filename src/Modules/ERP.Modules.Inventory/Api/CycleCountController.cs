@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,10 +40,7 @@ public class CycleCountController : ControllerBase
             .Include(c => c.Lines)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(c => c.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, c => c.CompanyId, companyId);
 
         if (warehouseId.HasValue)
         {

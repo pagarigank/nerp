@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,10 +42,7 @@ public class ItemReservationController : ControllerBase
     {
         var query = _context.ItemReservations.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(r => r.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

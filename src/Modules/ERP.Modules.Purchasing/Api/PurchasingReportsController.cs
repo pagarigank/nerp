@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -32,8 +33,7 @@ public class PurchasingReportsController : ControllerBase
             .Include(p => p.Lines)
             .Where(p => p.Status == PurchaseOrderStatus.Approved);
 
-        if (companyId.HasValue)
-            query = query.Where(p => p.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, p => p.CompanyId, companyId);
 
         if (vendorId.HasValue)
             query = query.Where(p => p.VendorId == vendorId.Value);
@@ -64,8 +64,7 @@ public class PurchasingReportsController : ControllerBase
     {
         var query = _context.Requisitions.AsQueryable();
 
-        if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
 
         if (fromDate.HasValue)
             query = query.Where(r => r.RequestDate >= fromDate.Value);
@@ -99,8 +98,7 @@ public class PurchasingReportsController : ControllerBase
             .Include(r => r.Lines)
             .Where(r => r.Status == ReceiptStatus.Posted);
 
-        if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
 
         if (fromDate.HasValue)
             query = query.Where(r => r.ReceivedDate >= fromDate.Value);
@@ -195,8 +193,7 @@ public class PurchasingReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.PurchaseOrders.AsQueryable();
-        if (companyId.HasValue)
-            query = query.Where(p => p.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, p => p.CompanyId, companyId);
 
         var pos = await query.ToListAsync(cancellationToken);
 
@@ -226,8 +223,7 @@ public class PurchasingReportsController : ControllerBase
             .Include(p => p.Lines)
             .Where(p => p.Status == PurchaseOrderStatus.Approved || p.Status == PurchaseOrderStatus.Closed || p.Status == PurchaseOrderStatus.Cancelled);
 
-        if (companyId.HasValue)
-            query = query.Where(p => p.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, p => p.CompanyId, companyId);
         if (fromDate.HasValue)
             query = query.Where(p => p.OrderDate >= fromDate.Value);
         if (toDate.HasValue)

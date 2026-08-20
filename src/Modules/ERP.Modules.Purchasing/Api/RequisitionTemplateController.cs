@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -14,14 +15,14 @@ namespace ERP.Modules.Purchasing.Api;
 [Route("api/v1/purchasing/requisition-templates")]
 public class RequisitionTemplateController : ControllerBase
 {
-    private readonly IRepository<RequisitionTemplate> _repository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<RequisitionTemplate> _repository;
     private readonly PurchasingDbContext _context;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IUnitOfWork _unitOfWork;
 
     public RequisitionTemplateController(
-        IRepository<RequisitionTemplate> repository,
+        ERP.Modules.Purchasing.Infrastructure.IRepository<RequisitionTemplate> repository,
         PurchasingDbContext context,
-        IUnitOfWork unitOfWork)
+        ERP.Modules.Purchasing.Infrastructure.IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _context = context;
@@ -37,7 +38,7 @@ public class RequisitionTemplateController : ControllerBase
         var query = _context.RequisitionTemplates.AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(t => t.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, t => t.CompanyId, companyId);
 
         if (activeOnly == true)
             query = query.Where(t => t.IsActive);

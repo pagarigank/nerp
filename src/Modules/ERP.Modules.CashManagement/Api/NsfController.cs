@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,10 +32,7 @@ public class NsfController : ControllerBase
     {
         var query = _context.NsfRecords.AsNoTracking();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(n => n.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, n => n.CompanyId, companyId);
 
         var records = await query
             .OrderByDescending(n => n.ReturnedDate)

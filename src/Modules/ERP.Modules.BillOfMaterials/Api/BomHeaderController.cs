@@ -43,10 +43,7 @@ public class BomHeaderController : ControllerBase
             .Include(h => h.Components)
             .AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(h => h.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId);
 
         if (status.HasValue)
         {

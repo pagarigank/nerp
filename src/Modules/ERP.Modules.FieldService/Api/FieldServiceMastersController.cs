@@ -4,6 +4,7 @@
 
 using ERP.Modules.FieldService.Domain.Entities;
 using ERP.Modules.FieldService.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -161,6 +162,7 @@ public class FieldServiceMastersController : ControllerBase
     public async Task<ActionResult<ApiResponse<List<TechnicianDto>>>> GetTechnicians(CancellationToken cancellationToken)
     {
         var list = await _context.Technicians
+            .ApplyCompanyScope(HttpContext, t => t.CompanyId)
             .Select(t => new TechnicianDto
             {
                 Id = t.Id,

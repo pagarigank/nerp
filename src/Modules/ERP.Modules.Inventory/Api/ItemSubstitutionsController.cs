@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +30,7 @@ public class ItemSubstitutionsController : ControllerBase
         [FromQuery] Guid? companyId, [FromQuery] Guid? itemId, [FromQuery] SubstitutionStatus? status, CancellationToken cancellationToken)
     {
         var query = _context.ItemSubstitutions.AsQueryable();
-        if (companyId.HasValue) query = query.Where(s => s.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId, companyId);
         if (itemId.HasValue) query = query.Where(s => s.ItemId == itemId.Value);
         if (status.HasValue) query = query.Where(s => s.Status == status.Value);
 

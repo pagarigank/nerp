@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,10 +46,7 @@ public class ItemExpirationController : ControllerBase
             query = query.Include(e => e.Alerts);
         }
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(e => e.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, e => e.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

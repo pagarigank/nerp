@@ -12,6 +12,7 @@ using ERP.Core.Domain.Events;
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Domain.Events;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +39,7 @@ public class ConsignmentController : ControllerBase
         [FromQuery] Guid? companyId, [FromQuery] Guid? vendorId, [FromQuery] Guid? itemId, CancellationToken cancellationToken)
     {
         var query = _context.ConsignmentStocks.AsQueryable();
-        if (companyId.HasValue) query = query.Where(s => s.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId, companyId);
         if (vendorId.HasValue) query = query.Where(s => s.VendorId == vendorId.Value);
         if (itemId.HasValue) query = query.Where(s => s.ItemId == itemId.Value);
         var rows = await query.OrderBy(s => s.VendorId).ThenBy(s => s.ItemId).Take(1000).ToListAsync(cancellationToken);

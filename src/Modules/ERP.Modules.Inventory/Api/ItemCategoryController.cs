@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,10 +37,7 @@ public class ItemCategoryController : ControllerBase
     {
         var query = _context.ItemCategories.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(c => c.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, c => c.CompanyId, companyId);
 
         var categories = await query.OrderBy(c => c.CategoryCode).ToListAsync(cancellationToken);
 

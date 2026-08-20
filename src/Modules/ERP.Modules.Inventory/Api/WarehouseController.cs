@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -34,10 +35,7 @@ public class WarehouseController : ControllerBase
         [FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
         var query = _context.Warehouses.AsQueryable();
-        if (companyId.HasValue)
-        {
-            query = query.Where(w => w.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, w => w.CompanyId, companyId);
 
         var warehouses = await query.OrderBy(w => w.WarehouseCode).ToListAsync(cancellationToken);
         var dtos = warehouses.Select(w => new WarehouseDto

@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,10 +32,7 @@ public class ReconciliationsController : ControllerBase
     {
         var query = _context.ReconciliationSessions.AsNoTracking();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(s => s.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId, companyId);
 
         var sessions = await query
             .OrderByDescending(s => s.StatementDate)
@@ -212,8 +210,7 @@ public class ReconciliationsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.PayrollCheckIssues.AsQueryable();
-        if (companyId.HasValue)
-            query = query.Where(i => i.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, i => i.CompanyId, companyId);
         if (reconciled.HasValue)
             query = query.Where(i => i.IsReconciled == reconciled.Value);
 

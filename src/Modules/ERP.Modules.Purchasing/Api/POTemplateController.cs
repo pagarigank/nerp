@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -14,14 +15,14 @@ namespace ERP.Modules.Purchasing.Api;
 [Route("api/v1/purchasing/po-templates")]
 public class POTemplateController : ControllerBase
 {
-    private readonly IRepository<PurchaseOrderTemplate> _repository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrderTemplate> _repository;
     private readonly PurchasingDbContext _context;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IUnitOfWork _unitOfWork;
 
     public POTemplateController(
-        IRepository<PurchaseOrderTemplate> repository,
+        ERP.Modules.Purchasing.Infrastructure.IRepository<PurchaseOrderTemplate> repository,
         PurchasingDbContext context,
-        IUnitOfWork unitOfWork)
+        ERP.Modules.Purchasing.Infrastructure.IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _context = context;
@@ -38,7 +39,7 @@ public class POTemplateController : ControllerBase
         var query = _context.PurchaseOrderTemplates.AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(t => t.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, t => t.CompanyId, companyId);
 
         if (vendorId.HasValue)
             query = query.Where(t => t.VendorId == vendorId.Value);

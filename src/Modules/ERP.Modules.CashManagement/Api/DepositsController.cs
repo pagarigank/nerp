@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,10 +34,7 @@ public class DepositsController : ControllerBase
     {
         var query = _context.Deposits.AsNoTracking();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(d => d.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, d => d.CompanyId, companyId);
 
         if (bankAccountId.HasValue)
         {

@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,10 +40,7 @@ public class NegativeInventoryOverrideController : ControllerBase
     {
         var query = _context.NegativeInventoryOverrides.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(o => o.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, o => o.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

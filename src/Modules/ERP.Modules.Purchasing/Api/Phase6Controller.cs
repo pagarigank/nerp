@@ -356,7 +356,7 @@ public class Phase6Controller : ControllerBase
             .AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, r => r.CompanyId, companyId);
 
         if (status.HasValue)
             query = query.Where(r => r.Status == status.Value);
@@ -563,7 +563,7 @@ public class Phase6Controller : ControllerBase
         var query = _context.OverReceiptApprovals.AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(a => a.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, a => a.CompanyId, companyId);
 
         if (status.HasValue)
             query = query.Where(a => a.Status == status.Value);

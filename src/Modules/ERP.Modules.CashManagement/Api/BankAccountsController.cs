@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,10 +30,7 @@ public class BankAccountsController : ControllerBase
     {
         var query = _context.BankAccounts.AsNoTracking();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(a => a.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, a => a.CompanyId, companyId);
 
         var accounts = await query
             .OrderBy(a => a.AccountCode)

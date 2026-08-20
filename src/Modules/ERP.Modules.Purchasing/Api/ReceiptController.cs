@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Domain.Events;
 using ERP.Modules.Purchasing.Infrastructure;
@@ -42,7 +43,7 @@ public class ReceiptController : ControllerBase
         var query = _context.Receipts.AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, r => r.CompanyId, companyId);
 
         if (purchaseOrderId.HasValue)
             query = query.Where(r => r.PurchaseOrderId == purchaseOrderId.Value);

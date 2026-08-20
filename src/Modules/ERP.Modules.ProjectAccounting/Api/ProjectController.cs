@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Domain.Entities;
 using ERP.Modules.ProjectAccounting.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -17,11 +18,13 @@ public class ProjectController : ControllerBase
 {
     private readonly ProjDbContext _context;
     private readonly IProjUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
 
-    public ProjectController(ProjDbContext context, IProjUnitOfWork unitOfWork)
+    public ProjectController(ProjDbContext context, IProjUnitOfWork unitOfWork, ICurrentUserService currentUser)
     {
         _context = context;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
@@ -35,8 +38,7 @@ public class ProjectController : ControllerBase
             .Include(p => p.BudgetLines)
             .AsQueryable();
 
-        if (companyId.HasValue)
-            query = query.Where(p => p.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(_currentUser, p => p.CompanyId, companyId);
         if (status.HasValue)
             query = query.Where(p => p.Status == status.Value);
 
@@ -60,6 +62,10 @@ public class ProjectController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
         if (project is null)
+            return NotFound(ApiResponse<ProjectDto>.Failure(new[] { "Project not found." }, 404));
+
+        // Company scoping: a company-scoped user may only read projects in their company.
+        if (!_currentUser.IsSuperAdmin && !_currentUser.CompanyIds.Contains(project.CompanyId))
             return NotFound(ApiResponse<ProjectDto>.Failure(new[] { "Project not found." }, 404));
 
         return Ok(ApiResponse<ProjectDto>.Success(MapToDto(project)));

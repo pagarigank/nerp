@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -40,10 +41,7 @@ public class ItemMovementController : ControllerBase
     {
         var query = _context.ItemMovements.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(m => m.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, m => m.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

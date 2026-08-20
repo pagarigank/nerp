@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class PutAwayPickingController : ControllerBase
         [FromQuery] Guid? companyId, [FromQuery] Guid? warehouseId, CancellationToken cancellationToken)
     {
         var query = _context.PutAwayPickingRules.AsQueryable();
-        if (companyId.HasValue) query = query.Where(r => r.CompanyId == companyId.Value);
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
         if (warehouseId.HasValue) query = query.Where(r => r.WarehouseId == warehouseId.Value);
         var rules = await query.OrderBy(r => r.BinId).Take(1000).ToListAsync(cancellationToken);
         return Ok(ApiResponse<List<PutAwayPickingRuleDto>>.Success(rules.Select(MapToDto).ToList()));

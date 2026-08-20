@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,10 +46,7 @@ public class ItemQuarantineController : ControllerBase
             query = query.Include(q => q.Dispositions);
         }
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(q => q.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, q => q.CompanyId, companyId);
 
         if (itemId.HasValue)
         {

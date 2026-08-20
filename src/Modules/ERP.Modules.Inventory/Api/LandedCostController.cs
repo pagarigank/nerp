@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -38,10 +39,7 @@ public class LandedCostController : ControllerBase
     {
         var query = _context.LandedCosts.AsQueryable();
 
-        if (companyId.HasValue)
-        {
-            query = query.Where(c => c.CompanyId == companyId.Value);
-        }
+        query = query.ApplyCompanyScope(HttpContext, c => c.CompanyId, companyId);
 
         if (vendorId.HasValue)
         {

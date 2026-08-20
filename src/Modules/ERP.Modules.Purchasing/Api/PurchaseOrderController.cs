@@ -3,6 +3,7 @@
 // </copyright>
 
 using ERP.Core.Common;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
@@ -45,7 +46,7 @@ public class PurchaseOrderController : ControllerBase
         var query = _context.PurchaseOrders.AsQueryable();
 
         if (companyId.HasValue)
-            query = query.Where(po => po.CompanyId == companyId.Value);
+            query = ERP.Modules.Platform.Infrastructure.CompanyScope.ApplyCompanyScope(query, HttpContext, po => po.CompanyId, companyId);
 
         if (vendorId.HasValue)
             query = query.Where(po => po.VendorId == vendorId.Value);
