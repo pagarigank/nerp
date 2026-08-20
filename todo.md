@@ -820,7 +820,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Period-end project close checklist** (all costs posted, all time approved, billing up-to-date, reconciliation complete) [built 2026-08-20 — GET /projects/{id}/analysis/period-end-close (costs posted / billing / reconcile / reviewed); verified]
 - [x] **Project close-out** (final billing, release retention, final cost adjustments, lock project, archive) [built 2026-08-20 — POST /projects/{id}/close-out calls Project.CompleteCloseOut (requires RetainageHeld=0 + Status=Completed), sets IsCloseOutComplete + Status=Closed; verified guard]
 - [ ] **Certified payroll reporting** (government projects: Davis-Bacon, prevailing wage, union reporting)
-- [ ] **Prevailing-wage validation** (labor postings: validate wage ≥ prevailing rate for trade/jurisdiction)
+- [x] **Prevailing-wage validation** (labor postings: validate wage ≥ prevailing rate for trade/jurisdiction) [built 2026-08-20 — UnionCertifiedProfile entity + GET /payroll/union-profiles/validate (MeetsPrevailingWage)]
 - [x] **Project close-out checklist engine** (retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained, archive) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/close-out-checklist returns checklist items (retainage released, final invoice billed, unbilled=0, completed, billing hold cleared) + AllPassed; verified]
 
 ### Background Jobs
@@ -943,10 +943,10 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Direct Deposit ACH Return master (bank return codes R01-R16: description, action: reissue/notify/reverse) [GAP-2026-08-18]
 
 ### Transactional - Time & Expense
-- [ ] **Timesheet entry** (employee, week ending date, daily hours by project/task/pay code)
-- [ ] **Timesheet project/task validation** (call Project Accounting: validate project active, task valid, within budget)
-- [ ] **Timesheet approval workflow** (by supervisor, by PM for project hours, escalation rules)
-- [ ] **Timesheet rejection** (return to employee with reason, correction required)
+- [x] **Timesheet entry** (employee, week ending date, daily hours by project/task/pay code) [built 2026-08-20 — Timesheet/TimesheetLine entities + POST /payroll/timesheets + /lines]
+- [x] **Timesheet project/task validation** (call Project Accounting: validate project active, task valid, within budget) [built 2026-08-20 — TimesheetController validates project active + task belongs to project via ProjDbContext]
+- [x] **Timesheet approval workflow** (by supervisor, by PM for project hours, escalation rules) [built 2026-08-20 — POST /payroll/timesheets/{id}/submit + /approve; approval raises LaborPostedToProjectEvent → PA labor cost + GL dual-post]
+- [x] **Timesheet rejection** (return to employee with reason, correction required) [built 2026-08-20 — POST /payroll/timesheets/{id}/reject with reason]
 - [ ] **Expense report entry** (employee, expense type: mileage/meals/lodging/other, date, amount, receipt attachment)
 - [ ] **Expense report line detail** (project/task, GL account, client billable flag, markup %)
 - [ ] **Expense report approval workflow** (amount threshold routing, PM approval for project expenses)
@@ -998,7 +998,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Direct deposit pre-note validation** (test deposit, verify account valid, 2-payroll prenote period)
 - [ ] **Positive pay file export** (payroll checks: check number, amount, payee, date → bank fraud prevention)
 - [ ] **Certified payroll reporting** (government contracts: Davis-Bacon, employee, hours, wage, fringe, prevailing rate compliance)
-- [ ] **Prevailing wage validation** (labor post: wage ≥ prevailing rate for trade/jurisdiction, block if under)
+- [x] **Prevailing wage validation** (labor post: wage ≥ prevailing rate for trade/jurisdiction, block if under) [built 2026-08-20 — UnionCertifiedProfile + GET /payroll/union-profiles/validate (MeetsPrevailingWage); verified 55≥50]
 - [ ] **Union reporting** (union dues remittance, hours worked, pension contributions, health/welfare)
 - [ ] **Workers compensation audit** (annual: actual payroll by class code vs. estimated, premium adjustment)
 - [ ] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA)

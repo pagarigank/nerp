@@ -21,6 +21,7 @@ using ERP.Modules.GeneralLedger.Infrastructure;
 using ERP.Modules.Inventory;
 using ERP.Modules.Inventory.Application.BackgroundJobs;
 using ERP.Modules.OrderManagement;
+using ERP.Modules.Payroll;
 using ERP.Modules.Platform;
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting;
@@ -293,6 +294,7 @@ public class Program
         builder.Services.AddOrderManagementModule(builder.Configuration);
         builder.Services.AddBillOfMaterialsModule(builder.Configuration);
         builder.Services.AddProjectAccountingModule(builder.Configuration);
+        builder.Services.AddPayrollModule(builder.Configuration);
 
         var app = builder.Build();
 

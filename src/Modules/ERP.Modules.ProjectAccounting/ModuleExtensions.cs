@@ -32,6 +32,7 @@ public static class ModuleExtensions
         // project -> project ledger cost transaction. (Phase 10 critical gap.)
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.ProjectAccounting.Domain.Events.ProjectCostPostedEvent>, CostTransactionDualPostingHandler>();
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.Inventory.Domain.Events.InventoryTransactionPostedEvent>, InventoryPostedToProjectHandler>();
+        services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Core.Domain.Events.LaborPostedToProjectEvent>, PayrollPostedToProjectHandler>();
 
         return services;
     }
