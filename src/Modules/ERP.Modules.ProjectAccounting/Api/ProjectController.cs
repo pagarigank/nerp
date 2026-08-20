@@ -185,6 +185,73 @@ public class ProjectController : ControllerBase
         return Ok(ApiResponse.Success());
     }
 
+    // --- EAC / Billing approval / Retainage release / Close-out ---
+    [HttpPut("{id:guid}/eac")]
+    public async Task<ActionResult<ApiResponse>> SetEac(Guid id, [FromBody] EacRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        try
+        {
+            project.SetEstimateAtCompletion(request.EstimateAtCompletion);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("{id:guid}/billing/approve")]
+    public async Task<ActionResult<ApiResponse>> ApproveBilling(Guid id, [FromBody] BillingApprovalRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        project.ApproveBilling(request.ApprovedBy);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("{id:guid}/retainage/release")]
+    public async Task<ActionResult<ApiResponse>> ReleaseRetainage(Guid id, [FromBody] ProjectRetainageReleaseRequest request, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        try
+        {
+            project.ReleaseRetainage(request.Amount);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("{id:guid}/close-out")]
+    public async Task<ActionResult<ApiResponse>> CloseOut(Guid id, CancellationToken ct)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { id }, ct);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        if (project.RetainageHeld > 0)
+            return BadRequest(ApiResponse.Failure(new[] { "Cannot close out: retainage still held. Release retainage first." }));
+        if (project.Status != ProjectStatus.Completed)
+            return BadRequest(ApiResponse.Failure(new[] { "Cannot close out: project is not Completed." }));
+
+        project.CompleteCloseOut();
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Ok(ApiResponse.Success());
+    }
+
     // --- Tasks ---
     [HttpGet("{id:guid}/tasks")]
     public async Task<ActionResult<ApiResponse<List<TaskDto>>>> GetTasks(
@@ -426,4 +493,19 @@ public class CurrencyRequest
 {
     public string? CurrencyCode { get; set; }
     public decimal ExchangeRate { get; set; } = 1m;
+}
+
+public class EacRequest
+{
+    public decimal EstimateAtCompletion { get; set; }
+}
+
+public class BillingApprovalRequest
+{
+    public Guid ApprovedBy { get; set; }
+}
+
+public class ProjectRetainageReleaseRequest
+{
+    public decimal Amount { get; set; }
 }

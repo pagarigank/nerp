@@ -101,6 +101,18 @@ public class Project : AuditableEntity
     /// <summary>Gets the remaining contingency available for release.</summary>
     public decimal RemainingContingency => ContingencyAmount - ReleasedContingency;
 
+    /// <summary>Gets the estimate at completion (EAC) used as the denominator for the cost-to-cost % complete measurement basis.</summary>
+    public decimal EstimateAtCompletion { get; private set; }
+
+    /// <summary>Gets the user who approved billing for this project (review/approval gate), if any.</summary>
+    public Guid? BillingApprovedBy { get; private set; }
+
+    /// <summary>Gets the date billing was approved.</summary>
+    public DateTime? BillingApprovedOn { get; private set; }
+
+    /// <summary>Gets a value indicating whether the project has been closed out (final billing, retention released, archived).</summary>
+    public bool IsCloseOutComplete { get; private set; }
+
     public IReadOnlyCollection<ProjectTask> Tasks => _tasks.AsReadOnly();
     public IReadOnlyCollection<BudgetLine> BudgetLines => _budgetLines.AsReadOnly();
     public IReadOnlyCollection<CostTransaction> CostTransactions => _costTransactions.AsReadOnly();
@@ -247,6 +259,43 @@ public class Project : AuditableEntity
     public void SetRetainage(decimal retainagePercentage)
     {
         RetainagePercentage = retainagePercentage;
+    }
+
+    /// <summary>Sets the estimate at completion (EAC) — the revised total cost forecast used as the
+    /// denominator of the cost-to-cost percent-complete measurement basis.</summary>
+    /// <param name="eac">The estimate at completion amount.</param>
+    public void SetEstimateAtCompletion(decimal eac)
+    {
+        if (eac < 0)
+            throw new ArgumentException("EAC cannot be negative.", nameof(eac));
+        EstimateAtCompletion = eac;
+    }
+
+    /// <summary>Approves billing for the project (review/approval gate before invoice generation).</summary>
+    /// <param name="approvedBy">The identifier of the user approving billing.</param>
+    public void ApproveBilling(Guid approvedBy)
+    {
+        BillingApprovedBy = approvedBy;
+        BillingApprovedOn = DateTime.UtcNow;
+    }
+
+    /// <summary>Releases held retainage back to billable (e.g., final approval / % complete trigger).</summary>
+    /// <param name="amount">The amount of retainage to release.</param>
+    public void ReleaseRetainage(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be positive.", nameof(amount));
+        if (amount > RetainageHeld)
+            throw new InvalidOperationException("Release exceeds retainage held.");
+        RetainageHeld -= amount;
+    }
+
+    /// <summary>Marks the project closed out (final billing, retention released, archived).</summary>
+    public void CompleteCloseOut()
+    {
+        IsCloseOutComplete = true;
+        if (Status != ProjectStatus.Closed)
+            UpdateStatus(ProjectStatus.Closed);
     }
 
     public ProjectTask AddTask(

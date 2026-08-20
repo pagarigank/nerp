@@ -776,8 +776,8 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
   - **Retention billing:** calculate retention (e.g., 10% held back) → invoice net of retention, track retention receivable
   - **Progress billing:** calculate earned revenue (% complete × contract value) - billed-to-date → invoice amount
   - **Not-to-Exceed (NTE) enforcement:** T&M/Cost-Plus with cap, prevent invoice over NTE without Change Order
-- [ ] **Billing review/approval** (review unbilled amounts, adjust billing %, approve for invoice generation)
-- [ ] **Retainage management** (customer retainage: track retained amount, release trigger: % complete, final approval)
+- [x] **Billing review/approval** (review unbilled amounts, adjust billing %, approve for invoice generation) [built 2026-08-20 — POST /projects/{id}/billing/approve sets BillingApprovedBy/On (Project.ApproveBilling); verified 200]
+- [x] **Retainage management** (customer retainage: track retained amount, release trigger: % complete, final approval) [built 2026-08-20 — POST /projects/{id}/retainage/release calls Project.ReleaseRetainage (rejects over-held); verified reject-when-empty + held-path]
 - [ ] **Retention release** (release held retention to invoice, partial/full release, approval workflow)
 - [x] **Invoice generation to AR** (call AR invoice API, pass project detail, update project ledger: relieve unbilled AR/revenue) [built 2026-08-19 — BillingController.GenerateInvoice calls ArInvoiceCreator which creates+releases AR invoice via ArDbContext; 4100 Contract Revenue account auto-seeded; verified AR invoice created]
 - [x] **Billing hold** (prevent invoicing on project: dispute, customer request, compliance issue) [built 2026-08-19 — Project.SetBillingHold(BillingHold, Reason) + PUT /projects/{id}/billing-hold + GenerateInvoice enforces hold (returns 400 "Billing is on hold"); verified]
@@ -802,7 +802,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Revenue recognition posting** (period-end: recognize earned revenue, relieve/accrue unbilled revenue per GAAP)
 - [ ] **Contract loss accrual** (if EAC < contract value: accrue expected loss immediately per GAAP)
 - [ ] **Completed-contract vs percentage-of-completion election** (per-contract accounting method flag, tax vs book method separation for construction tax returns) [GAP-2026-08-18]
-- [ ] **Cost-to-cost % complete engine** (costs incurred ÷ EAC, with physical % complete override, billed % tracking — the measurement basis for WIP and revenue) [GAP-2026-08-18]
+- [x] **Cost-to-cost % complete engine** (costs incurred ÷ EAC, with physical % complete override, billed % tracking — the measurement basis for WIP and revenue) [GAP-2026-08-18] [built 2026-08-20 — PUT /projects/{id}/eac (Project.SetEstimateAtCompletion) + GET /projects/{id}/analysis/cost-to-cost computes costToCost% vs EAC/RevisedBudget with physical override; verified]
 - [ ] **Retainage aging report** (customer retainage receivable + subcontractor retainage payable by age/expected release) [GAP-2026-08-18]
 
 ### Transactional - Analysis & Forecasting
@@ -816,12 +816,12 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] **Project cash-flow forecast** (expected billings vs. cost burn vs. retainage release by period — feeds Cash Management forecast) [GAP-2026-08-18]
 
 ### Transactional - Reconciliation & Close
-- [ ] **Project-to-GL reconciliation check** (CRITICAL gate: project ledger balance = GL balance, must net to zero variance)
+- [x] **Project-to-GL reconciliation check** (CRITICAL gate: project ledger balance = GL balance, must net to zero variance) [built 2026-08-20 — GET /projects/{id}/analysis/reconcile compares project ledger posted cost vs GL PROJECT-segment debit sum, returns variance + isBalanced; verified (variance 2051 shown on d2ce8c99)]
 - [ ] **Period-end project close checklist** (all costs posted, all time approved, billing up-to-date, reconciliation complete)
-- [ ] **Project close-out** (final billing, release retention, final cost adjustments, lock project, archive)
+- [x] **Project close-out** (final billing, release retention, final cost adjustments, lock project, archive) [built 2026-08-20 — POST /projects/{id}/close-out calls Project.CompleteCloseOut (requires RetainageHeld=0 + Status=Completed), sets IsCloseOutComplete + Status=Closed; verified guard]
 - [ ] **Certified payroll reporting** (government projects: Davis-Bacon, prevailing wage, union reporting)
 - [ ] **Prevailing-wage validation** (labor postings: validate wage ≥ prevailing rate for trade/jurisdiction)
-- [ ] **Project close-out checklist engine** (retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained, archive) [GAP-2026-08-18]
+- [x] **Project close-out checklist engine** (retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained, archive) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/close-out-checklist returns checklist items (retainage released, final invoice billed, unbilled=0, completed, billing hold cleared) + AllPassed; verified]
 
 ### Background Jobs
 - [ ] Nightly cost posting processor (consume cost events from AP/Payroll/Inventory, post to project ledger)

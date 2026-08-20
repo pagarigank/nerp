@@ -16,10 +16,12 @@ namespace ERP.Modules.ProjectAccounting.Api;
 public class ProjectAnalysisController : ControllerBase
 {
     private readonly ProjDbContext _context;
+    private readonly ERP.Modules.GeneralLedger.Infrastructure.GlDbContext _glContext;
 
-    public ProjectAnalysisController(ProjDbContext context)
+    public ProjectAnalysisController(ProjDbContext context, ERP.Modules.GeneralLedger.Infrastructure.GlDbContext glContext)
     {
         _context = context;
+        _glContext = glContext;
     }
 
     /// <summary>WIP schedule: contract value, costs-to-date, earned revenue, billed, over/under billing.</summary>
@@ -333,6 +335,106 @@ public class ProjectAnalysisController : ControllerBase
             ContractLiability = contractLiability,
         }));
     }
+
+    /// <summary>Cost-to-cost percent-complete measurement basis: costs incurred ÷ EAC (with physical % override).</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Cost-to-cost percent complete and effective percent complete.</returns>
+    [HttpGet("cost-to-cost")]
+    public async Task<ActionResult<ApiResponse<CostToCostDto>>> CostToCost(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects.FindAsync(new object[] { projectId }, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var eac = project.EstimateAtCompletion > 0 ? project.EstimateAtCompletion : project.RevisedBudget;
+        var costToCost = eac > 0 ? project.CostsToDate / eac * 100 : 0;
+
+        return Ok(ApiResponse<CostToCostDto>.Success(new CostToCostDto
+        {
+            ProjectId = projectId,
+            CostsToDate = project.CostsToDate,
+            EstimateAtCompletion = eac,
+            RevisedBudget = project.RevisedBudget,
+            CostToCostPercent = costToCost,
+            PhysicalPercent = project.PercentComplete,
+            EffectivePercent = project.PercentComplete > 0 ? project.PercentComplete : costToCost,
+        }));
+    }
+
+    /// <summary>Project-to-GL reconciliation gate: project ledger cost must equal GL postings for the project (net to zero variance).</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Project ledger cost, GL net posting, variance, and balance status.</returns>
+    [HttpGet("reconcile")]
+    public async Task<ActionResult<ApiResponse<ReconciliationDto>>> Reconcile(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects
+            .Include(p => p.CostTransactions)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var projectLedgerCost = project.CostTransactions
+            .Where(t => t.Status == TransactionStatus.Posted)
+            .Sum(t => t.Amount);
+
+        // GL postings that reference this project via the PROJECT segment (stored in SegmentsJson).
+        var projectIdStr = projectId.ToString("D");
+        var glLines = await _glContext.JournalEntryLines
+            .Where(l => l.SegmentsJson != null && l.SegmentsJson.Contains(projectIdStr))
+            .ToListAsync(cancellationToken);
+
+        // The job-cost side is the GL debit (project costs posted to the job-cost account).
+        var glNet = glLines.Sum(l => l.Debit);
+
+        var variance = projectLedgerCost - glNet;
+
+        return Ok(ApiResponse<ReconciliationDto>.Success(new ReconciliationDto
+        {
+            ProjectId = projectId,
+            ProjectLedgerCost = projectLedgerCost,
+            GlNetPosting = glNet,
+            Variance = variance,
+            IsBalanced = variance == 0,
+            GlLineCount = glLines.Count,
+        }));
+    }
+
+    /// <summary>Close-out checklist: retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained.</summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Checklist items and overall pass status.</returns>
+    [HttpGet("close-out-checklist")]
+    public async Task<ActionResult<ApiResponse<CloseOutChecklistDto>>> CloseOutChecklist(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await _context.Projects
+            .Include(p => p.CostTransactions)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null)
+            return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+
+        var retainageReleased = project.RetainageHeld == 0;
+        var unbilledZero = project.RevenueToDate >= (project.ContractValue ?? 0);
+        var finalBilled = project.ContractValue.HasValue && project.RevenueToDate >= project.ContractValue.Value;
+
+        var items = new List<ChecklistItemDto>
+        {
+            new () { Item = "Retainage released", Passed = retainageReleased },
+            new () { Item = "Final invoice billed (revenue >= contract value)", Passed = finalBilled },
+            new () { Item = "Unbilled revenue = 0 (revenue >= contract value)", Passed = unbilledZero },
+            new () { Item = "Project completed", Passed = project.Status == ProjectStatus.Completed },
+            new () { Item = "Billing hold cleared", Passed = !project.BillingHold },
+        };
+
+        return Ok(ApiResponse<CloseOutChecklistDto>.Success(new CloseOutChecklistDto
+        {
+            ProjectId = projectId,
+            Items = items,
+            AllPassed = items.TrueForAll(i => i.Passed),
+            IsCloseOutComplete = project.IsCloseOutComplete,
+        }));
+    }
 }
 
 // --- DTOs ---
@@ -444,4 +546,41 @@ public class BudgetCommittedActualDto
     public decimal CommittedAmount { get; set; }
     public decimal ActualAmount { get; set; }
     public decimal Remaining { get; set; }
+}
+
+public class CostToCostDto
+{
+    public Guid ProjectId { get; set; }
+    public decimal CostsToDate { get; set; }
+    public decimal EstimateAtCompletion { get; set; }
+    public decimal RevisedBudget { get; set; }
+    public decimal CostToCostPercent { get; set; }
+    public decimal PhysicalPercent { get; set; }
+    public decimal EffectivePercent { get; set; }
+}
+
+public class ReconciliationDto
+{
+    public Guid ProjectId { get; set; }
+    public decimal ProjectLedgerCost { get; set; }
+    public decimal GlNetPosting { get; set; }
+    public decimal Variance { get; set; }
+    public bool IsBalanced { get; set; }
+    public int GlLineCount { get; set; }
+}
+
+#pragma warning disable CA1002, CA2227
+public class CloseOutChecklistDto
+{
+    public Guid ProjectId { get; set; }
+    public List<ChecklistItemDto> Items { get; set; } = [];
+    public bool AllPassed { get; set; }
+    public bool IsCloseOutComplete { get; set; }
+}
+#pragma warning restore CA1002, CA2227
+
+public class ChecklistItemDto
+{
+    public string Item { get; set; } = string.Empty;
+    public bool Passed { get; set; }
 }

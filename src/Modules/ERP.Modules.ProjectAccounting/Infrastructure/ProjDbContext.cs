@@ -64,6 +64,7 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.ExchangeRate).HasColumnType("decimal(18,4)");
             entity.Property(e => e.CurrencyCode).HasMaxLength(10);
             entity.Property(e => e.BillingHoldReason).HasMaxLength(500);
+            entity.Property(e => e.EstimateAtCompletion).HasColumnType("decimal(18,2)");
 
             entity.HasIndex(e => new { e.CompanyId, e.ProjectCode }).IsUnique();
             entity.HasIndex(e => e.Status);
