@@ -24,17 +24,20 @@ public class PayrollRunController : ControllerBase
     private readonly PlatformDbContext _platformContext;
     private readonly IPostingEventPublisher _postingPublisher;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDomainEventDispatcher _eventDispatcher;
 
     public PayrollRunController(
         PayrollDbContext context,
         PlatformDbContext platformContext,
         IPostingEventPublisher postingPublisher,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IDomainEventDispatcher eventDispatcher)
     {
         _context = context;
         _platformContext = platformContext;
         _postingPublisher = postingPublisher;
         _currentUser = currentUser;
+        _eventDispatcher = eventDispatcher;
     }
 
     // --- Payroll calendar ---
@@ -69,14 +72,24 @@ public class PayrollRunController : ControllerBase
         var run = new PayrollRun(request.CompanyId, request.CalendarId, request.PeriodStart, request.PeriodEnd, request.PayDate);
 
         // Pull approved timesheet lines in the pay period (optionally filtered to charged project for certified payroll).
-        var lines = await (from l in _context.TimesheetLines
-                           join t in _context.Timesheets on l.TimesheetId equals t.Id
-                           where t.CompanyId == request.CompanyId
-                                 && t.Status == TimesheetStatus.Approved
-                                 && l.WorkDate >= request.PeriodStart
-                                 && l.WorkDate <= request.PeriodEnd
-                           select new { Line = l, EmployeeId = t.EmployeeId })
-            .ToListAsync(cancellationToken);
+        var query = from l in _context.TimesheetLines
+                    join t in _context.Timesheets on l.TimesheetId equals t.Id
+                    where t.CompanyId == request.CompanyId
+                          && t.Status == TimesheetStatus.Approved
+                    select new { Line = l, EmployeeId = t.EmployeeId, TimesheetId = t.Id };
+
+        if (request.TimesheetIds is { Count: > 0 })
+        {
+            var ids = request.TimesheetIds.ToHashSet();
+            query = query.Where(x => ids.Contains(x.TimesheetId));
+        }
+        else
+        {
+            query = query.Where(x => x.Line.WorkDate >= request.PeriodStart
+                                     && x.Line.WorkDate <= request.PeriodEnd);
+        }
+
+        var lines = await query.ToListAsync(cancellationToken);
 
         var byEmployee = lines
             .GroupBy(x => x.EmployeeId)
@@ -179,6 +192,30 @@ public class PayrollRunController : ControllerBase
         await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
         run.MarkPosted(request.PostedById, batchNumber);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Phase 11 cross-module wiring (#1099): emit the architecture-named PayrollPosted
+        // signal so Cash Management (positive-pay reconciliation) and Banking/EDI subscribers
+        // can react to the issued pay instruments. Each run line is one employee payment.
+        var payments = run.Lines.Select(l => new PayrollPostedPayment(
+            l.EmployeeId,
+            "Check",
+            null,
+            l.NetPay,
+            null)).ToList();
+
+        await _eventDispatcher.DispatchAsync(
+            new PayrollPostedEvent(
+                run.Id,
+                run.CompanyId,
+                run.PayDate,
+                run.TotalGross,
+                run.TotalNet,
+                run.TotalEmployeeTax,
+                run.TotalEmployerTax,
+                batchNumber,
+                payments),
+            cancellationToken);
+
         return Ok(ApiResponse.Success());
     }
 
@@ -520,6 +557,9 @@ public class CreateRunRequest
     public DateTime PeriodStart { get; set; }
     public DateTime PeriodEnd { get; set; }
     public DateTime PayDate { get; set; }
+
+    /// <summary>Optional explicit timesheets to include in the run (overrides the period filter).</summary>
+    public List<Guid>? TimesheetIds { get; set; }
 }
 
 public class PostRunRequest

@@ -25,6 +25,11 @@ public static class ModuleExtensions
 
         services.AddScoped<IPayrollUnitOfWork, PayrollUnitOfWork>();
 
+        // Phase 11 cross-module wiring (#1101): creates an AP voucher (employee as payee)
+        // when an expense report is reimbursed. Depends on AP's IVoucherService (Payroll
+        // holds a one-way reference to AP; no module cycle).
+        services.AddScoped<ApVoucherCreator>();
+
         // Phase 11 background jobs (Batch F): scheduled payroll operations.
         services.AddHostedService<Application.Jobs.PayrollRunTriggerJob>();
         services.AddHostedService<Application.Jobs.PtoAccrualJob>();

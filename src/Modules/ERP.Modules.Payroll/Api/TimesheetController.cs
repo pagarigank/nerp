@@ -6,6 +6,7 @@ using ERP.Core.Domain.Common;
 using ERP.Core.Domain.Events;
 using ERP.Modules.Payroll.Domain.Entities;
 using ERP.Modules.Payroll.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
@@ -20,15 +21,21 @@ public class TimesheetController : ControllerBase
     private readonly PayrollDbContext _context;
     private readonly ProjDbContext _projContext;
     private readonly IDomainEventDispatcher _eventDispatcher;
+    private readonly ERP.Core.Common.IProjectCostValidation _projectCostValidation;
+    private readonly IApprovalWorkflowService _approvalWorkflow;
 
     public TimesheetController(
         PayrollDbContext context,
         ProjDbContext projContext,
-        IDomainEventDispatcher eventDispatcher)
+        IDomainEventDispatcher eventDispatcher,
+        ERP.Core.Common.IProjectCostValidation projectCostValidation,
+        IApprovalWorkflowService approvalWorkflow)
     {
         _context = context;
         _projContext = projContext;
         _eventDispatcher = eventDispatcher;
+        _projectCostValidation = projectCostValidation;
+        _approvalWorkflow = approvalWorkflow;
     }
 
     [HttpPost]
@@ -94,6 +101,26 @@ public class TimesheetController : ControllerBase
             return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
         }
 
+        // Phase 11 item #1103: route timesheet approval through the Phase 1 Approval Workflow
+        // engine (threshold routing) rather than a bespoke flow. If a workflow is configured
+        // for Payroll/Timesheet we raise an ApprovalRequest and remember its id so Approve()
+        // processes it through the engine.
+        var workflow = await _approvalWorkflow.GetWorkflowAsync("Payroll", "Timesheet", timesheet.TotalHours, timesheet.CompanyId, cancellationToken);
+        if (workflow is not null)
+        {
+            var approvalRequest = await _approvalWorkflow.SubmitForApprovalAsync(
+                workflow.Id,
+                "Payroll",
+                "Timesheet",
+                timesheet.Id,
+                timesheet.Id.ToString(),
+                timesheet.TotalHours,
+                timesheet.EmployeeId.ToString(),
+                null,
+                cancellationToken);
+            timesheet.SetApprovalRequestId(approvalRequest.Id);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse.Success());
     }
@@ -117,18 +144,54 @@ public class TimesheetController : ControllerBase
             return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
         }
 
+        // Phase 11 item #1103: if the timesheet was routed through the Phase 1 Approval
+        // Workflow engine on submit, process the approval action there as well so the
+        // engine's audit trail and routing stay authoritative.
+        if (timesheet.ApprovalRequestId.HasValue)
+        {
+            await _approvalWorkflow.ProcessActionAsync(
+                timesheet.ApprovalRequestId.Value,
+                request.ApprovedById.ToString(),
+                ERP.Modules.Platform.Domain.Entities.ApprovalDecision.Approved,
+                null,
+                "Approved via timesheet approval.",
+                cancellationToken);
+        }
+
+        // Phase 11 cross-module wiring (item #1099 / #1100): validate each project-charged
+        // line against the open project/task + available budget via the shared
+        // IProjectCostValidation contract owned by Project Accounting (no module cycle).
+        foreach (var line in timesheet.Lines.Where(l => l.ProjectId.HasValue))
+        {
+            var validation = await _projectCostValidation.ValidateAsync(
+                timesheet.CompanyId,
+                line.ProjectId,
+                line.TaskId,
+                line.Amount,
+                cancellationToken);
+            if (!validation.IsValid)
+                return BadRequest(ApiResponse.Failure(new[] { validation.Message ?? "Project cost validation failed." }));
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Dispatch the labor-posted event so Project Accounting (and GL) pick up the cost.
+        var laborLines = timesheet.Lines.Select(l => new LaborPostingLine(
+            l.ProjectId, l.TaskId, l.PayCodeId, l.WorkDate, l.Hours, l.Rate, l.Amount,
+            l.TradeClassification, l.IsBillable, l.IsOvertime)).ToList();
+
+        // Architecture-named lifecycle signal (§4) for integration/audit/EDI subscribers.
+        await _eventDispatcher.DispatchAsync(
+            new TimesheetApprovedEvent(timesheet.Id, timesheet.CompanyId, timesheet.EmployeeId, timesheet.WeekEnding, laborLines),
+            cancellationToken);
+
+        // Detailed labor-posting payload consumed by Project Accounting job-costing + GL.
         await _eventDispatcher.DispatchAsync(
             new LaborPostedToProjectEvent(
                 timesheet.Id,
                 timesheet.CompanyId,
                 timesheet.EmployeeId,
                 timesheet.WeekEnding,
-                timesheet.Lines.Select(l => new LaborPostingLine(
-                    l.ProjectId, l.TaskId, l.PayCodeId, l.WorkDate, l.Hours, l.Rate, l.Amount,
-                    l.TradeClassification, l.IsBillable, l.IsOvertime)).ToList()),
+                laborLines),
             cancellationToken);
 
         return Ok(ApiResponse.Success());

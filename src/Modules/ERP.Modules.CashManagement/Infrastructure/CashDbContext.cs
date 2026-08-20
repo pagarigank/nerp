@@ -30,6 +30,7 @@ public class CashDbContext : DispatchableDbContext
     public DbSet<PositivePayDiscrepancy> PositivePayExceptions => Set<PositivePayDiscrepancy>();
     public DbSet<BankDuplicateLine> BankDuplicateLines => Set<BankDuplicateLine>();
     public DbSet<BankFeeAnalysis> BankFeeAnalyses => Set<BankFeeAnalysis>();
+    public DbSet<PayrollCheckIssue> PayrollCheckIssues => Set<PayrollCheckIssue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -318,6 +319,24 @@ public class CashDbContext : DispatchableDbContext
             e.Property(x => x.FeeType).HasMaxLength(100).IsRequired();
             e.Property(x => x.Amount).HasColumnType("decimal(18,2)").IsRequired();
             e.HasIndex(x => x.AnalysisId);
+        });
+
+        modelBuilder.Entity<PayrollCheckIssue>(e =>
+        {
+            e.ToTable("PayrollCheckIssues");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PaymentMethod).HasMaxLength(50).IsRequired();
+            e.Property(x => x.CheckNumber).HasMaxLength(50);
+            e.Property(x => x.BankAccountLast4).HasMaxLength(4);
+            e.Property(x => x.PayrollRunId).IsRequired();
+            e.Property(x => x.CompanyId).IsRequired();
+            e.Property(x => x.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(256).IsRequired();
+            e.Property(x => x.ModifiedBy).HasMaxLength(256);
+            e.Property(x => x.DeletedBy).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.PayrollRunId });
+            e.HasIndex(x => x.IsReconciled);
+            e.HasQueryFilter(x => !x.DeletedOn.HasValue);
         });
     }
 }

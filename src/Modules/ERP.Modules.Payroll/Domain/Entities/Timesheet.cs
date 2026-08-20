@@ -34,6 +34,11 @@ public class Timesheet : AuditableEntity
     public Guid? ApprovedById { get; private set; }
     public DateTime? ApprovedOn { get; private set; }
     public string? RejectionReason { get; private set; }
+
+    /// <summary>Links the timesheet to the Phase 1 Approval Workflow request raised on submit (item #1103).</summary>
+    public Guid? ApprovalRequestId { get; private set; }
+
+    public void SetApprovalRequestId(Guid approvalRequestId) => ApprovalRequestId = approvalRequestId;
     public decimal TotalHours => _lines.Sum(l => l.Hours);
     public decimal TotalRegularHours => _lines.Where(l => !l.IsOvertime).Sum(l => l.Hours);
     public decimal TotalOvertimeHours => _lines.Where(l => l.IsOvertime).Sum(l => l.Hours);

@@ -2,7 +2,10 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Core.Domain.Common;
+using ERP.Core.Domain.Events;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Modules.CashManagement.Infrastructure.Handlers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +35,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBankFeeService, BankFeeService>();
         services.AddScoped<ICashPositionJob, CashPositionJob>();
         services.AddScoped<IOutstandingCheckAgingJob, OutstandingCheckAgingJob>();
+
+        // Phase 11 item #1102: payroll -> Cash Management reconciliation. Consumes the
+        // PayrollPostedEvent (shared ERP.Core contract) to record issued pay instruments.
+        services.AddScoped<IDomainEventHandler<PayrollPostedEvent>, PayrollPostedToCashHandler>();
 
         return services;
     }

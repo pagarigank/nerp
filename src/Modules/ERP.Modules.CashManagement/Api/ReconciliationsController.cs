@@ -200,4 +200,48 @@ public class ReconciliationsController : ControllerBase
         line.Status.ToString(),
         line.MatchedTransactionId,
         line.MatchedSource?.ToString());
+
+    /// <summary>
+    /// Lists payroll checks / direct deposits issued by Payroll runs, recorded for bank
+    /// reconciliation (Phase 11 item #1102). Populated by the PayrollPostedEvent consumer.
+    /// </summary>
+    [HttpGet("payroll-check-issues")]
+    public async Task<ActionResult<IReadOnlyList<PayrollCheckIssueResponse>>> GetPayrollCheckIssues(
+        [FromQuery] Guid? companyId,
+        [FromQuery] bool? reconciled,
+        CancellationToken cancellationToken)
+    {
+        var query = _context.PayrollCheckIssues.AsQueryable();
+        if (companyId.HasValue)
+            query = query.Where(i => i.CompanyId == companyId.Value);
+        if (reconciled.HasValue)
+            query = query.Where(i => i.IsReconciled == reconciled.Value);
+
+        var items = await query
+            .OrderByDescending(i => i.IssuedOn)
+            .Select(i => new PayrollCheckIssueResponse(
+                i.Id,
+                i.PayrollRunId,
+                i.EmployeeId,
+                i.PaymentMethod,
+                i.CheckNumber,
+                i.Amount,
+                i.IssuedOn,
+                i.BankAccountLast4,
+                i.IsReconciled))
+            .ToListAsync(cancellationToken);
+
+        return Ok(items);
+    }
 }
+
+public record PayrollCheckIssueResponse(
+    Guid Id,
+    Guid PayrollRunId,
+    Guid EmployeeId,
+    string PaymentMethod,
+    string CheckNumber,
+    decimal Amount,
+    DateTime IssuedOn,
+    string BankAccountLast4,
+    bool IsReconciled);

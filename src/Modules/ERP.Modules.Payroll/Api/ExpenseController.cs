@@ -28,6 +28,7 @@ public class ExpenseController : ControllerBase
     private readonly IPostingEventPublisher _postingPublisher;
     private readonly IDomainEventDispatcher _eventDispatcher;
     private readonly ICurrentUserService _currentUser;
+    private readonly ApVoucherCreator _apVoucherCreator;
 
     public ExpenseController(
         PayrollDbContext context,
@@ -35,7 +36,8 @@ public class ExpenseController : ControllerBase
         ProjDbContext projContext,
         IPostingEventPublisher postingPublisher,
         IDomainEventDispatcher eventDispatcher,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        ApVoucherCreator apVoucherCreator)
     {
         _context = context;
         _platformContext = platformContext;
@@ -43,6 +45,7 @@ public class ExpenseController : ControllerBase
         _postingPublisher = postingPublisher;
         _eventDispatcher = eventDispatcher;
         _currentUser = currentUser;
+        _apVoucherCreator = apVoucherCreator;
     }
 
     [HttpPost]
@@ -176,7 +179,17 @@ public class ExpenseController : ControllerBase
 
         report.MarkReimbursed();
         await _context.SaveChangesAsync(cancellationToken);
-        return Ok(ApiResponse.Success());
+
+        // Phase 11 cross-module wiring (#1101): create an AP voucher with the employee as
+        // the vendor payee so the reimbursement is paid through the normal AP payment run.
+        var employee = await _context.Employees
+            .FirstOrDefaultAsync(e => e.Id == report.EmployeeId, cancellationToken);
+        if (employee is null)
+            return BadRequest(ApiResponse.Failure(new[] { "Employee not found for reimbursement." }));
+
+        var voucherId = await _apVoucherCreator.CreateReimbursementVoucherAsync(report, employee, cancellationToken);
+
+        return Ok(ApiResponse<string>.Success(voucherId.ToString()));
     }
 
     [HttpGet]

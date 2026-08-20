@@ -28,6 +28,11 @@ public static class ModuleExtensions
         services.AddScoped<ERP.Modules.ProjectAccounting.Domain.Services.IProjectAllocator, ERP.Modules.ProjectAccounting.Domain.Services.ProjectAllocator>();
         services.AddScoped<ArInvoiceCreator>();
 
+        // Shared cross-module contract consumed by Payroll (timesheet/expense approval) to
+        // validate project/task budget without a compile-time module cycle (mirrors AR's
+        // ICreditLimitCheck). Lives in ERP.Core; implemented here. (Phase 11 wiring #1100.)
+        services.AddScoped<ERP.Core.Common.IProjectCostValidation, ProjectCostValidation>();
+
         // Dual-posting consumers: project cost -> GL, and inventory issue against a
         // project -> project ledger cost transaction. (Phase 10 critical gap.)
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.ProjectAccounting.Domain.Events.ProjectCostPostedEvent>, CostTransactionDualPostingHandler>();

@@ -117,6 +117,7 @@ public class PayrollDbContext : DispatchableDbContext
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.EmployeeId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ApprovalRequestId);
             entity.HasMany(e => e.Lines).WithOne().HasForeignKey(l => l.TimesheetId).OnDelete(DeleteBehavior.Cascade);
         });
 

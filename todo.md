@@ -1096,14 +1096,14 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] PTO/leave balances view per employee [GAP-2026-08-18] [built 2026-08-20 — PTO/leave balances view (built this session)]
 
 ### Wiring & Cross-Module Integration [GAP-2026-08-18]
-- [ ] Emit `TimesheetApproved` (per approved timesheet) and `PayrollPosted` (per final run) domain events per `architecture.md` §4 — Project Accounting (Phase 10) consumes `TimesheetApproved` for project labor cost (Phase 10 built 2026-08-19/20, consumer live); build the shared event contract + consumer stub now so the contract is frozen
-- [ ] Add shared cross-module contract in ERP.Core: `IProjectCostValidation` (validate open project/task + budget line per spec §5.12), consumed by timesheet/expense approval — mirror the existing `ICreditLimitCheck`/`IInventoryAvailability` pattern (no module reference cycles)
-- [ ] Expense reimbursement → AP voucher (existing AP voucher API) with employee as payee; benefit/tax remittance → AP payment run
-- [ ] Payroll checks/direct deposit → Cash Management reconciliation; reuse Phase 5 positive-pay export for payroll checks
-- [ ] Wire timesheet/expense approval through the Phase 1 Approval Workflow engine (threshold routing), not a bespoke flow
+- [x] built 2026-08-20 Emit `TimesheetApproved` (per approved timesheet) and `PayrollPosted` (per final run) domain events per `architecture.md` §4 — Project Accounting (Phase 10) consumes `TimesheetApproved` for project labor cost (Phase 10 built 2026-08-19/20, consumer live); shared event contract + consumer in ERP.Core.Common/IPayrollEvents live (Batch H)
+- [x] built 2026-08-20 Add shared cross-module contract in ERP.Core: `IProjectCostValidation` (validate open project/task + budget line per spec §5.12), consumed by timesheet/expense approval — mirror the existing `ICreditLimitCheck`/`IInventoryAvailability` pattern (no module reference cycles)
+- [x] built 2026-08-20 Expense reimbursement → AP voucher (existing AP voucher API) with employee as payee; benefit/tax remittance → AP payment run (ApVoucherCreator resolves/creates EMP- vendor + posts AP batch)
+- [x] built 2026-08-20 Payroll checks/direct deposit → Cash Management reconciliation; `PayrollPostedToCashHandler` records each issued pay instrument as a `PayrollCheckIssue` for Phase 5 positive-pay/reconciliation (GET /cash/reconciliations/payroll-check-issues)
+- [x] built 2026-08-20 Wire timesheet/expense approval through the Phase 1 Approval Workflow engine (threshold routing), not a bespoke flow (TimesheetController.Submit raises ApprovalRequest; Approve processes the action)
 - [ ] Audit interceptor must redact SSN/bank fields (field-level encryption + masking per `architecture.md` §6); never write raw SSN to the audit log
 - [ ] Employee master links to Platform User (self-service pay stub/W-2 access via Phase 14 portal); SSN stored AES-256 encrypted
-- [ ] Payroll GL postings via canonical `CanonicalPostingEvent` (same publisher as AP/AR/INV) — wage expense by dept/project segments, liability accounts, net pay payable
+- [x] built 2026-08-20 Payroll GL postings via canonical `CanonicalPostingEvent` (same publisher as AP/AR/INV) — wage expense by dept/project segments, liability accounts, net pay payable (PostRun dual-posts via IPostingEventPublisher)
 - [ ] Field Service work-order labor capture (Phase 12) feeds timesheets/expense reports here (shared labor source of truth)
 
 ---
