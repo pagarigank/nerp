@@ -8,6 +8,7 @@ using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.OrderManagement.Domain.Events;
+using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,12 +23,19 @@ namespace ERP.Modules.AccountsReceivable.Infrastructure.Handlers;
 /// </summary>
 public sealed class ShipmentConfirmedToArHandler : IDomainEventHandler<ShipmentConfirmedEvent>
 {
+    private const string RevenueAccountNumber = "4000";
+
     private readonly ArDbContext _arContext;
+    private readonly PlatformDbContext _platformContext;
     private readonly IPeriodService _periodService;
 
-    public ShipmentConfirmedToArHandler(ArDbContext arContext, IPeriodService periodService)
+    public ShipmentConfirmedToArHandler(
+        ArDbContext arContext,
+        PlatformDbContext platformContext,
+        IPeriodService periodService)
     {
         _arContext = arContext ?? throw new ArgumentNullException(nameof(arContext));
+        _platformContext = platformContext ?? throw new ArgumentNullException(nameof(platformContext));
         _periodService = periodService ?? throw new ArgumentNullException(nameof(periodService));
     }
 
@@ -40,6 +48,9 @@ public sealed class ShipmentConfirmedToArHandler : IDomainEventHandler<ShipmentC
             .FirstOrDefaultAsync(c => c.Id == domainEvent.CustomerId, cancellationToken);
         if (customer is null)
             return; // Customer not yet migrated into AR; nothing to invoice.
+
+        // Resolve the default revenue account so GL posting never references Guid.Empty.
+        var revenueAccountId = await ResolveRevenueAccountIdAsync(domainEvent.CompanyId, cancellationToken);
 
         var period = await _periodService.GetCurrentPeriodAsync(domainEvent.CompanyId, cancellationToken);
         var postingDate = DateTimeOffset.UtcNow;
@@ -67,7 +78,7 @@ public sealed class ShipmentConfirmedToArHandler : IDomainEventHandler<ShipmentC
 
             var discountAmount = (line.Quantity * line.UnitPrice) * (line.DiscountPercent / 100m);
             var taxAmount = ((line.Quantity * line.UnitPrice) - discountAmount) * (line.TaxPercent / 100m);
-            var accountId = line.AccountId ?? Guid.Empty;
+            var accountId = line.AccountId ?? revenueAccountId;
 
             invoice.AddLine(
                 accountId,
@@ -89,12 +100,27 @@ public sealed class ShipmentConfirmedToArHandler : IDomainEventHandler<ShipmentC
                 customer.DefaultPaymentTermId,
                 null,
                 domainEvent.SalesOrderId);
-            freightInvoice.AddLine(Guid.Empty, "Freight", 1, domainEvent.FreightCost, 0, 0);
+            freightInvoice.AddLine(revenueAccountId, "Freight", 1, domainEvent.FreightCost, 0, 0);
         }
 
         _arContext.InvoiceBatches.Add(batch);
         batch.Release();
         batch.Post();
         await _arContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns the company's revenue account (4000) so invoice lines always reference a
+    /// valid GL account during AR -&gt; GL posting. Falls back to Guid.Empty only if the
+    /// chart of accounts has not been seeded for the company (platform configuration gap).
+    /// </summary>
+    private async Task<Guid> ResolveRevenueAccountIdAsync(Guid companyId, CancellationToken cancellationToken)
+    {
+        var account = await _platformContext.Accounts
+            .Where(a => a.CompanyId == companyId && a.AccountNumber == RevenueAccountNumber && !a.DeletedOn.HasValue)
+            .OrderBy(a => a.AccountNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return account?.Id ?? Guid.Empty;
     }
 }
