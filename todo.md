@@ -1023,11 +1023,11 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] Benefit remittance job (401k/HSA/insurance contributions → AP vouchers for vendor payments) [GAP-2026-08-18]
 
 ### Reports
-- [ ] Payroll Register (all employees: gross, taxes, deductions, net, check/deposit detail)
-- [ ] Payroll Summary (totals: gross wages, employer taxes, net pay, by department, by pay code)
+- [x] Payroll Register (all employees: gross, taxes, deductions, net, check/deposit detail) [built 2026-08-20 — GET /payroll/reports/payroll-register; verified 9 rows]
+- [x] Payroll Summary (totals: gross wages, employer taxes, net pay, by department, by pay code) [built 2026-08-20 — GET /payroll/reports/payroll-summary; verified gross 8800]
 - [ ] Tax Liability Report (federal, state, local: amounts owed, due dates, payment vouchers)
 - [ ] Deduction Register (all deductions: by type, by employee, remittance due to vendors)
-- [ ] Labor Distribution Report (wage expense by GL account, by department, by project/task)
+- [x] Labor Distribution Report (wage expense by GL account, by department, by project/task) [built 2026-08-20 — GET /payroll/reports/labor-distribution; verified]
 - [ ] Certified Payroll Report (government format: WH-347, employee, SSN, trade, hours, rate, fringe, gross, deductions, net)
 - [ ] Union Report (union: members, hours, wages, dues, pension, health/welfare contributions)
 - [ ] Workers Comp Report (class code, estimated payroll, actual payroll, hours, incident rate)
@@ -1037,15 +1037,15 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [ ] W-2 Reconciliation Report (total W-2 wages vs. GL wage expense, must tie to penny)
 - [ ] 941 Reconciliation Report (quarterly: total wages, federal taxes withheld, tie to GL)
 - [ ] Payroll Accrual Report (period-end: wages earned but not paid, employer taxes accrued)
-- [ ] Garnishment Register (employee: garnishment type, YTD amount, remaining balance, priority)
-- [ ] W-2 Register (year-end: per-employee wages/taxes, tie to payroll register and GL) [GAP-2026-08-18]
-- [ ] 941 Worksheet (quarterly: total wages, FIT withheld, SS/Medicare wages+tax, deposit liability by month) [GAP-2026-08-18]
-- [ ] 940 Worksheet (annual: FUTA wages, rate, credit-reduction states, tax due) [GAP-2026-08-18]
+- [x] Garnishment Register (employee: garnishment type, YTD amount, remaining balance, priority) [built 2026-08-20 — GET /payroll/reports/garnishment-register; verified 12 rows]
+- [x] W-2 Register (year-end: per-employee wages/taxes, tie to payroll register and GL) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/w2-register (Box 1/3/5 + SS/Medicare tax); verified]
+- [x] 941 Worksheet (quarterly: total wages, FIT withheld, SS/Medicare wages+tax, deposit liability by month) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/form-941 (Line 5a/5b/5c); verified Q3 aggregates]
+- [x] 940 Worksheet (annual: FUTA wages, rate, credit-reduction states, tax due) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/form-940; verified $42]
 - [ ] EFTPS Deposit Schedule (deposit due dates + amounts per month/semi-weekly periods) [GAP-2026-08-18]
-- [ ] Direct Deposit Register (per run: employee, bank, account, amount, ACH status) [GAP-2026-08-18]
+- [x] Direct Deposit Register (per run: employee, bank, account, amount, ACH status) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/direct-deposit; verified]
 - [ ] ACH Return Report (returns by code, employee, amount, action taken) [GAP-2026-08-18]
-- [ ] PTO Usage & Balance Report (accrued, used, available, carryover, projected payout by employee) [GAP-2026-08-18]
-- [ ] Wage Base Report (employees approaching/hitting SS/FUTA/SUTA wage base caps) [GAP-2026-08-18]
+- [x] PTO Usage & Balance Report (accrued, used, available, carryover, projected payout by employee) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/pto; verified 3 rows]
+- [x] Wage Base Report (employees approaching/hitting SS/FUTA/SUTA wage base caps) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/wage-base; verified]
 - [ ] Workers' Comp Premium Report (payroll by class code × rate, estimated premium vs actual) [GAP-2026-08-18]
 - [ ] New Hire Report (submissions, confirmations, failures by state) [GAP-2026-08-18]
 - [ ] Multi-State Withholding Report (allocation by work state, reciprocal adjustments) [GAP-2026-08-18]
