@@ -65,6 +65,19 @@ public class AuthController : ControllerBase
             .ToList();
         var isSuperAdmin = user.Roles.Any(ur => !ur.CompanyId.HasValue);
 
+        // A company administrator is a user who holds an admin-type role
+        // (Admin / Administrator) that is scoped to a specific company. Such a
+        // user may manage users/roles/settings for that company only.
+        var adminRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Admin",
+            "Administrator",
+        };
+        var isCompanyAdmin = user.Roles
+            .Where(ur => ur.CompanyId.HasValue)
+            .Any(ur => adminRoleNames.Contains(
+                roles.FirstOrDefault(r => r.Id == ur.RoleId)?.Name ?? string.Empty));
+
         var permissionIds = roles.SelectMany(r => r.Permissions.Select(p => p.PermissionId)).Distinct().ToList();
         var permissionEntities = await _db.Permissions
             .Where(p => permissionIds.Contains(p.Id))
@@ -81,7 +94,7 @@ public class AuthController : ControllerBase
 
         var permissions = roleDtos.SelectMany(r => r.Permissions).Distinct().ToList();
 
-        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Username, user.DisplayName, roles.Select(r => r.Name).ToList(), permissions, isSuperAdmin, scopedCompanyIds);
+        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Username, user.DisplayName, roles.Select(r => r.Name).ToList(), permissions, isSuperAdmin, scopedCompanyIds, isCompanyAdmin);
 
         user.RecordLogin();
         await _db.SaveChangesAsync(cancellationToken);

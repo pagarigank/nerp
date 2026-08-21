@@ -28,7 +28,9 @@ public record CreateUserRequest(
     string Email,
     string DisplayName,
     string? PhoneNumber,
-    string Password);
+    string Password,
+    Guid? CompanyId = null,
+    Guid? RoleId = null);
 
 public record UpdateUserRequest(
     string Email,

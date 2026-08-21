@@ -197,6 +197,16 @@ public class Program
                 options.FallbackPolicy = new AuthorizationPolicyBuilder("Bearer", "LocalDev")
                     .RequireAuthenticatedUser()
                     .Build();
+
+                // Company-admin OR super-admin: permits management of a tenant's
+                // own users / roles / settings. A company admin is identified by
+                // the "company_admin" claim (scoped to their company); a super
+                // admin by "super_admin" or a "*" company_scope claim.
+                options.AddPolicy("CompanyAdminOrSuper", policy =>
+                    policy.RequireAssertion(context =>
+                        context.User.HasClaim(c => c.Type == "super_admin" && c.Value == "true")
+                        || context.User.HasClaim(c => c.Type == "company_scope" && c.Value == "*")
+                        || context.User.HasClaim(c => c.Type == "company_admin" && c.Value == "true")));
             });
         }
         else

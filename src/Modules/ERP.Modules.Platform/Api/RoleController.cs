@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERP.Modules.Platform.Api;
@@ -12,15 +13,18 @@ namespace ERP.Modules.Platform.Api;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/platform/roles")]
+[Authorize(Policy = "CompanyAdminOrSuper")]
 public class RoleController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly ICurrentUserService _currentUser;
 
-    public RoleController(IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public RoleController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, ICurrentUserService currentUser)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+        _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     }
 
     [HttpGet]
@@ -43,6 +47,9 @@ public class RoleController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<RoleDto>> Create([FromBody] CreateRoleRequest request, CancellationToken cancellationToken)
     {
+        if (!_currentUser.IsSuperAdmin)
+            return Forbid();
+
         var role = new Role(request.Name, request.Description);
 
         await _unitOfWork.Roles.AddAsync(role, cancellationToken);
@@ -52,7 +59,7 @@ public class RoleController : ControllerBase
             "Created",
             nameof(Role),
             role.Id,
-            "system",
+            _currentUser.UserId ?? "system",
             newValues: new { request.Name },
             cancellationToken: cancellationToken);
 
@@ -62,6 +69,9 @@ public class RoleController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<RoleDto>> Update(Guid id, [FromBody] UpdateRoleRequest request, CancellationToken cancellationToken)
     {
+        if (!_currentUser.IsSuperAdmin)
+            return Forbid();
+
         var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken);
         if (role == null)
             return NotFound();
@@ -75,6 +85,9 @@ public class RoleController : ControllerBase
     [HttpPost("{id:guid}/permissions")]
     public async Task<IActionResult> AssignPermission(Guid id, [FromBody] AssignPermissionRequest request, CancellationToken cancellationToken)
     {
+        if (!_currentUser.IsSuperAdmin)
+            return Forbid();
+
         var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken);
         if (role == null)
             return NotFound();
@@ -88,6 +101,9 @@ public class RoleController : ControllerBase
     [HttpDelete("{id:guid}/permissions/{permissionId:guid}")]
     public async Task<IActionResult> RemovePermission(Guid id, Guid permissionId, CancellationToken cancellationToken)
     {
+        if (!_currentUser.IsSuperAdmin)
+            return Forbid();
+
         var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken);
         if (role == null)
             return NotFound();
@@ -101,11 +117,14 @@ public class RoleController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
+        if (!_currentUser.IsSuperAdmin)
+            return Forbid();
+
         var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken);
         if (role == null)
             return NotFound();
 
-        role.MarkDeleted("system");
+        role.MarkDeleted(_currentUser.UserId ?? "system");
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return NoContent();

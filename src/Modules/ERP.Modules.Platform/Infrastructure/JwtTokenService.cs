@@ -59,7 +59,8 @@ public sealed class JwtTokenService
         IReadOnlyList<string> roles,
         IReadOnlyList<string> permissions,
         bool isSuperAdmin = false,
-        IReadOnlyList<Guid>? companyIds = null)
+        IReadOnlyList<Guid>? companyIds = null,
+        bool companyAdmin = false)
     {
         var claims = new List<Claim>
         {
@@ -82,6 +83,13 @@ public sealed class JwtTokenService
             {
                 claims.Add(new Claim("company_scope", companyId.ToString()));
             }
+        }
+
+        // A company-scoped administrator (e.g. "Admin"/"Administrator" bound to a
+        // company) may manage users/roles/settings for their own company only.
+        if (companyAdmin)
+        {
+            claims.Add(new Claim("company_admin", "true"));
         }
 
         foreach (var role in roles)
