@@ -174,6 +174,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'PO Templates', to: '/purchasing/po-templates' },
       { label: 'Requisition Templates', to: '/purchasing/requisition-templates' },
       { label: 'Vendor Items', to: '/purchasing/vendor-items' },
+      { label: 'Vendors', to: '/purchasing/vendors' },
       { label: 'Buyer Agents', to: '/purchasing/buyer-agents' },
       { label: 'Shipping Methods', to: '/purchasing/shipping-methods' },
       { label: 'FOB Terms', to: '/purchasing/fob-terms' },

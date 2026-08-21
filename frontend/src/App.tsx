@@ -106,6 +106,7 @@ import { BuyerAgentsPage } from '@pages/purchasing/BuyerAgentsPage'
 import { ShippingMethodsPage } from '@pages/purchasing/ShippingMethodsPage'
 import { FOBTermsPage } from '@pages/purchasing/FOBTermsPage'
 import { PurchasingReportsPage } from '@pages/purchasing/PurchasingReportsPage'
+import { VendorCrud } from '@components/VendorCrud'
 import { InventoryLayout } from '@pages/inventory/InventoryLayout'
 import { ItemsPage } from '@pages/inventory/ItemsPage'
 import { ItemCategoriesPage } from '@pages/inventory/ItemCategoriesPage'
@@ -323,6 +324,7 @@ function App() {
           <Route path="po-templates" element={<POTemplatesPage />} />
           <Route path="requisition-templates" element={<RequisitionTemplatesPage />} />
           <Route path="vendor-items" element={<VendorItemsPage />} />
+          <Route path="vendors" element={<VendorCrud />} />
           <Route path="buyer-agents" element={<BuyerAgentsPage />} />
           <Route path="shipping-methods" element={<ShippingMethodsPage />} />
           <Route path="fob-terms" element={<FOBTermsPage />} />
