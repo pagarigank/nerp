@@ -5,7 +5,11 @@ import { get, post, put, del } from './client'
 export const DEMO_COMPANY_ID = '11111111-1111-1111-1111-111111111111'
 
 export function companyId(): string {
-  return useAuthStore.getState().currentCompany?.id ?? DEMO_COMPANY_ID
+  const current = useAuthStore.getState().currentCompany
+  // An empty id is the "All Companies" sentinel used by super admins: omit the
+  // companyId query param so the backend returns data across every company.
+  if (!current || current.id === '') return ''
+  return current.id
 }
 
 // --- Items ---

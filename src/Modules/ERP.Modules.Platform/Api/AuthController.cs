@@ -156,7 +156,7 @@ public class AuthController : ControllerBase
             roleDtos,
             permissions);
 
-        var response = new LoginResponse(token, token, userDto, companies, periods);
+        var response = new LoginResponse(token, token, isSuperAdmin, userDto, companies, periods);
         return Ok(ApiResponse<LoginResponse>.Success(response));
     }
 
@@ -192,6 +192,7 @@ public record LoginRequest(string Username, string Password);
 public record LoginResponse(
     string AccessToken,
     string RefreshToken,
+    bool IsSuperAdmin,
     AuthUserDto User,
     IReadOnlyList<AuthCompanyDto> Companies,
     IReadOnlyList<AuthFiscalPeriodDto> FiscalPeriods);

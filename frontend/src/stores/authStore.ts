@@ -3,12 +3,37 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import type { User, Company, FiscalPeriod, Role } from '../types/index'
 
+// Sentinel used as the "current company" for super admins who want to see
+// data across every company (unbounded). Its empty id means "no companyId
+// filter is sent to the API", so the backend returns all companies' data.
+export const ALL_COMPANIES: Company = {
+  id: '',
+  code: '',
+  name: 'All Companies',
+  legalName: '',
+  taxId: '',
+  baseCurrency: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: '',
+  phone: '',
+  email: '',
+  website: '',
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+}
+
 interface AuthState {
   user: User | null
   accessToken: string | null
   refreshToken: string | null
   companies: Company[]
   currentCompany: Company | null
+  isSuperAdmin: boolean
   fiscalPeriods: FiscalPeriod[]
   currentPeriod: FiscalPeriod | null
   roles: Role[]
@@ -26,6 +51,7 @@ interface AuthState {
     fiscalPeriods?: FiscalPeriod[]
     roles?: Role[]
     permissions?: string[]
+    isSuperAdmin?: boolean
   }) => void
   setUser: (user: User) => void
   setCompanies: (companies: Company[]) => void
@@ -49,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       companies: [],
       currentCompany: null,
+      isSuperAdmin: false,
       fiscalPeriods: [],
       currentPeriod: null,
       roles: [],
@@ -57,10 +84,13 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
 
-      setAuth: ({ user, accessToken, refreshToken, companies, fiscalPeriods, roles, permissions }) => {
+      setAuth: ({ user, accessToken, refreshToken, companies, fiscalPeriods, roles, permissions, isSuperAdmin }) => {
         const safeCompanies = companies ?? []
         const safePeriods = fiscalPeriods ?? []
-        const firstCompany = safeCompanies.length > 0 ? safeCompanies[0]! : null
+        const superAdmin = isSuperAdmin ?? false
+        // Super admins default to "All Companies" (unbounded). Company-scoped
+        // users default to their first company.
+        const firstCompany = superAdmin ? ALL_COMPANIES : (safeCompanies.length > 0 ? safeCompanies[0]! : null)
         const firstPeriod = safePeriods.length > 0
           ? (safePeriods.find(p => p.isCurrent) ?? safePeriods[0]!)
           : null
@@ -70,6 +100,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken,
           companies: safeCompanies,
           currentCompany: firstCompany,
+          isSuperAdmin: superAdmin,
           fiscalPeriods: safePeriods,
           currentPeriod: firstPeriod,
           roles: roles ?? user.roles ?? [],
@@ -85,7 +116,9 @@ export const useAuthStore = create<AuthState>()(
       setCompanies: (companies) =>
         set({
           companies,
-          currentCompany: companies[0] || null,
+          // If currently on "All Companies" (super admin) keep that; otherwise
+          // re-default to the first company.
+          currentCompany: get().isSuperAdmin ? ALL_COMPANIES : (companies[0] || null),
         }),
 
       setCurrentCompany: (company) => set({ currentCompany: company }),
@@ -135,17 +168,21 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         companies: state.companies,
         currentCompany: state.currentCompany,
+        isSuperAdmin: state.isSuperAdmin,
         fiscalPeriods: state.fiscalPeriods,
         currentPeriod: state.currentPeriod,
         roles: state.roles,
         permissions: state.permissions,
       }),
       merge: (persistedState, currentState) => {
-        const persisted = persistedState as Partial<AuthState> | undefined
+        // zustand persist stores `{ state: {...}, version }`; unwrap it, but
+        // also tolerate an already-unwrapped payload for safety.
+        const raw = persistedState as { state?: Partial<AuthState> } | Partial<AuthState> | undefined
+        const persisted = (raw && 'state' in raw && raw.state ? raw.state : (raw as Partial<AuthState>)) ?? {}
         return {
           ...currentState,
           ...persisted,
-          isAuthenticated: persisted?.isAuthenticated || Boolean(persisted?.accessToken),
+          isAuthenticated: persisted.isAuthenticated || Boolean(persisted.accessToken),
         }
       },
     }
@@ -159,6 +196,7 @@ export const useAuth = () => useAuthStore(useShallow(state => ({
   refreshToken: state.refreshToken,
   companies: state.companies,
   currentCompany: state.currentCompany,
+  isSuperAdmin: state.isSuperAdmin,
   fiscalPeriods: state.fiscalPeriods,
   currentPeriod: state.currentPeriod,
   roles: state.roles,

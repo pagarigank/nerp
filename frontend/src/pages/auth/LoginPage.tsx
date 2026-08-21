@@ -54,6 +54,7 @@ export function LoginPage() {
         refreshToken: res.refreshToken,
         companies: res.companies,
         fiscalPeriods: res.fiscalPeriods,
+        isSuperAdmin: res.isSuperAdmin,
       })
 
       navigate('/dashboard')

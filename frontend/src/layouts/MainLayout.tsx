@@ -16,14 +16,13 @@ import {
   Menu,
 } from 'lucide-react'
 import { cn } from '@utils/helpers'
-import { useAuth } from '@stores/authStore'
+import { useAuth, ALL_COMPANIES } from '@stores/authStore'
 import { Button } from '@components/ui/Button'
 import { Combobox, type SelectOption } from '@components/ui/Combobox'
 import { mainNavigation, resolveNav } from '@/navigation'
 
 export function MainLayout() {
   const location = useLocation()
-  const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -52,18 +51,23 @@ export function MainLayout() {
     document.documentElement.classList.toggle('dark', newMode)
   }
 
+  const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout, isSuperAdmin } = useAuth()
+
   const filteredNavigation = mainNavigation.filter(item =>
-    item.roles.includes('*') || user?.roles?.some((r: { name: string }) => item.roles.includes(r.name))
+    item.roles.includes('*') || user?.roles?.some((r: { name: string }) => item.roles.includes(r.name)),
   )
 
   const resolved = resolveNav(location.pathname)
   const resolvedModule = resolved?.module
   const resolvedSub = resolved?.sub
 
-  const companyOptions: SelectOption[] = companies.map(c => ({
-    value: c.id,
-    label: `${c.code} - ${c.name}`,
-  }))
+  const companyOptions: SelectOption[] = [
+    ...(isSuperAdmin ? [{ value: '', label: 'All Companies' }] : []),
+    ...companies.map(c => ({
+      value: c.id,
+      label: `${c.code} - ${c.name}`,
+    })),
+  ]
 
   const periodOptions: SelectOption[] = fiscalPeriods.map(p => ({
     value: p.id,
@@ -71,6 +75,10 @@ export function MainLayout() {
   }))
 
   const handleCompanyChange = (value: string) => {
+    if (isSuperAdmin && value === '') {
+      setCurrentCompany(ALL_COMPANIES)
+      return
+    }
     const company = companies.find(c => c.id === value)
     if (company) setCurrentCompany(company)
   }
@@ -233,7 +241,7 @@ export function MainLayout() {
                 label="Company"
                 placeholder="Select company..."
                 options={companyOptions}
-                value={currentCompany?.id}
+                value={currentCompany?.id ?? ''}
                 onChange={handleCompanyChange}
                 className="mb-2"
               />

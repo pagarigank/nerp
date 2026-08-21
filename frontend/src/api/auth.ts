@@ -13,6 +13,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   accessToken: string
   refreshToken: string
+  isSuperAdmin: boolean
   user: User
   companies: Company[]
   fiscalPeriods: FiscalPeriod[]
