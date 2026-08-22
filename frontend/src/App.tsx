@@ -185,7 +185,19 @@ import { ReportsPage as PayrollReportsPage } from '@pages/payroll/ReportsPage'
 import { GarnishmentsPage } from '@pages/payroll/GarnishmentsPage'
 import { SetupPage } from '@pages/payroll/SetupPage'
 import { FieldServiceLayout } from '@pages/field-service/FieldServiceLayout'
-import { FieldServicePage } from '@pages/field-service/FieldServicePage'
+import { WorkOrdersPage } from '@pages/field-service/WorkOrdersPage'
+import { DispatchBoardPage } from '@pages/field-service/DispatchBoardPage'
+import { TechniciansPage } from '@pages/field-service/TechniciansPage'
+import { ContractsPage } from '@pages/field-service/ContractsPage'
+import { EquipmentPage } from '@pages/field-service/EquipmentPage'
+import { SlasPage } from '@pages/field-service/SlasPage'
+import { TerritoriesPage } from '@pages/field-service/TerritoriesPage'
+import { RateCardsPage } from '@pages/field-service/RateCardsPage'
+import { EstimatesPage } from '@pages/field-service/EstimatesPage'
+import { PmPage } from '@pages/field-service/PmPage'
+import { VanStockPage } from '@pages/field-service/VanStockPage'
+import { WarrantyPage } from '@pages/field-service/WarrantyPage'
+import { ReportsPage as FieldServiceReportsPage } from '@pages/field-service/ReportsPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -419,20 +431,20 @@ function App() {
           <Route path="setup" element={<SetupPage />} />
         </Route>
         <Route path="field-service" element={<FieldServiceLayout />}>
-          <Route index element={<FieldServicePage />} />
-          <Route path="work-orders" element={<FieldServicePage />} />
-          <Route path="dispatch" element={<FieldServicePage />} />
-          <Route path="technicians" element={<FieldServicePage />} />
-          <Route path="contracts" element={<FieldServicePage />} />
-          <Route path="equipment" element={<FieldServicePage />} />
-          <Route path="slas" element={<FieldServicePage />} />
-          <Route path="territories" element={<FieldServicePage />} />
-          <Route path="rate-cards" element={<FieldServicePage />} />
-          <Route path="estimates" element={<FieldServicePage />} />
-          <Route path="pm" element={<FieldServicePage />} />
-          <Route path="van-stock" element={<FieldServicePage />} />
-          <Route path="warranty" element={<FieldServicePage />} />
-          <Route path="reports" element={<FieldServicePage />} />
+          <Route index element={<Navigate to="work-orders" replace />} />
+          <Route path="work-orders" element={<WorkOrdersPage />} />
+          <Route path="dispatch" element={<DispatchBoardPage />} />
+          <Route path="technicians" element={<TechniciansPage />} />
+          <Route path="contracts" element={<ContractsPage />} />
+          <Route path="equipment" element={<EquipmentPage />} />
+          <Route path="slas" element={<SlasPage />} />
+          <Route path="territories" element={<TerritoriesPage />} />
+          <Route path="rate-cards" element={<RateCardsPage />} />
+          <Route path="estimates" element={<EstimatesPage />} />
+          <Route path="pm" element={<PmPage />} />
+          <Route path="van-stock" element={<VanStockPage />} />
+          <Route path="warranty" element={<WarrantyPage />} />
+          <Route path="reports" element={<FieldServiceReportsPage />} />
         </Route>
         <Route path="reporting/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Reporting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
         <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />

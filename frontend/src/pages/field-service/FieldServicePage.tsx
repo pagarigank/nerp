@@ -3,7 +3,7 @@
 // technicians, skills, SLAs, territories, rate cards, estimates, preventive maintenance,
 // van stock, warranty claims, and reports.
 import { useState } from 'react'
-import { Wrench, Plus, Truck, BarChart3 } from 'lucide-react'
+import { Plus, Truck, BarChart3 } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
@@ -52,60 +52,6 @@ const FREQUENCY_OPTS = [
   { value: '3', label: 'Quarterly' }, { value: '4', label: 'Annual' },
 ]
 
-type Tab =
-  | 'work-orders' | 'dispatch' | 'technicians' | 'contracts' | 'equipment'
-  | 'slas' | 'territories' | 'rate-cards' | 'estimates' | 'pm' | 'van-stock' | 'warranty' | 'reports'
-const TABS: Tab[] = [
-  'work-orders', 'dispatch', 'technicians', 'contracts', 'equipment',
-  'slas', 'territories', 'rate-cards', 'estimates', 'pm', 'van-stock', 'warranty', 'reports',
-]
-const TAB_LABELS: Record<Tab, string> = {
-  'work-orders': 'Work Orders', 'dispatch': 'Dispatch Board', 'technicians': 'Technicians',
-  'contracts': 'Contracts', 'equipment': 'Equipment', 'slas': 'SLAs', 'territories': 'Territories',
-  'rate-cards': 'Rate Cards', 'estimates': 'Estimates', 'pm': 'PM Schedules', 'van-stock': 'Van Stock',
-  'warranty': 'Warranty', 'reports': 'Reports',
-}
-
-export function FieldServicePage() {
-  const [tab, setTab] = useState<Tab>('work-orders')
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Wrench className="h-6 w-6 text-indigo-600" />
-        <h1 className="text-2xl font-semibold">Field Service</h1>
-      </div>
-      <div className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
-              tab === t
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
-      {tab === 'work-orders' && <WorkOrdersTab />}
-      {tab === 'dispatch' && <DispatchBoardTab />}
-      {tab === 'technicians' && <TechniciansTab />}
-      {tab === 'contracts' && <ContractsTab />}
-      {tab === 'equipment' && <EquipmentTab />}
-      {tab === 'slas' && <SlasTab />}
-      {tab === 'territories' && <TerritoriesTab />}
-      {tab === 'rate-cards' && <RateCardsTab />}
-      {tab === 'estimates' && <EstimatesTab />}
-      {tab === 'pm' && <PmTab />}
-      {tab === 'van-stock' && <VanStockTab />}
-      {tab === 'warranty' && <WarrantyTab />}
-      {tab === 'reports' && <ReportsTab />}
-    </div>
-  )
-}
-
 function statusBadge(status: any) {
   const s = String(status ?? '')
   const cls =
@@ -118,7 +64,7 @@ function statusBadge(status: any) {
 }
 
 // ---------------------------------------------------------------- Work Orders
-function WorkOrdersTab() {
+export function WorkOrdersTab() {
   const qc = useQueryClient()
   const [selId, setSelId] = useState('')
   const [show, setShow] = useState(false)
@@ -237,7 +183,7 @@ function WorkOrderDetail({ id, detail, qc, tech, setTech }: any) {
 }
 
 // ---------------------------------------------------------------- Dispatch Board
-function DispatchBoardTab() {
+export function DispatchBoardTab() {
   const { data = [], isLoading } = useQuery({ queryKey: ['fs', 'work-orders'], queryFn: () => getWorkOrders() })
   const open = (data as any[]).filter((w: any) => w.status !== 'Completed' && w.status !== 'Closed' && w.status !== 'Cancelled')
   const cols: DataTableColumn<any>[] = [
@@ -257,7 +203,7 @@ function DispatchBoardTab() {
 }
 
 // ---------------------------------------------------------------- Technicians
-function TechniciansTab() {
+export function TechniciansTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ employeeId: '', code: '', firstName: '', lastName: '', status: '0', hourlyRate: '', email: '', phone: '' })
@@ -292,7 +238,7 @@ function TechniciansTab() {
 }
 
 // ---------------------------------------------------------------- Contracts
-function ContractsTab() {
+export function ContractsTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ contractNumber: '', name: '', customerId: '', billingType: '0', contractValue: '', includesWarranty: false, notes: '' })
@@ -326,7 +272,7 @@ function ContractsTab() {
 }
 
 // ---------------------------------------------------------------- Equipment
-function EquipmentTab() {
+export function EquipmentTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ assetTag: '', serialNumber: '', description: '', ownership: '0', underWarranty: false })
@@ -358,7 +304,7 @@ function EquipmentTab() {
 }
 
 // ---------------------------------------------------------------- SLAs
-function SlasTab() {
+export function SlasTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ name: '', priority: '1', responseMinutes: '', resolutionMinutes: '', escalate: false })
@@ -391,7 +337,7 @@ function SlasTab() {
 }
 
 // ---------------------------------------------------------------- Territories
-function TerritoriesTab() {
+export function TerritoriesTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ code: '', name: '', region: '', travelCostPerMile: '' })
@@ -422,7 +368,7 @@ function TerritoriesTab() {
 }
 
 // ---------------------------------------------------------------- Rate Cards
-function RateCardsTab() {
+export function RateCardsTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ name: '', laborRatePerHour: '', overtimeRatePerHour: '', tripCharge: '', partsMarkupPercent: '' })
@@ -457,7 +403,7 @@ function RateCardsTab() {
 }
 
 // ---------------------------------------------------------------- Estimates
-function EstimatesTab() {
+export function EstimatesTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ estimateNumber: '', customerId: '', billingType: '0', laborEstimate: '', partsEstimate: '', travelEstimate: '', taxEstimate: '' })
@@ -499,7 +445,7 @@ function EstimatesTab() {
 }
 
 // ---------------------------------------------------------------- PM Schedules
-function PmTab() {
+export function PmTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ code: '', description: '', frequency: '0', intervalMonths: '', nextDue: '' })
@@ -532,7 +478,7 @@ function PmTab() {
 }
 
 // ---------------------------------------------------------------- Van Stock
-function VanStockTab() {
+export function VanStockTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ technicianId: '', itemId: '', warehouseId: '', quantityOnHand: '', reorderPoint: '' })
@@ -569,7 +515,7 @@ function VanStockTab() {
 }
 
 // ---------------------------------------------------------------- Warranty Claims
-function WarrantyTab() {
+export function WarrantyTab() {
   const qc = useQueryClient()
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ claimNumber: '', equipmentAssetId: '', description: '', claimAmount: '' })
@@ -600,7 +546,7 @@ function WarrantyTab() {
 }
 
 // ---------------------------------------------------------------- Reports
-function ReportsTab() {
+export function ReportsTab() {
   const [report, setReport] = useState<'sla' | 'util' | 'aging' | 'contract' | 'pm'>('sla')
   const sla = useQuery({ queryKey: ['fs', 'rpt', 'sla'], queryFn: () => getSlaCompliance() })
   const util = useQuery({ queryKey: ['fs', 'rpt', 'util'], queryFn: () => getTechnicianUtilization() })
