@@ -3,7 +3,7 @@
 // accrue/reverse + certified payroll report), and garnishments (CCPA).
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { UserCheck, Clock, CalendarRange, FileSpreadsheet, Scale, BadgeDollarSign, Plus } from 'lucide-react'
+import { UserCheck, Clock, CalendarRange, FileSpreadsheet, Scale, BadgeDollarSign, Plus, Trash2 } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
@@ -115,8 +115,6 @@ export function EmployeesTab({ qc }: { qc: any }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-end"><Button onClick={() => setShow(true)}><Plus className="h-4 w-4" /> New Employee</Button></div>
-      <DataTable columns={cols} data={data as any[]} loading={isLoading}
-        onRowClick={(row: any) => setSelId(row.id)} />
       <Input label="Search" value={search} onChange={(e: any) => setSearch(e.target.value)} placeholder="Search employees..." />
       <DataTable columns={cols} data={filtered as any[]} loading={isLoading}
         onRowClick={(row: any) => setSelId(row.id)} />
