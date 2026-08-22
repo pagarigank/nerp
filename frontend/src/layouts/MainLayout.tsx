@@ -19,7 +19,7 @@ import { cn } from '@utils/helpers'
 import { useAuth, ALL_COMPANIES } from '@stores/authStore'
 import { Button } from '@components/ui/Button'
 import { Combobox, type SelectOption } from '@components/ui/Combobox'
-import { mainNavigation, resolveNav } from '@/navigation'
+import { mainNavigation, resolveNav, NAV_CHIP_STYLES, NAV_TEXT_STYLES, getSubIcon } from '@/navigation'
 
 export function MainLayout() {
   const location = useLocation()
@@ -151,13 +151,15 @@ export function MainLayout() {
                   title={item.name}
                   aria-current={isModuleActive ? 'page' : undefined}
                   className={cn(
-                    'flex items-center justify-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-fast',
+                    'flex items-center justify-center py-1 rounded-lg transition-colors duration-fast',
                     isModuleActive
-                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'bg-primary-50 dark:bg-primary-900/30'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                   )}
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  <span className={cn('w-9 h-9 rounded-lg flex items-center justify-center', NAV_CHIP_STYLES[item.color])}>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
                 </Link>
               )
             }
@@ -170,13 +172,15 @@ export function MainLayout() {
                     onClick={() => setOpenModule(isExpanded ? null : item.href)}
                     aria-expanded={isExpanded}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-fast',
+                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast',
                       isModuleActive
                         ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     )}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                    <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', NAV_CHIP_STYLES[item.color])}>
+                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                    </span>
                     <span className="flex-1 text-left truncate">{item.name}</span>
                     <ChevronDown
                       className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')}
@@ -188,13 +192,15 @@ export function MainLayout() {
                     to={item.href}
                     aria-current={isModuleActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-fast',
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast',
                       isModuleActive
                         ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     )}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                    <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', NAV_CHIP_STYLES[item.color])}>
+                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                    </span>
                     <span className="truncate">{item.name}</span>
                   </Link>
                 )}
@@ -208,6 +214,7 @@ export function MainLayout() {
                       const isSubActive = subUrl.search
                         ? (location.pathname === subUrl.pathname && location.search.includes(subUrl.search))
                         : (location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
+                      const SubIcon = getSubIcon(sub.label)
                       return (
                         <li key={sub.to}>
                           <Link
@@ -220,7 +227,13 @@ export function MainLayout() {
                                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                             )}
                           >
-                            <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-60" aria-hidden="true" />
+                            <SubIcon
+                              className={cn(
+                                'h-3.5 w-3.5 flex-shrink-0',
+                                isSubActive ? NAV_TEXT_STYLES[item.color] : cn(NAV_TEXT_STYLES[item.color], 'opacity-70')
+                              )}
+                              aria-hidden="true"
+                            />
                             <span className="truncate">{sub.label}</span>
                           </Link>
                         </li>

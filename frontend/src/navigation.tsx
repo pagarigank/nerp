@@ -16,6 +16,51 @@ import {
   Wrench,
   BarChart3,
   Plug,
+  ChevronRight,
+  LayoutDashboard,
+  TrendingUp,
+  Building2,
+  Users,
+  UserCog,
+  CreditCard,
+  CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
+  ScrollText,
+  ShieldCheck,
+  Shapes,
+  Coins,
+  Hash,
+  Percent,
+  Clock,
+  PenLine,
+  Sun,
+  Scissors,
+  Award,
+  Package,
+  Warehouse,
+  ArrowLeftRight,
+  RefreshCcw,
+  ShieldAlert,
+  Ship,
+  ListChecks,
+  GitPullRequest,
+  FileText,
+  Undo2,
+  HardHat,
+  FileSignature,
+  Timer,
+  MapPin,
+  Calculator,
+  Repeat,
+  Inbox,
+  Scale,
+  Archive,
+  Copy,
+  Merge,
+  Flag,
+  BookText,
+  PiggyBank,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -24,14 +69,120 @@ export interface NavSubItem {
   to: string
 }
 
+export type NavColor =
+  | 'sky' | 'slate' | 'indigo' | 'amber' | 'emerald' | 'teal' | 'orange'
+  | 'violet' | 'cyan' | 'purple' | 'rose' | 'green' | 'blue' | 'fuchsia' | 'lime'
+
 export interface NavModule {
   name: string
   /** Base route of the module (its index page). */
   href: string
   icon: LucideIcon
+  /** Accent color family used for the sidebar icon chip and sub-menu icons. */
+  color: NavColor
   /** Roles allowed to see this module. '*' = everyone. */
   roles: string[]
   sub: NavSubItem[]
+}
+
+/** Static Tailwind classes per accent color — kept literal so Tailwind can see them. */
+export const NAV_CHIP_STYLES: Record<NavColor, string> = {
+  sky: 'bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
+  slate: 'bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300',
+  indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400',
+  amber: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+  emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+  teal: 'bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400',
+  orange: 'bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400',
+  violet: 'bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400',
+  cyan: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-400',
+  purple: 'bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400',
+  rose: 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
+  green: 'bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400',
+  blue: 'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400',
+  fuchsia: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-500/15 dark:text-fuchsia-400',
+  lime: 'bg-lime-100 text-lime-600 dark:bg-lime-500/15 dark:text-lime-400',
+}
+
+export const NAV_TEXT_STYLES: Record<NavColor, string> = {
+  sky: 'text-sky-600 dark:text-sky-400',
+  slate: 'text-slate-500 dark:text-slate-400',
+  indigo: 'text-indigo-500 dark:text-indigo-400',
+  amber: 'text-amber-500 dark:text-amber-400',
+  emerald: 'text-emerald-500 dark:text-emerald-400',
+  teal: 'text-teal-500 dark:text-teal-400',
+  orange: 'text-orange-500 dark:text-orange-400',
+  violet: 'text-violet-500 dark:text-violet-400',
+  cyan: 'text-cyan-500 dark:text-cyan-400',
+  purple: 'text-purple-500 dark:text-purple-400',
+  rose: 'text-rose-500 dark:text-rose-400',
+  green: 'text-green-500 dark:text-green-400',
+  blue: 'text-blue-500 dark:text-blue-400',
+  fuchsia: 'text-fuchsia-500 dark:text-fuchsia-400',
+  lime: 'text-lime-600 dark:text-lime-400',
+}
+
+/** Keyword rules mapping a sub-menu label to a contextual icon (first match wins). */
+const SUB_ICON_RULES: Array<[RegExp, LucideIcon]> = [
+  [/report|aging|analysis/i, BarChart3],
+  [/dashboard|inquiry|overview|summary|tie-out|stock by/i, LayoutDashboard],
+  [/wip|forecast|trend|revaluat/i, TrendingUp],
+  [/vendor w|vendor item|1099$|w-9/i, FileText],
+  [/vendor/i, Building2],
+  [/customer/i, Users],
+  [/employee|technician/i, UserCog],
+  [/payment term|manual check|payments?$/i, CreditCard],
+  [/bank|lockbox|positive pay|nsf/i, Landmark],
+  [/invoice|voucher|memo|billing|statement/i, Receipt],
+  [/budget/i, PiggyBank],
+  [/journal|ledger|posting|gr\/ir|accrual|consolidat/i, BookText],
+  [/period|close|calendar|holiday/i, CalendarDays],
+  [/approval|workflow|queue|delegation|match exception|three-way|four-way|receipt match|apply credit/i, ClipboardCheck],
+  [/audit|history|notes/i, ScrollText],
+  [/user|role|permission|segregation|sod|api key/i, ShieldCheck],
+  [/segment/i, Shapes],
+  [/currency|exchange/i, Coins],
+  [/sequence|numbering/i, Hash],
+  [/tax|withholding|dunning/i, Percent],
+  [/timesheet/i, Clock],
+  [/expense/i, PenLine],
+  [/pto/i, Sun],
+  [/deduction|garnish/i, Scissors],
+  [/runs|payroll|pay code|union|certified/i, Award],
+  [/setup|config/i, Settings],
+  [/item|stock|kit|uom/i, Package],
+  [/warehouse|bin|location|put-away/i, Warehouse],
+  [/transfer|movement/i, ArrowLeftRight],
+  [/count/i, ClipboardList],
+  [/reorder|replenish|substitution|recurring/i, RefreshCcw],
+  [/quarantine|scrap|expiration|negative|suspense/i, ShieldAlert],
+  [/landed cost|freight|shipment|pick\/pack|ship/i, Ship],
+  [/bom|work center|build order/i, Layers],
+  [/project|task|subcontract/i, FolderKanban],
+  [/change order/i, GitPullRequest],
+  [/sales order|quote|blanket|order/i, ShoppingCart],
+  [/return|rtv/i, Undo2],
+  [/work order|dispatch/i, Wrench],
+  [/equipment|asset|van/i, Boxes],
+  [/contract|warranty/i, FileSignature],
+  [/sla/i, Timer],
+  [/territor/i, MapPin],
+  [/estimate|pre-posting/i, Calculator],
+  [/pm schedule|preventive/i, Repeat],
+  [/reconcil/i, Scale],
+  [/escheat|stale|archive/i, Archive],
+  [/duplicate/i, Copy],
+  [/deposit|cash receipt/i, Inbox],
+  [/year-end/i, Flag],
+  [/collection|allowance|credit limit|checklist/i, ListChecks],
+]
+
+/** Resolve a contextual icon for a sub-menu label; falls back to a chevron bullet. */
+export function getSubIcon(label: string): LucideIcon {
+  for (const [pattern, icon] of SUB_ICON_RULES) {
+    if (pattern.test(label)) return icon
+  }
+  return ChevronRight
 }
 
 export const mainNavigation: NavModule[] = [
@@ -39,6 +190,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: Home,
+    color: 'sky',
     roles: ['*'],
     sub: [],
   },
@@ -46,6 +198,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Platform',
     href: '/platform',
     icon: Settings,
+    color: 'slate',
     roles: ['Admin', 'SystemAdmin'],
     sub: [
       { label: 'Companies', to: '/platform/companies' },
@@ -72,6 +225,7 @@ export const mainNavigation: NavModule[] = [
     name: 'General Ledger',
     href: '/gl',
     icon: BookOpen,
+    color: 'indigo',
     roles: ['*'],
     sub: [
       { label: 'Journal Batches', to: '/gl/journal-batches' },
@@ -93,6 +247,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Accounts Payable',
     href: '/ap',
     icon: Banknote,
+    color: 'amber',
     roles: ['*'],
     sub: [
       { label: 'Vendors', to: '/ap/vendors' },
@@ -118,6 +273,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Accounts Receivable',
     href: '/ar',
     icon: Receipt,
+    color: 'emerald',
     roles: ['*'],
     sub: [
       { label: 'Customers', to: '/ar/customers' },
@@ -141,6 +297,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Cash Management',
     href: '/cash',
     icon: Landmark,
+    color: 'teal',
     roles: ['*'],
     sub: [
       { label: 'Bank Accounts', to: '/cash/bank-accounts' },
@@ -164,6 +321,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Purchasing',
     href: '/purchasing',
     icon: ShoppingCart,
+    color: 'orange',
     roles: ['*'],
     sub: [
       { label: 'Requisitions', to: '/purchasing/requisitions' },
@@ -185,6 +343,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Inventory',
     href: '/inventory',
     icon: Boxes,
+    color: 'violet',
     roles: ['*'],
     sub: [
       { label: 'Items', to: '/inventory/items' },
@@ -222,6 +381,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Order Management',
     href: '/om',
     icon: Truck,
+    color: 'cyan',
     roles: ['*'],
     sub: [
       { label: 'Sales Orders', to: '/om/sales-orders' },
@@ -245,6 +405,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Bill of Materials',
     href: '/bom',
     icon: Layers,
+    color: 'purple',
     roles: ['*'],
     sub: [
       { label: 'BOMs', to: '/bom' },
@@ -257,6 +418,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Project Accounting',
     href: '/projects',
     icon: FolderKanban,
+    color: 'rose',
     roles: ['*'],
     sub: [
       { label: 'Projects', to: '/projects' },
@@ -273,6 +435,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Payroll',
     href: '/payroll',
     icon: BadgeDollarSign,
+    color: 'green',
     roles: ['*'],
     sub: [
       { label: 'Employees', to: '/payroll/employees' },
@@ -294,6 +457,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Field Service',
     href: '/field-service',
     icon: Wrench,
+    color: 'blue',
     roles: ['*'],
     sub: [
       { label: 'Work Orders', to: '/field-service/work-orders' },
@@ -315,6 +479,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Reporting',
     href: '/reporting',
     icon: BarChart3,
+    color: 'fuchsia',
     roles: ['*'],
     sub: [],
   },
@@ -322,6 +487,7 @@ export const mainNavigation: NavModule[] = [
     name: 'Integration',
     href: '/integration',
     icon: Plug,
+    color: 'lime',
     roles: ['*'],
     sub: [],
   },
