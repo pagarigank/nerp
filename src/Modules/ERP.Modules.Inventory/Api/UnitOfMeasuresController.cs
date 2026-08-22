@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,10 +26,13 @@ public class UnitOfMeasuresController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<UnitOfMeasureDto>>>> GetAll(
-        [FromQuery] Guid companyId, CancellationToken ct)
+        [FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var list = await _context.UnitOfMeasures
-            .Where(u => u.CompanyId == companyId)
+        var query = _context.UnitOfMeasures.AsNoTracking();
+
+        query = query.ApplyCompanyScope(HttpContext, u => u.CompanyId, companyId);
+
+        var list = await query
             .OrderBy(u => u.Code)
             .Select(u => new UnitOfMeasureDto(u.Id, u.Code, u.Description, u.BaseUOM, u.FactorToBase, u.IsActive))
             .ToListAsync(ct);

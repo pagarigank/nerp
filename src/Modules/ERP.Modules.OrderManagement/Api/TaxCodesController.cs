@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Domain.Services;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,7 @@ public class TaxCodesController : ControllerBase
         [FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
         var q = _context.TaxCodes.AsNoTracking();
-        q = companyId is not null ? q.Where(x => x.CompanyId == companyId) : q;
+        q = q.ApplyCompanyScope(HttpContext, x => x.CompanyId, companyId);
 
         var list = await q.OrderBy(x => x.Jurisdiction).ThenBy(x => x.Code)
             .Select(x => new TaxCodeSummary(x.Id, x.Code, x.Description, x.Jurisdiction, x.Rate, x.IsTaxable, x.IsActive))

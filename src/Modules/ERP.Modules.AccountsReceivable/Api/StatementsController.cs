@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,9 @@ public class StatementsController : ControllerBase
         [FromQuery] Guid companyId,
         CancellationToken cancellationToken)
     {
-        var statements = await _context.Statements
+        var query = _context.Statements.ApplyCompanyScope(HttpContext, s => s.CompanyId, companyId);
+
+        var statements = await query
             .Where(s => s.CompanyId == companyId && !s.DeletedOn.HasValue)
             .OrderByDescending(s => s.AsOfDate)
             .ToListAsync(cancellationToken);

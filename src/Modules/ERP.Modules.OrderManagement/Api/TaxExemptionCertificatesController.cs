@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class TaxExemptionCertificatesController : ControllerBase
         [FromQuery] Guid? companyId, [FromQuery] Guid? customerId, CancellationToken cancellationToken)
     {
         var q = _context.TaxExemptionCertificates.AsNoTracking();
-        q = companyId is not null ? q.Where(x => x.CompanyId == companyId) : q;
+        q = q.ApplyCompanyScope(HttpContext, x => x.CompanyId, companyId);
         q = customerId is not null ? q.Where(x => x.CustomerId == customerId) : q;
 
         var list = await q.OrderBy(x => x.Jurisdiction).ThenBy(x => x.CertificateNumber)

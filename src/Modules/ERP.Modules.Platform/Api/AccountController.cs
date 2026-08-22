@@ -6,27 +6,35 @@ using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/platform/accounts")]
+#pragma warning disable S6960
 public class AccountController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly PlatformDbContext _context;
 
-    public AccountController(IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public AccountController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, PlatformDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<AccountDto>>> GetAll([FromQuery] Guid companyId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<AccountDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var accounts = await _unitOfWork.Accounts.FindAsync(x => x.CompanyId == companyId, cancellationToken);
+        var accounts = await _context.Accounts
+            .AsNoTracking()
+            .ApplyCompanyScope(HttpContext, a => a.CompanyId, companyId)
+            .ToListAsync(cancellationToken);
         return Ok(accounts.Select(MapToDto).ToList());
     }
 

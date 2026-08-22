@@ -6,30 +6,38 @@ using Asp.Versioning;
 using ERP.Modules.AccountsPayable.Api;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.AccountsPayable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.AccountsPayable.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.AccountsPayable.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/ap/payments")]
+#pragma warning disable S6960
 public class PaymentController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IVoucherService _voucherService;
+    private readonly ApDbContext _context;
 
-    public PaymentController(IUnitOfWork unitOfWork, IVoucherService voucherService)
+    public PaymentController(IUnitOfWork unitOfWork, IVoucherService voucherService, ApDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _voucherService = voucherService ?? throw new ArgumentNullException(nameof(voucherService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PaymentDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var payments = companyId.HasValue
-            ? await _unitOfWork.Payments.FindAsync(x => x.CompanyId == companyId.Value, cancellationToken)
-            : await _unitOfWork.Payments.GetAllAsync(cancellationToken);
+        var query = _context.Payments.AsNoTracking();
+        query = query.ApplyCompanyScope(HttpContext, p => p.CompanyId, companyId);
+
+        var payments = await query.ToListAsync(cancellationToken);
 
         return Ok(payments.Select(p => MapToDto(p)).ToList());
     }

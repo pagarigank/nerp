@@ -4,6 +4,7 @@
 
 using ERP.Core.Domain.Common;
 using ERP.Core.Domain.Events;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Domain.Entities;
 using ERP.Modules.ProjectAccounting.Domain.Events;
 using ERP.Modules.ProjectAccounting.Infrastructure;
@@ -31,7 +32,10 @@ public class SubcontractController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<Subcontract>>>> GetAll([FromQuery] Guid projectId, CancellationToken ct)
-        => Ok(ApiResponse<List<Subcontract>>.Success(await _context.Subcontracts.Where(s => s.ProjectId == projectId).ToListAsync(ct)));
+        => Ok(ApiResponse<List<Subcontract>>.Success(await _context.Subcontracts
+            .ApplyCompanyScope(HttpContext, s => s.CompanyId)
+            .Where(s => s.ProjectId == projectId)
+            .ToListAsync(ct)));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<Subcontract>>> GetById(Guid id, CancellationToken ct)

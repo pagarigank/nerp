@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class SalesOrderTypesController : ControllerBase
         [FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
         var q = _context.SalesOrderTypes.AsNoTracking();
-        q = companyId is not null ? q.Where(x => x.CompanyId == companyId) : q;
+        q = q.ApplyCompanyScope(HttpContext, x => x.CompanyId, companyId);
 
         var list = await q.OrderBy(x => x.Code)
             .Select(x => new SalesOrderTypeSummary(x.Id, x.Code, x.Description, x.TypeCode, x.RevenueAccountId, x.IsActive))

@@ -4,6 +4,7 @@
 
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,8 @@ public class ItemStockController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.ItemStocks.AsQueryable();
+
+        query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId);
 
         if (itemId.HasValue)
         {

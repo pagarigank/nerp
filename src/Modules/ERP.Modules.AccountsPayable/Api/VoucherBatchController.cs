@@ -6,30 +6,38 @@ using Asp.Versioning;
 using ERP.Modules.AccountsPayable.Api;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.AccountsPayable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.AccountsPayable.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.AccountsPayable.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/ap/voucher-batches")]
+#pragma warning disable S6960
 public class VoucherBatchController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IVoucherService _voucherService;
+    private readonly ApDbContext _context;
 
-    public VoucherBatchController(IUnitOfWork unitOfWork, IVoucherService voucherService)
+    public VoucherBatchController(IUnitOfWork unitOfWork, IVoucherService voucherService, ApDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _voucherService = voucherService ?? throw new ArgumentNullException(nameof(voucherService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<VoucherBatchDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var batches = companyId.HasValue
-            ? await _unitOfWork.VoucherBatches.FindAsync(x => x.CompanyId == companyId.Value, cancellationToken)
-            : await _unitOfWork.VoucherBatches.GetAllAsync(cancellationToken);
+        var query = _context.VoucherBatches.AsNoTracking();
+        query = query.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        var batches = await query.ToListAsync(cancellationToken);
 
         return Ok(batches.Select(b => MapBatchToDto(b)).ToList());
     }

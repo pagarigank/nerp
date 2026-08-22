@@ -6,30 +6,38 @@ using Asp.Versioning;
 using ERP.Modules.GeneralLedger.Api;
 using ERP.Modules.GeneralLedger.Domain.Entities;
 using ERP.Modules.GeneralLedger.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.GeneralLedger.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.GeneralLedger.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/gl/allocation-rules")]
+#pragma warning disable S6960
 public class AllocationRuleController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
+    private readonly GlDbContext _context;
 
-    public AllocationRuleController(IUnitOfWork unitOfWork, IJournalService journalService)
+    public AllocationRuleController(IUnitOfWork unitOfWork, IJournalService journalService, GlDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _journalService = journalService ?? throw new ArgumentNullException(nameof(journalService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<AllocationRuleDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var rules = companyId.HasValue
-            ? await _unitOfWork.AllocationRules.FindAsync(x => x.CompanyId == companyId.Value, cancellationToken)
-            : await _unitOfWork.AllocationRules.GetAllAsync(cancellationToken);
+        var query = _context.AllocationRules.AsNoTracking();
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
+
+        var rules = await query.ToListAsync(cancellationToken);
 
         return Ok(rules.Select(MapToDto).ToList());
     }

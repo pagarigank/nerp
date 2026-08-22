@@ -7,6 +7,7 @@ using ERP.Core.Common;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Domain.Services;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,8 +40,7 @@ public class SalesOrderController : ControllerBase
     {
         var query = _context.SalesOrders.AsNoTracking();
 
-        if (companyId is not null)
-            query = query.Where(o => o.CompanyId == companyId);
+        query = query.ApplyCompanyScope(HttpContext, o => o.CompanyId, companyId);
 
         var list = await query
             .OrderByDescending(o => o.OrderDate)

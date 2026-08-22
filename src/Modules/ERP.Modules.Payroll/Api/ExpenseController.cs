@@ -197,6 +197,7 @@ public class ExpenseController : ControllerBase
         [FromQuery] Guid? employeeId, CancellationToken cancellationToken)
     {
         var query = _context.ExpenseReports.AsQueryable();
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId);
         if (employeeId.HasValue)
             query = query.Where(r => r.EmployeeId == employeeId.Value);
         var list = await query

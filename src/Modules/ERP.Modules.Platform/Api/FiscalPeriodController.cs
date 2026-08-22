@@ -7,6 +7,7 @@ using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
@@ -20,18 +21,23 @@ public class FiscalPeriodController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPeriodService _periodService;
     private readonly IAuditLogService _auditLogService;
+    private readonly PlatformDbContext _context;
 
-    public FiscalPeriodController(IUnitOfWork unitOfWork, IPeriodService periodService, IAuditLogService auditLogService)
+    public FiscalPeriodController(IUnitOfWork unitOfWork, IPeriodService periodService, IAuditLogService auditLogService, PlatformDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _periodService = periodService ?? throw new ArgumentNullException(nameof(periodService));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FiscalPeriodDto>>> GetAll([FromQuery] Guid companyId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<FiscalPeriodDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var periods = await _unitOfWork.FiscalPeriods.FindAsync(x => x.CompanyId == companyId, cancellationToken);
+        var periods = await _context.FiscalPeriods
+            .AsNoTracking()
+            .ApplyCompanyScope(HttpContext, p => p.CompanyId, companyId)
+            .ToListAsync(cancellationToken);
         return Ok(periods.Select(MapToDto).ToList());
     }
 

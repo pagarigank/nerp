@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,9 @@ public class CreditDebitMemosController : ControllerBase
         [FromQuery] Guid companyId,
         CancellationToken cancellationToken)
     {
-        var batchIds = await _context.InvoiceBatches
+        var query = _context.InvoiceBatches.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        var batchIds = await query
             .Where(b => b.CompanyId == companyId && !b.DeletedOn.HasValue)
             .Select(b => b.Id)
             .ToListAsync(cancellationToken);

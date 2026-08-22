@@ -2,32 +2,44 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.Purchasing.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.Purchasing.Api;
 
 [ApiController]
 [Route("api/v1/purchasing/requisitions")]
+#pragma warning disable S6960
 public class RequisitionController : ControllerBase
+#pragma warning restore S6960
 {
-    private readonly IRepository<Requisition> _requisitionRepository;
+    private readonly ERP.Modules.Purchasing.Infrastructure.IRepository<Requisition> _requisitionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PurchasingDbContext _context;
 
     public RequisitionController(
-        IRepository<Requisition> requisitionRepository,
-        IUnitOfWork unitOfWork)
+        ERP.Modules.Purchasing.Infrastructure.IRepository<Requisition> requisitionRepository,
+        IUnitOfWork unitOfWork,
+        PurchasingDbContext context)
     {
         _requisitionRepository = requisitionRepository;
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<RequisitionDto>>>> GetAll(CancellationToken cancellationToken)
     {
-        var requisitions = await _requisitionRepository.GetAllAsync(cancellationToken);
+        var query = _context.Requisitions.AsNoTracking();
+
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId);
+
+        var requisitions = await query.ToListAsync(cancellationToken);
         var dtos = requisitions.Select(r => new RequisitionDto
         {
             Id = r.Id,

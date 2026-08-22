@@ -7,6 +7,7 @@ using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
@@ -16,16 +17,21 @@ namespace ERP.Modules.Platform.Api;
 public class HolidayCalendarController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PlatformDbContext _context;
 
-    public HolidayCalendarController(IUnitOfWork unitOfWork)
+    public HolidayCalendarController(IUnitOfWork unitOfWork, PlatformDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<HolidayCalendarDto>>> GetAll([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<HolidayCalendarDto>>> GetAll([FromQuery] Guid? companyId, [FromQuery] int? year, CancellationToken cancellationToken)
     {
-        var entries = await _unitOfWork.HolidayCalendars.FindAsync(h => h.CompanyId == companyId, cancellationToken);
+        var entries = await _context.HolidayCalendars
+            .AsNoTracking()
+            .ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId)
+            .ToListAsync(cancellationToken);
         if (year.HasValue)
             entries = entries.Where(h => h.Date.Year == year.Value).ToList();
         return Ok(entries.OrderBy(h => h.Date).Select(MapToDto).ToList());

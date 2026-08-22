@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,8 +31,7 @@ public class ShipmentController : ControllerBase
     {
         var query = _context.Shipments.AsNoTracking();
 
-        if (companyId is not null)
-            query = query.Where(s => s.CompanyId == companyId);
+        query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId, companyId);
 
         var list = await query
             .OrderByDescending(s => s.ShipmentDate)

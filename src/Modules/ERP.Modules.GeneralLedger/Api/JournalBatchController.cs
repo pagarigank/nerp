@@ -5,30 +5,38 @@
 using Asp.Versioning;
 using ERP.Modules.GeneralLedger.Domain.Entities;
 using ERP.Modules.GeneralLedger.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.GeneralLedger.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.GeneralLedger.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/gl/journal-batches")]
+#pragma warning disable S6960
 public class JournalBatchController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
+    private readonly GlDbContext _context;
 
-    public JournalBatchController(IUnitOfWork unitOfWork, IJournalService journalService)
+    public JournalBatchController(IUnitOfWork unitOfWork, IJournalService journalService, GlDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _journalService = journalService ?? throw new ArgumentNullException(nameof(journalService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<JournalBatchDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var batches = companyId.HasValue
-            ? await _unitOfWork.JournalBatches.FindAsync(x => x.CompanyId == companyId.Value, cancellationToken)
-            : await _unitOfWork.JournalBatches.GetAllAsync(cancellationToken);
+        var query = _context.JournalBatches.AsNoTracking();
+        query = query.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        var batches = await query.ToListAsync(cancellationToken);
 
         return Ok(batches.Select(b => MapBatchToDto(b)).ToList());
     }

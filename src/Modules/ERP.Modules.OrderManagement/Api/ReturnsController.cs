@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,8 +31,7 @@ public class ReturnsController : ControllerBase
     {
         var query = _context.Returns.AsNoTracking();
 
-        if (companyId is not null)
-            query = query.Where(r => r.CompanyId == companyId);
+        query = query.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
 
         var list = await query
             .OrderByDescending(r => r.ReturnDate)

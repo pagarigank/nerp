@@ -8,6 +8,7 @@ using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
@@ -19,27 +20,29 @@ public class ApprovalWorkflowController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly PlatformDbContext _context;
 
-    public ApprovalWorkflowController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, IApprovalWorkflowService approvalWorkflowService)
+    public ApprovalWorkflowController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, IApprovalWorkflowService approvalWorkflowService, PlatformDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
         _approvalWorkflowService = approvalWorkflowService ?? throw new ArgumentNullException(nameof(approvalWorkflowService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ApprovalWorkflowDto>>> GetAll([FromQuery] string? module, CancellationToken cancellationToken)
     {
-        IReadOnlyList<ApprovalWorkflow> workflows;
+        var query = _context.ApprovalWorkflows
+            .AsNoTracking()
+            .ApplyCompanyScope(HttpContext, w => w.CompanyId ?? Guid.Empty);
 
         if (!string.IsNullOrEmpty(module))
         {
-            workflows = await _unitOfWork.ApprovalWorkflows.FindAsync(w => w.Module == module, cancellationToken);
+            query = query.Where(w => w.Module == module);
         }
-        else
-        {
-            workflows = await _unitOfWork.ApprovalWorkflows.GetAllAsync(cancellationToken);
-        }
+
+        var workflows = await query.ToListAsync(cancellationToken);
 
         var dtos = new List<ApprovalWorkflowDto>();
         foreach (var workflow in workflows)

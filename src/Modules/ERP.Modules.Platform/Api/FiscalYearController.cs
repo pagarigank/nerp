@@ -7,27 +7,35 @@ using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/platform/fiscal-years")]
+#pragma warning disable S6960
 public class FiscalYearController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly PlatformDbContext _context;
 
-    public FiscalYearController(IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public FiscalYearController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, PlatformDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FiscalYearDto>>> GetAll([FromQuery] Guid companyId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<FiscalYearDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
-        var years = await _unitOfWork.FiscalYears.FindAsync(x => x.CompanyId == companyId, cancellationToken);
+        var years = await _context.FiscalYears
+            .AsNoTracking()
+            .ApplyCompanyScope(HttpContext, y => y.CompanyId, companyId)
+            .ToListAsync(cancellationToken);
         return Ok(years.Select(MapToDto).ToList());
     }
 

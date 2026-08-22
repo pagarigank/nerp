@@ -5,29 +5,39 @@
 using Asp.Versioning;
 using ERP.Modules.GeneralLedger.Domain.Entities;
 using ERP.Modules.GeneralLedger.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using IUnitOfWork = ERP.Modules.GeneralLedger.Infrastructure.IUnitOfWork;
 
 namespace ERP.Modules.GeneralLedger.Api;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/gl/budgets")]
+#pragma warning disable S6960
 public class BudgetController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly GlDbContext _context;
 
-    public BudgetController(IUnitOfWork unitOfWork)
+    public BudgetController(IUnitOfWork unitOfWork, GlDbContext context)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<BudgetDto>>> GetAll([FromQuery] Guid? companyId, [FromQuery] Guid? fiscalYearId, CancellationToken cancellationToken)
     {
-        var budgets = await _unitOfWork.Budgets.FindAsync(
-            x => (!companyId.HasValue || x.CompanyId == companyId.Value)
-                && (!fiscalYearId.HasValue || x.FiscalYearId == fiscalYearId.Value),
-            cancellationToken);
+        var query = _context.Budgets.AsNoTracking();
+        query = query.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        if (fiscalYearId.HasValue)
+            query = query.Where(b => b.FiscalYearId == fiscalYearId.Value);
+
+        var budgets = await query.ToListAsync(cancellationToken);
 
         return Ok(budgets.Select(MapToDto).ToList());
     }

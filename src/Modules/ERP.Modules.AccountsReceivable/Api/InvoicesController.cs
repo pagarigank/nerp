@@ -38,7 +38,9 @@ public class InvoicesController : ControllerBase
         [FromQuery] Guid companyId,
         CancellationToken cancellationToken)
     {
-        var batches = await _context.InvoiceBatches
+        var query = _context.InvoiceBatches.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        var batches = await query
             .Where(b => b.CompanyId == companyId && !b.DeletedOn.HasValue)
             .Include(b => b.Invoices)
             .ThenInclude(i => i.Lines)
@@ -62,12 +64,15 @@ public class InvoicesController : ControllerBase
         [FromQuery] Guid? customerId,
         CancellationToken cancellationToken)
     {
-        var batchIds = await _context.InvoiceBatches
+        var batchQuery = _context.InvoiceBatches.ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId);
+
+        var batchIds = await batchQuery
             .Where(b => b.CompanyId == companyId && !b.DeletedOn.HasValue)
             .Select(b => b.Id)
             .ToListAsync(cancellationToken);
 
-        var query = _context.Invoices.Where(i => batchIds.Contains(i.InvoiceBatchId));
+        var query = _context.Invoices
+            .Where(i => batchIds.Contains(i.InvoiceBatchId));
         if (customerId.HasValue)
             query = query.Where(i => i.CustomerId == customerId.Value);
 

@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,9 @@ public class CashReceiptsController : ControllerBase
         [FromQuery] Guid companyId,
         CancellationToken cancellationToken)
     {
-        var receipts = await _context.CashReceipts
+        var query = _context.CashReceipts.ApplyCompanyScope(HttpContext, r => r.CompanyId, companyId);
+
+        var receipts = await query
             .Where(r => r.CompanyId == companyId && !r.DeletedOn.HasValue)
             .Include(r => r.Applications)
             .OrderByDescending(r => r.ReceiptDate)

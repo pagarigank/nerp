@@ -3,6 +3,7 @@
 // </copyright>
 
 using ERP.Core.Domain.Events;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Domain.Entities;
 using ERP.Modules.ProjectAccounting.Domain.Events;
 using ERP.Modules.ProjectAccounting.Infrastructure;
@@ -42,6 +43,7 @@ public class CostTransactionController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.CostTransactions
+            .ApplyCompanyScope(HttpContext, t => t.CompanyId)
             .Where(t => t.ProjectId == projectId)
             .AsQueryable();
 

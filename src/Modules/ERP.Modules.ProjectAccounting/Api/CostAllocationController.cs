@@ -4,6 +4,7 @@
 
 using ERP.Core.Domain.Common;
 using ERP.Core.Domain.Events;
+using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Domain.Entities;
 using ERP.Modules.ProjectAccounting.Domain.Events;
 using ERP.Modules.ProjectAccounting.Domain.Services;
@@ -32,7 +33,10 @@ public class CostAllocationController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<CostAllocationBatch>>>> GetAll([FromQuery] Guid companyId, CancellationToken ct)
-        => Ok(ApiResponse<List<CostAllocationBatch>>.Success(await _context.CostAllocationBatches.Include(b => b.Lines).Where(b => b.CompanyId == companyId).ToListAsync(ct)));
+        => Ok(ApiResponse<List<CostAllocationBatch>>.Success(await _context.CostAllocationBatches
+            .ApplyCompanyScope(HttpContext, b => b.CompanyId, companyId)
+            .Include(b => b.Lines)
+            .ToListAsync(ct)));
 
     /// <summary>Create and post a shared-cost allocation batch. Each line posts a cost transaction to its project.</summary>
     /// <param name="r">The allocation batch request.</param>
