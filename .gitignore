@@ -98,3 +98,11 @@ ehthumbs.db
 
 # Screenshots (binary, not source)
 screenshots/
+
+# Test/dev artifacts
+.playwright-mcp/
+swagger.json
+swagger_tmp.json
+live_swagger.json
+dashboard.png
+nul
