@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Search, Trash2, AlertCircle, Upload, Eye, FileCheck2 } from 'lucide-react'
+import { Search, Trash2, AlertCircle, Upload, Eye, FileCheck2, CloudDownload } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
@@ -18,6 +18,7 @@ import {
   getBankStatement,
   getBankAccounts,
   importBankStatement,
+  runBankStatementDownload,
   validateBankStatement,
   deleteBankStatement,
   bankStatementFormats,
@@ -27,6 +28,7 @@ import type {
   CashBankStatement,
   CashBankStatementDetail,
   ImportStatementResponse,
+  StatementDownloadReport,
 } from '@/types/cash'
 import { statementStatusMap, lineStatusMap } from './statusMaps'
 
@@ -57,6 +59,7 @@ export function BankStatementsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<ImportStatementResponse | null>(null)
+  const [downloadResult, setDownloadResult] = useState<StatementDownloadReport | null>(null)
   const [statementToDelete, setStatementToDelete] = useState<CashBankStatement | null>(null)
   const [detailStatement, setDetailStatement] = useState<CashBankStatement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -103,6 +106,15 @@ export function BankStatementsPage() {
     onSuccess: result => {
       invalidate()
       setImportResult(result)
+    },
+    onError: err => setFormError(getErrorMessage(err)),
+  })
+
+  const downloadMutation = useMutation({
+    mutationFn: runBankStatementDownload,
+    onSuccess: result => {
+      invalidate()
+      setDownloadResult(result)
     },
     onError: err => setFormError(getErrorMessage(err)),
   })
@@ -191,12 +203,38 @@ export function BankStatementsPage() {
           title="Bank Statements"
           description={`${statements.length} statement(s) on file`}
           action={
-            <Button variant="primary" size="sm" onClick={openImportForm} leftIcon={<Upload className="h-4 w-4" />}>
-              Import Statement
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => downloadMutation.mutate()}
+                disabled={downloadMutation.isPending}
+                leftIcon={<CloudDownload className="h-4 w-4" />}
+              >
+                {downloadMutation.isPending ? 'Downloading...' : 'Download from Bank'}
+              </Button>
+              <Button variant="primary" size="sm" onClick={openImportForm} leftIcon={<Upload className="h-4 w-4" />}>
+                Import Statement
+              </Button>
+            </div>
           }
         />
         <CardContent>
+          {downloadResult && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 p-3 text-sm">
+              <p className="font-medium text-blue-800 dark:text-blue-300">
+                Download complete: {downloadResult.imported} imported, {downloadResult.skippedExisting} skipped (already on file),
+                {' '}{downloadResult.feedsProcessed} feed(s) processed.
+              </p>
+              {downloadResult.errors.length > 0 && (
+                <ul className="mt-1 list-disc list-inside text-red-600 dark:text-red-400">
+                  {downloadResult.errors.map(e => (
+                    <li key={e}>{e}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <div className="mb-4 max-w-md">
             <Input
               value={search}

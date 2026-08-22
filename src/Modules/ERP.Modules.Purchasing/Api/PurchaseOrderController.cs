@@ -108,6 +108,7 @@ public class PurchaseOrderController : ControllerBase
                 QuantityReceived = l.QuantityReceived,
                 QuantityInvoiced = l.QuantityInvoiced,
                 ExtendedPrice = l.GetExtendedPrice(),
+                SubcontractId = l.SubcontractId,
             }).ToList(),
         };
 
@@ -146,7 +147,8 @@ public class PurchaseOrderController : ControllerBase
                 lineRequest.AccountId,
                 lineRequest.ProjectId,
                 lineRequest.TaskId,
-                lineRequest.RequisitionLineId);
+                lineRequest.RequisitionLineId,
+                lineRequest.SubcontractId);
 
             if (!string.IsNullOrWhiteSpace(lineRequest.TaxCode) || lineRequest.TaxRate != 0)
                 line.SetTax(lineRequest.TaxCode, lineRequest.TaxRate);
@@ -183,6 +185,7 @@ public class PurchaseOrderController : ControllerBase
     [HttpPost("{id:guid}/approve")]
     public async Task<ActionResult<ApiResponse<PurchaseOrderDto>>> Approve(
         Guid id,
+        [FromQuery] bool budgetOverride,
         [FromBody] ApproveRequest request,
         CancellationToken cancellationToken)
     {
@@ -209,42 +212,15 @@ public class PurchaseOrderController : ControllerBase
             }
         }
 
-        po.Approve(request.ApprovedById);
-        _poRepository.Update(po);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        var dto = new PurchaseOrderDto
+        // GL committed-cost vs. remaining-budget check; pass ?budgetOverride=true to bypass.
+        try
         {
-            Id = po.Id,
-            PONumber = po.PONumber,
-            CompanyId = po.CompanyId,
-            VendorId = po.VendorId,
-            OrderDate = po.OrderDate,
-            Status = po.Status.ToString(),
-            TotalAmount = po.GetTotalAmount(),
-            RemainingAmount = po.GetRemainingAmount(),
-        };
-
-        return Ok(ApiResponse<PurchaseOrderDto>.Success(dto));
-    }
-
-    [HttpPost("{id:guid}/submit-for-approval")]
-    public async Task<ActionResult<ApiResponse<PurchaseOrderDto>>> SubmitForApproval(
-        Guid id,
-        CancellationToken cancellationToken)
-    {
-        var po = await _context.PurchaseOrders
-            .Include(p => p.Lines)
-            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-
-        if (po == null)
-        {
-            return NotFound(ApiResponse<PurchaseOrderDto>.Failure(["Purchase order not found."]));
+            po = await _poService.ApproveWithBudgetCheckAsync(id, request.ApprovedById, budgetOverride, cancellationToken);
         }
-
-        po.SubmitForApproval();
-        _poRepository.Update(po);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<PurchaseOrderDto>.Failure([ex.Message]));
+        }
 
         var dto = new PurchaseOrderDto
         {
@@ -365,6 +341,7 @@ public class PurchaseOrderLineDto
     public decimal QuantityReceived { get; set; }
     public decimal QuantityInvoiced { get; set; }
     public decimal ExtendedPrice { get; set; }
+    public Guid? SubcontractId { get; set; }
 }
 
 public class CreatePurchaseOrderRequest
@@ -402,6 +379,7 @@ public class CreatePurchaseOrderLineRequest
     public Guid? ProjectId { get; set; }
     public Guid? TaskId { get; set; }
     public Guid? RequisitionLineId { get; set; }
+    public Guid? SubcontractId { get; set; }
 }
 
 public class ApproveRequest

@@ -35,6 +35,7 @@ public static class ModuleExtensions
         services.AddScoped<CostingService>();
         services.AddScoped<InventoryReportService>();
         services.AddScoped<ERP.Core.Common.IInventoryAvailability, InventoryAvailabilityService>();
+        services.AddScoped<ERP.Core.Common.IInventoryReorderSource, InventoryReorderSource>();
 
         // Inventory -> GL posting consumer (consumes InventoryTransactionPostedEvent
         // through the canonical posting contract, mirroring the AP/AR handlers).

@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IRequisitionToPOService, RequisitionToPOService>();
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        services.AddScoped<IReorderPointScanJob, ReorderPointScanJob>();
 
         // Consumes Order Management sales-order confirmations to auto-create DropShip
         // purchase orders (Sales -> Purchasing leg of the integrated flow).

@@ -58,6 +58,16 @@ public class Vendor : AuditableAggregateRoot
 
     public decimal BackupWithholdingRate { get; private set; } = 0.24m;
 
+    public bool OnHold { get; private set; }
+
+    public string? InsuranceCarrier { get; private set; }
+
+    public string? InsurancePolicyNumber { get; private set; }
+
+    public DateTimeOffset? InsuranceExpiry { get; private set; }
+
+    public string? DiversityClassification { get; private set; }
+
     public IReadOnlyList<VendorBankAccount> BankAccounts => _bankAccounts.AsReadOnly();
 
     public void AddBankAccount(string bankName, string accountNumber, string? routingNumber, bool isDefault)
@@ -77,6 +87,16 @@ public class Vendor : AuditableAggregateRoot
     public void Activate() => IsActive = true;
 
     public void Deactivate() => IsActive = false;
+
+    public void SetOnHold(bool onHold) => OnHold = onHold;
+
+    public void SetCompliance(string? insuranceCarrier, string? insurancePolicyNumber, DateTimeOffset? insuranceExpiry, string? diversityClassification)
+    {
+        InsuranceCarrier = insuranceCarrier;
+        InsurancePolicyNumber = insurancePolicyNumber;
+        InsuranceExpiry = insuranceExpiry;
+        DiversityClassification = diversityClassification;
+    }
 
     public void Update(string name, string? legalName, string? taxId, Vendor1099Category? form1099Category, Guid? defaultPaymentTermId, bool backupWithholdingFlag = false, decimal backupWithholdingRate = 0.24m)
     {

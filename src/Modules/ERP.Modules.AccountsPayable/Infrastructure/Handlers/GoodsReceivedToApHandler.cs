@@ -3,12 +3,15 @@
 // </copyright>
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.AccountsPayable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
+using ERP.Modules.Purchasing.Domain.Entities;
 using ERP.Modules.Purchasing.Domain.Events;
 using ERP.Modules.Purchasing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -31,11 +34,13 @@ public sealed class GoodsReceivedToApHandler : IDomainEventHandler<GoodsReceived
 
     private readonly ApDbContext _apContext;
     private readonly PurchasingDbContext _purchasingContext;
+    private readonly IPeriodService _periodService;
 
-    public GoodsReceivedToApHandler(ApDbContext apContext, PurchasingDbContext purchasingContext)
+    public GoodsReceivedToApHandler(ApDbContext apContext, PurchasingDbContext purchasingContext, IPeriodService periodService)
     {
         _apContext = apContext ?? throw new ArgumentNullException(nameof(apContext));
         _purchasingContext = purchasingContext ?? throw new ArgumentNullException(nameof(purchasingContext));
+        _periodService = periodService ?? throw new ArgumentNullException(nameof(periodService));
     }
 
     public async Task HandleAsync(GoodsReceivedEvent domainEvent, CancellationToken cancellationToken = default)
@@ -43,11 +48,27 @@ public sealed class GoodsReceivedToApHandler : IDomainEventHandler<GoodsReceived
         if (domainEvent.Lines.Count == 0)
             return;
 
+        var hasOpenAccrual = await _apContext.GrirAccruals
+            .AnyAsync(a => a.ReceiptId == domainEvent.ReceiptId && a.ReversedByAccrualId == null, cancellationToken);
+        if (hasOpenAccrual)
+            return;
+
+        var poLineIds = domainEvent.Lines
+            .Where(l => l.PurchaseOrderLineId.HasValue)
+            .Select(l => l.PurchaseOrderLineId!.Value)
+            .Distinct()
+            .ToList();
+
+        var poLinesById = poLineIds.Count == 0
+            ? new Dictionary<Guid, PurchaseOrderLine>()
+            : await _purchasingContext.PurchaseOrderLines
+                .Where(l => poLineIds.Contains(l.Id))
+                .ToDictionaryAsync(l => l.Id, cancellationToken);
+
         foreach (var line in domainEvent.Lines)
         {
-            var orderedQuantity = await ResolveOrderedQuantityAsync(line.PurchaseOrderLineId, cancellationToken);
-            var overReceipt = orderedQuantity.HasValue &&
-                              line.QuantityReceived > orderedQuantity.Value * (1 + OverReceiptTolerance);
+            var poLine = line.PurchaseOrderLineId.HasValue ? poLinesById.GetValueOrDefault(line.PurchaseOrderLineId.Value) : null;
+            var overReceipt = poLine != null && line.QuantityReceived > poLine.Quantity * (1 + OverReceiptTolerance);
 
             _apContext.GoodsReceiptMatches.Add(new GoodsReceiptMatch(
                 domainEvent.CompanyId,
@@ -64,18 +85,34 @@ public sealed class GoodsReceivedToApHandler : IDomainEventHandler<GoodsReceived
                 overReceipt));
         }
 
+        await TryAddGrirAccrualAsync(domainEvent, poLinesById, cancellationToken);
+
         if (_apContext.ChangeTracker.HasChanges())
             await _apContext.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<decimal?> ResolveOrderedQuantityAsync(Guid? purchaseOrderLineId, CancellationToken cancellationToken)
+    private async Task TryAddGrirAccrualAsync(GoodsReceivedEvent domainEvent, Dictionary<Guid, PurchaseOrderLine> poLinesById, CancellationToken cancellationToken)
     {
-        if (purchaseOrderLineId is null)
-            return null;
+        if (!domainEvent.VendorId.HasValue)
+            return;
 
-        var poLine = await _purchasingContext.PurchaseOrderLines
-            .FirstOrDefaultAsync(l => l.Id == purchaseOrderLineId.Value, cancellationToken);
+        var accrualAmount = domainEvent.Lines
+            .Where(l => l.PurchaseOrderLineId.HasValue && poLinesById.ContainsKey(l.PurchaseOrderLineId.Value))
+            .Sum(l => Math.Round(l.QuantityReceived * poLinesById[l.PurchaseOrderLineId!.Value].UnitPrice, 2, MidpointRounding.AwayFromZero));
 
-        return poLine?.Quantity;
+        if (accrualAmount <= 0)
+            return;
+
+        var period = await _periodService.GetCurrentPeriodAsync(domainEvent.CompanyId, cancellationToken);
+        if (period == null)
+            return;
+
+        _apContext.GrirAccruals.Add(new GrirAccrual(
+            domainEvent.CompanyId,
+            domainEvent.VendorId.Value,
+            domainEvent.PurchaseOrderId,
+            domainEvent.ReceiptId,
+            accrualAmount,
+            period.Id));
     }
 }

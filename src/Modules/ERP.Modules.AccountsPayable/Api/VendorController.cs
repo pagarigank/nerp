@@ -67,6 +67,8 @@ public class VendorController : ControllerBase
             }
         }
 
+        vendor.SetCompliance(request.InsuranceCarrier, request.InsurancePolicyNumber, request.InsuranceExpiry, request.DiversityClassification);
+
         await _unitOfWork.Vendors.AddAsync(vendor, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -81,6 +83,7 @@ public class VendorController : ControllerBase
             return NotFound();
 
         vendor.Update(request.Name, request.LegalName, request.TaxId, request.Form1099Category, request.DefaultPaymentTermId, request.BackupWithholdingFlag, request.BackupWithholdingRate);
+        vendor.SetCompliance(request.InsuranceCarrier, request.InsurancePolicyNumber, request.InsuranceExpiry, request.DiversityClassification);
         _unitOfWork.Vendors.Update(vendor);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -113,10 +116,23 @@ public class VendorController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/hold")]
+    public async Task<IActionResult> SetHold(Guid id, [FromBody] SetVendorHoldRequest request, CancellationToken cancellationToken)
+    {
+        var vendor = await _unitOfWork.Vendors.GetByIdAsync(id, cancellationToken);
+        if (vendor == null)
+            return NotFound();
+
+        vendor.SetOnHold(request.OnHold);
+        _unitOfWork.Vendors.Update(vendor);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     private static VendorDto MapToDto(Vendor vendor, List<VendorBankAccount>? bankAccounts = null)
     {
         bankAccounts ??= [];
         var baDtos = bankAccounts.Select(b => new VendorBankAccountDto(b.Id, b.BankName, b.AccountNumber, b.RoutingNumber, b.IsDefault)).ToList();
-        return new VendorDto(vendor.Id, vendor.VendorId, vendor.Name, vendor.LegalName, vendor.TaxId, vendor.Form1099Category, vendor.DefaultPaymentTermId, vendor.IsActive, vendor.BackupWithholdingFlag, vendor.BackupWithholdingRate, baDtos, vendor.CreatedOn, vendor.ModifiedOn);
+        return new VendorDto(vendor.Id, vendor.VendorId, vendor.Name, vendor.LegalName, vendor.TaxId, vendor.Form1099Category, vendor.DefaultPaymentTermId, vendor.IsActive, vendor.BackupWithholdingFlag, vendor.BackupWithholdingRate, vendor.OnHold, vendor.InsuranceCarrier, vendor.InsurancePolicyNumber, vendor.InsuranceExpiry, vendor.DiversityClassification, baDtos, vendor.CreatedOn, vendor.ModifiedOn);
     }
 }

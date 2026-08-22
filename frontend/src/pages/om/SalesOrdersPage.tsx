@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Eye, CheckCircle } from 'lucide-react'
+import { Plus, Eye, CheckCircle, Truck } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { DataTable } from '@components/ui/DataTable'
 import { getErrorMessage } from '@api/client'
-import { cancelSalesOrder, confirmSalesOrder, getSalesOrders } from '@api/orderManagement'
+import {
+  cancelSalesOrder,
+  confirmDropShip,
+  confirmSalesOrder,
+  getSalesOrders,
+} from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import type { SalesOrderSummary } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
@@ -64,6 +69,18 @@ export function SalesOrdersPage() {
     }
   }
 
+  async function handleConfirmDropShip(orderId: string, lineId: string) {
+    setActionId(`${orderId}:${lineId}`)
+    try {
+      await confirmDropShip(orderId, lineId)
+      await load()
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setActionId(null)
+    }
+  }
+
   const columns = [
     { key: 'orderNumber', header: 'Order #', sortable: true },
     { key: 'customerId', header: 'Customer', render: (row: SalesOrderSummary) => customerMap.get(row.customerId) ?? row.customerId.slice(0, 8) },
@@ -78,33 +95,46 @@ export function SalesOrdersPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (row: SalesOrderSummary) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => navigate(`/om/sales-orders/${row.id}`)}>
-            <Eye className="h-4 w-4" /> View
-          </Button>
-          {row.status === 'Draft' && (
-            <Button
-              size="sm"
-              variant="success"
-              disabled={actionId === row.id}
-              onClick={() => handleConfirm(row.id)}
-            >
-              <CheckCircle className="h-4 w-4" /> Confirm
+      render: (row: SalesOrderSummary) => {
+        const pendingDropShipLineId = row.firstPendingDropShipLineId
+        return (
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/om/sales-orders/${row.id}`)}>
+              <Eye className="h-4 w-4" /> View
             </Button>
-          )}
-          {row.status === 'Draft' && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={actionId === row.id}
-              onClick={() => handleCancel(row.id)}
-            >
-              Cancel
-            </Button>
-          )}
-        </div>
-      ),
+            {row.status === 'Draft' && (
+              <Button
+                size="sm"
+                variant="success"
+                disabled={actionId === row.id}
+                onClick={() => handleConfirm(row.id)}
+              >
+                <CheckCircle className="h-4 w-4" /> Confirm
+              </Button>
+            )}
+            {row.status === 'Draft' && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionId === row.id}
+                onClick={() => handleCancel(row.id)}
+              >
+                Cancel
+              </Button>
+            )}
+            {pendingDropShipLineId && (
+              <Button
+                size="sm"
+                variant="success"
+                disabled={actionId === `${row.id}:${pendingDropShipLineId}`}
+                onClick={() => handleConfirmDropShip(row.id, pendingDropShipLineId)}
+              >
+                <Truck className="h-4 w-4" /> Confirm Drop-Ship
+              </Button>
+            )}
+          </div>
+        )
+      },
     },
   ]
 

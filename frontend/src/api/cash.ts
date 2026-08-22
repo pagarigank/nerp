@@ -8,6 +8,7 @@ import type {
   CashBankFee,
   CashBankStatement,
   CashBankStatementDetail,
+  StatementDownloadReport,
   CashBankTransfer,
   CashDeposit,
   CashDepositDetail,
@@ -138,6 +139,10 @@ export function getBankStatement(id: string): Promise<CashBankStatementDetail> {
 
 export function importBankStatement(data: ImportStatementRequest): Promise<ImportStatementResponse> {
   return post('/cash/bank-statements/import', data)
+}
+
+export function runBankStatementDownload(): Promise<StatementDownloadReport> {
+  return post('/cash/bank-statements/run-download')
 }
 
 export function validateBankStatement(id: string): Promise<CashBankStatement> {

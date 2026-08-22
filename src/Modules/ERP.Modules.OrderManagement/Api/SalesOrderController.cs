@@ -51,7 +51,13 @@ public class SalesOrderController : ControllerBase
                 o.CustomerId,
                 o.OrderDate,
                 o.Status,
-                o.Lines.Sum(l => (l.Quantity * l.UnitPrice) * ((1m - (l.DiscountPercent / 100m)) * (1m + (l.TaxPercent / 100m))))))
+                o.Lines.Sum(l => (l.Quantity * l.UnitPrice) * ((1m - (l.DiscountPercent / 100m)) * (1m + (l.TaxPercent / 100m)))),
+                o.Lines.Count(l => l.IsDropShip && l.DropShipConfirmedOn == null),
+                o.Lines
+                    .Where(l => l.IsDropShip && l.DropShipConfirmedOn == null)
+                    .OrderBy(l => l.LineNumber)
+                    .Select(l => (Guid?)l.Id)
+                    .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         return Ok(ApiResponse<List<SalesOrderSummary>>.Success(list));
@@ -105,7 +111,8 @@ public class SalesOrderController : ControllerBase
                 l.DropShipVendorId,
                 l.ShippedQuantity,
                 l.LineTotal,
-                l.AppliedPricingRuleId)).ToList());
+                l.AppliedPricingRuleId,
+                l.DropShipConfirmedOn)).ToList());
 
         return Ok(ApiResponse<SalesOrderDetail>.Success(detail));
     }
@@ -354,6 +361,32 @@ public class SalesOrderController : ControllerBase
             return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
         }
     }
+
+    /// <summary>
+    /// Vendor drop-ship confirmation (Phase 6 gap 389): records that the vendor
+    /// shipped the given drop-ship line directly to the customer.
+    /// </summary>
+    [HttpPost("{id:guid}/lines/{lineId:guid}/confirm-drop-ship")]
+    public async Task<ActionResult<ApiResponse<string>>> ConfirmDropShipAsync(
+        Guid id, Guid lineId, CancellationToken cancellationToken)
+    {
+        var order = await _context.SalesOrders
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+        if (order is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Sales order {id} not found." }));
+
+        try
+        {
+            order.ConfirmDropShipLine(lineId);
+            await _context.SaveChangesAsync(cancellationToken);
+            return Ok(ApiResponse<string>.Success("Drop-ship confirmed"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
+        }
+    }
 }
 
 public record CreateSalesOrderRequest(
@@ -410,7 +443,9 @@ public record SalesOrderSummary(
     Guid CustomerId,
     DateTime OrderDate,
     SalesOrderStatus Status,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    int PendingDropShipCount,
+    Guid? FirstPendingDropShipLineId);
 
 public record SalesOrderLineSummary(
     Guid Id,
@@ -430,7 +465,8 @@ public record SalesOrderLineSummary(
     Guid? DropShipVendorId,
     decimal ShippedQuantity,
     decimal LineTotal,
-    Guid? AppliedPricingRuleId);
+    Guid? AppliedPricingRuleId,
+    DateTimeOffset? DropShipConfirmedOn);
 
 public record SalesOrderDetail(
     Guid Id,

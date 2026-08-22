@@ -238,8 +238,13 @@ public class VoucherService : IVoucherService
             .FirstOrDefaultAsync(p => p.Id == paymentId, cancellationToken)
             ?? throw new InvalidOperationException($"Payment {paymentId} not found.");
 
+        var heldVendorIds = await _context.Vendors
+            .Where(v => v.OnHold)
+            .Select(v => v.Id)
+            .ToListAsync(cancellationToken);
+
         var vouchers = await _context.Vouchers
-            .Where(v => voucherIds.Contains(v.Id))
+            .Where(v => voucherIds.Contains(v.Id) && !heldVendorIds.Contains(v.VendorId))
             .ToListAsync(cancellationToken);
 
         foreach (var voucher in vouchers)

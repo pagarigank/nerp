@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, Pencil, Trash2, AlertCircle, Banknote, X } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, AlertCircle, Banknote, ShieldCheck, X } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
 import { Input, Select, Checkbox } from '@components/ui/Input'
@@ -15,7 +15,7 @@ import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getVendors, createVendor, updateVendor, deactivateVendor, activateVendor, getPaymentTerms } from '@api/ap'
+import { getVendors, createVendor, updateVendor, deactivateVendor, activateVendor, setVendorHold, getPaymentTerms } from '@api/ap'
 import type { Vendor, UpdateVendorRequest } from '@/types/ap'
 import { vendor1099CategoryMap } from '@/pages/ap/statusMaps'
 
@@ -35,6 +35,10 @@ const vendorSchema = z.object({
   defaultPaymentTermId: z.string().optional(),
   backupWithholdingFlag: z.boolean(),
   backupWithholdingRate: z.coerce.number().min(0, 'Rate cannot be negative').max(100, 'Rate cannot exceed 100'),
+  insuranceCarrier: z.string().optional(),
+  insurancePolicyNumber: z.string().optional(),
+  insuranceExpiry: z.string().optional(),
+  diversityClassification: z.string().optional(),
   bankAccounts: z.array(bankAccountSchema),
 })
 
@@ -49,6 +53,10 @@ const defaultValues: VendorForm = {
   defaultPaymentTermId: '',
   backupWithholdingFlag: false,
   backupWithholdingRate: 24,
+  insuranceCarrier: '',
+  insurancePolicyNumber: '',
+  insuranceExpiry: '',
+  diversityClassification: '',
   bankAccounts: [],
 }
 
@@ -144,6 +152,12 @@ export function VendorCrud() {
     onError: err => setFormError(getErrorMessage(err)),
   })
 
+  const setHoldMutation = useMutation({
+    mutationFn: ({ id, onHold }: { id: string; onHold: boolean }) => setVendorHold(id, { onHold }),
+    onSuccess: invalidate,
+    onError: err => setFormError(getErrorMessage(err)),
+  })
+
   const openCreateForm = () => {
     setEditingVendor(null)
     setFormError(null)
@@ -163,6 +177,10 @@ export function VendorCrud() {
       defaultPaymentTermId: vendor.defaultPaymentTermId ?? '',
       backupWithholdingFlag: vendor.backupWithholdingFlag,
       backupWithholdingRate: Math.round((vendor.backupWithholdingRate || 0) * 100),
+      insuranceCarrier: vendor.insuranceCarrier ?? '',
+      insurancePolicyNumber: vendor.insurancePolicyNumber ?? '',
+      insuranceExpiry: vendor.insuranceExpiry ? vendor.insuranceExpiry.slice(0, 10) : '',
+      diversityClassification: vendor.diversityClassification ?? '',
       bankAccounts:
         vendor.bankAccounts.map(a => ({
           bankName: a.bankName,
@@ -190,6 +208,10 @@ export function VendorCrud() {
       defaultPaymentTermId: data.defaultPaymentTermId || null,
       backupWithholdingFlag: data.backupWithholdingFlag,
       backupWithholdingRate: data.backupWithholdingRate / 100,
+      insuranceCarrier: data.insuranceCarrier || null,
+      insurancePolicyNumber: data.insurancePolicyNumber || null,
+      insuranceExpiry: data.insuranceExpiry || null,
+      diversityClassification: data.diversityClassification || null,
     }
     const bankAccounts = data.bankAccounts.map(b => ({
       bankName: b.bankName,
@@ -295,9 +317,16 @@ export function VendorCrud() {
                         )}
                       </td>
                       <td className="px-3 py-3">
-                        <Badge variant={vendor.isActive ? 'success' : 'neutral'} size="sm" dot>
-                          {vendor.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant={vendor.isActive ? 'success' : 'neutral'} size="sm" dot>
+                            {vendor.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                          {vendor.onHold && (
+                            <Badge variant="warning" size="sm">
+                              On Hold
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -309,6 +338,24 @@ export function VendorCrud() {
                           >
                             <Pencil className="h-4 w-4" aria-hidden="true" />
                           </IconButton>
+                          {vendor.onHold ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setHoldMutation.mutate({ id: vendor.id, onHold: false })}
+                            >
+                              Release
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                              onClick={() => setHoldMutation.mutate({ id: vendor.id, onHold: true })}
+                            >
+                              Hold
+                            </Button>
+                          )}
                           {vendor.isActive ? (
                             <IconButton
                               size="sm"
@@ -471,6 +518,34 @@ export function VendorCrud() {
                 {...fieldError(errors.backupWithholdingRate?.message)}
               />
             )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white">Compliance</h3>
+              {editingVendor?.onHold && (
+                <Badge variant="warning" size="sm">
+                  On Hold
+                </Badge>
+              )}
+            </div>
+            {editingVendor?.onHold && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This vendor is on hold and is excluded from payment selection until released.
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input {...register('insuranceCarrier')} label="Insurance Carrier" placeholder="e.g. Travelers" />
+              <Input {...register('insurancePolicyNumber')} label="Insurance Policy Number" placeholder="Policy number" />
+              <Input {...register('insuranceExpiry')} type="date" label="Insurance Expiry" />
+              <Input
+                {...register('diversityClassification')}
+                label="Diversity Classification"
+                placeholder="e.g. MBE, WBE, DBE, SDVOSB"
+                hint="Free-text diversity classification for reporting"
+              />
+            </div>
           </div>
         </form>
       </Modal>

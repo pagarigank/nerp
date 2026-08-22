@@ -280,7 +280,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Bank fee recording** (service charges, wire fees, automatic GL posting)
 
 ### Background Jobs
-- [ ] Automated bank statement download (via OFX/API integration)
+- [x] Automated bank statement download (via OFX/API integration) — built 2026-08-22: `BankStatementDownloadJob` (`cash-statement-download` Hangfire daily 4:30 AM UTC) pulls configured HTTP feeds, format auto-detect, SHA-256 content-hash dedupe; manual trigger `POST /cash/bank-statements/run-download` + frontend button
 - [x] Daily cash position calculation and alerts
 - [x] Outstanding check aging report generation
 
@@ -345,7 +345,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Requisition rejection handling** (with reason code, status tracking, notification endpoints ready)
 - [x] **PO creation - manual** (header: vendor, ship-to, buyer, terms; lines: item, qty, price, account/project)
 - [x] **PO creation - from requisition** (single or consolidated from multiple reqs) - SERVICE CREATED
-- [ ] **PO creation - from reorder point** (automated: inventory below minimum triggers requisition→approval→PO)
+- [x] **PO creation - from reorder point** (automated: inventory below minimum triggers requisition→approval→PO) — IMPLEMENTED 2026-08-22: `ReorderPointScanJob` (Hangfire nightly 2AM UTC, idempotent 7-day window, open-PO quantity offset) auto-creates draft requisitions via `IInventoryReorderSource` contract; manual trigger `POST /purchasing/requisitions/run-reorder-scan`
 - [x] **PO approval workflow** (amount threshold-based approval chain)
 - [x] **PO printing/email** (PDF generation, vendor email notification) [built 2026-08-18 — POST /purchasing/purchase-orders/{id}/print returns print-ready DTO + marks printed; /email-vendor marks emailed; UI buttons on PurchaseOrdersPage]
 - [x] **PO change order** (revision tracking via CreateChangeOrder service, price/qty changes supported)
@@ -361,7 +361,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Committed cost tracking** (open PO amounts reserved against budgets, CalculateCommittedCost service ready for GL/Project integration)
 
 ### Background Jobs
-- [ ] **Reorder point scan job** (nightly: check inventory below minimum, auto-create requisitions) - REQUIRES Phase 7 Inventory
+- [x] **Reorder point scan job** (nightly: check inventory below minimum, auto-create requisitions) — IMPLEMENTED 2026-08-22: registered as `purchasing-reorder-scan` recurring job; cross-module read via ERP.Core contract implemented by Inventory
 - [x] **PO auto-closure job** (daily: auto-close fully received+invoiced POs older than 90 days, skip blanket/standing) - POAutoClosureJob created
 - [x] **Late delivery alert job** (daily: email buyers for POs with need-by date < today and not fully received) - LateDeliveryAlertJob created
 - [x] **Open PO aging analysis job** (weekly: report to purchasing manager showing POs open >30/60/90 days) - OpenPOAgingJob created
@@ -378,15 +378,15 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Over-receipt Exception Report** (all over-receipts by line, approval status, buyer, vendor; identify patterns) [built 2026-08-18 — GET /purchasing/reports/over-receipt-exceptions + UI]
 
 ### Gap additions (web-researched 2026-08-18)
-- [ ] **PO budget/committed-cost check at approval** (PO lines referencing project/account must not exceed remaining budget without override — wire existing CalculateCommittedCost into approval workflow; spec §5.7 committed cost vs. project budget) [GAP-2026-08-18]
-- [ ] **Vendor onboarding compliance** (W-9, insurance certificates, bank verification, DEI/diversity flags, hold status — vendor master currently has no compliance artifacts) [GAP-2026-08-18]
-- [ ] **Purchase requisition from project** (project PM creates requisition against project budget → auto-route approval → PO; ties to Phase 10 committed cost) [GAP-2026-08-18]
+- [x] **PO budget/committed-cost check at approval** (PO lines referencing project/account must not exceed remaining budget without override — wire existing CalculateCommittedCost into approval workflow; spec §5.7 committed cost vs. project budget) [GAP-2026-08-18] — built 2026-08-22: `IBudgetAvailabilityCheck` contract (ERP.Core) implemented by GL over Budgets/BudgetLines, enforced at PO submit-for-approval with `?budgetOverride=true` override
+- [x] **Vendor onboarding compliance** (W-9, insurance certificates, bank verification, DEI/diversity flags, hold status — vendor master currently has no compliance artifacts) [GAP-2026-08-18] — built 2026-08-22: Vendor gains OnHold/insurance carrier/policy/expiry/diversity classification + migration; `POST /ap/vendors/{id}/hold`; payment selection excludes held vendors; compliance UI in vendor form
+- [x] **Purchase requisition from project** (project PM creates requisition against project budget → auto-route approval → PO; ties to Phase 10 committed cost) [GAP-2026-08-18] — RequisitionLine.ProjectId already supported routing; committed-cost side completed 2026-08-22 via the PO approval budget check above
 - [x] **Vendor quote/RFQ workflow** (request quote from multiple vendors, compare pricing, award PO — fills the sourcing gap between requisition and PO) [built 2026-08-18 — VendorQuote entity + Phase6Controller (create/receive/award/reject) + VendorQuotesPage; verified live]
 - [x] **PO tax handling** (tax code/rate on PO lines, tax amount calc at receipt/voucher, exemption certificate per PO) [built 2026-08-18 — PurchaseOrderLine TaxCode/TaxRate/TaxAmount + SetTax; PO-level TaxExempt; create endpoint applies tax/freight; GetTaxTotal]
 - [x] **Freight/landed-cost lines on PO** (separate freight line, allocate to receipt via Phase 7 landed cost) [built 2026-08-18 — PurchaseOrder FreightAmount/FreightTaxAmount + SetFreight; create endpoint applies; UI fields]
-- [ ] **Receipt → inventory accrual (GR/IR) posting** (goods receipt posts inventory ↑ / accrued-receipts liability, reversed when voucher posted — current GR flow posts to GL via Inventory; verify accrual leg for not-yet-invoiced receipts) [GAP-2026-08-18]
-- [ ] **PO line-level subcontractor/PO-project linkage** (PO to subcontractor against a Phase 10 subcontract, retainage-aware) [GAP-2026-08-18]
-- [ ] **Vendor drop-ship confirmation flow** (vendor confirms drop-ship shipment → update SO status; complements Phase 8 drop-ship) [GAP-2026-08-18]
+- [x] **Receipt → inventory accrual (GR/IR) posting** (goods receipt posts inventory ↑ / accrued-receipts liability, reversed when voucher posted — current GR flow posts to GL via Inventory; verify accrual leg for not-yet-invoiced receipts) [GAP-2026-08-18] — built 2026-08-22: GoodsReceivedToApHandler auto-creates pending GrirAccrual per receipt (Σ qty × PO price), idempotent by ReceiptId, fiscal period via IPeriodService
+- [x] **PO line-level subcontractor/PO-project linkage** (PO to subcontractor against a Phase 10 subcontract, retainage-aware) [GAP-2026-08-18] — built 2026-08-22: PurchaseOrderLine.SubcontractId + DTO/create exposure + migration Phase6ReorderAndSubcontract
+- [x] **Vendor drop-ship confirmation flow** (vendor confirms drop-ship shipment → update SO status; complements Phase 8 drop-ship) [GAP-2026-08-18] — built 2026-08-22: `POST /om/sales-orders/{id}/lines/{lineId}/confirm-drop-ship`, DropShipConfirmedOn column + DropShipConfirmedEvent, drop-ship status report, frontend confirm action
 - [x] **Blanket PO release allocation check** (release against blanket draws down both qty and amount; block over-release — same test item already listed) [built 2026-08-18 — Release() blocks over-release vs BlanketAmountLimit; verified live]
 
 ### Tests

@@ -16,6 +16,7 @@ import type {
   SelectVouchersForPaymentRequest,
   UpdatePaymentTermRequest,
   UpdateVendorRequest,
+  SetVendorHoldRequest,
   Vendor,
   VendorTrialBalanceReport,
   VoidPaymentRequest,
@@ -76,6 +77,10 @@ export function activateVendor(id: string): Promise<void> {
 
 export function deactivateVendor(id: string): Promise<void> {
   return post(`/ap/vendors/${id}/deactivate`)
+}
+
+export function setVendorHold(id: string, data: SetVendorHoldRequest): Promise<void> {
+  return post(`/ap/vendors/${id}/hold`, data)
 }
 
 export function getPaymentTerms(activeOnly?: boolean): Promise<PaymentTerm[]> {

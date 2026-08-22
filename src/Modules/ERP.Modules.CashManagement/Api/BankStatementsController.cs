@@ -18,11 +18,20 @@ public class BankStatementsController : ControllerBase
 {
     private readonly CashDbContext _context;
     private readonly IBankStatementParserService _parser;
+    private readonly IBankStatementDownloadJob _downloadJob;
 
-    public BankStatementsController(CashDbContext context, IBankStatementParserService parser)
+    public BankStatementsController(CashDbContext context, IBankStatementParserService parser, IBankStatementDownloadJob downloadJob)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _parser = parser ?? throw new ArgumentNullException(nameof(parser));
+        _downloadJob = downloadJob ?? throw new ArgumentNullException(nameof(downloadJob));
+    }
+
+    [HttpPost("run-download")]
+    public async Task<ActionResult<BankStatementDownloadReport>> RunDownloadAsync(CancellationToken cancellationToken)
+    {
+        var report = await _downloadJob.RunAsync(cancellationToken);
+        return Ok(report);
     }
 
     [HttpGet]

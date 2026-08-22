@@ -65,6 +65,9 @@ public class ApDbContext : DispatchableDbContext
             e.Property(x => x.TaxId).HasMaxLength(50);
             e.Property(x => x.Form1099Category).HasConversion<int>();
             e.Property(x => x.BackupWithholdingRate).HasColumnType("decimal(18,2)");
+            e.Property(x => x.InsuranceCarrier).HasMaxLength(200);
+            e.Property(x => x.InsurancePolicyNumber).HasMaxLength(100);
+            e.Property(x => x.DiversityClassification).HasMaxLength(100);
             e.Property(x => x.CreatedBy).HasMaxLength(256).IsRequired();
             e.Property(x => x.ModifiedBy).HasMaxLength(256);
             e.Property(x => x.DeletedBy).HasMaxLength(256);

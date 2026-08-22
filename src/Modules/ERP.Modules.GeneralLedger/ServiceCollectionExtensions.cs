@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGlPeriodCloseService, GlPeriodCloseService>();
         services.AddScoped<BatchPostingQueueProcessor>();
         services.AddScoped<ConsolidationJob>();
+        services.AddScoped<ERP.Core.Common.IBudgetAvailabilityCheck, BudgetAvailabilityChecker>();
 
         // Canonical posting pipeline (architecture.md §5.1): sub-ledgers publish
         // CanonicalPostingEvents through IPostingEventPublisher; this module is the

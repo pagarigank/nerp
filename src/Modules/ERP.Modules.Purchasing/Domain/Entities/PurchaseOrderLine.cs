@@ -22,7 +22,8 @@ public class PurchaseOrderLine : AuditableEntity
         Guid? accountId,
         Guid? projectId,
         Guid? taskId,
-        Guid? requisitionLineId = null)
+        Guid? requisitionLineId = null,
+        Guid? subcontractId = null)
         : base(Guid.NewGuid())
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -49,6 +50,7 @@ public class PurchaseOrderLine : AuditableEntity
         ProjectId = projectId;
         TaskId = taskId;
         RequisitionLineId = requisitionLineId;
+        SubcontractId = subcontractId;
     }
 
     public Guid PurchaseOrderId { get; private set; }
@@ -75,6 +77,8 @@ public class PurchaseOrderLine : AuditableEntity
 
     public Guid? RequisitionLineId { get; private set; }
 
+    public Guid? SubcontractId { get; private set; }
+
     public string? TaxCode { get; private set; }
 
     public decimal TaxRate { get; private set; }
@@ -97,6 +101,11 @@ public class PurchaseOrderLine : AuditableEntity
             throw new ArgumentException("Tax rate cannot be negative.", nameof(taxRate));
         TaxCode = taxCode;
         TaxRate = taxRate;
+    }
+
+    public void SetSubcontract(Guid? subcontractId)
+    {
+        SubcontractId = subcontractId;
     }
 
     public decimal GetExtendedPrice() => Quantity * UnitPrice;

@@ -155,6 +155,13 @@ export interface ImportStatementRequest {
   format?: number | null
 }
 
+export interface StatementDownloadReport {
+  feedsProcessed: number
+  imported: number
+  skippedExisting: number
+  errors: string[]
+}
+
 export interface ImportStatementResponse {
   bankStatementId: string
   statementNumber: string

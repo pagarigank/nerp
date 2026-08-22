@@ -42,6 +42,10 @@ export function cancelSalesOrder(id: string): Promise<string> {
   return post(`/om/sales-orders/${id}/cancel`)
 }
 
+export function confirmDropShip(orderId: string, lineId: string): Promise<string> {
+  return post(`/om/sales-orders/${orderId}/lines/${lineId}/confirm-drop-ship`)
+}
+
 export function placeCreditHold(id: string, reason: string): Promise<string> {
   return post(`/om/sales-orders/${id}/credit-hold`, { reason })
 }

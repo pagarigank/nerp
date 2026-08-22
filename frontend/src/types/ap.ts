@@ -17,6 +17,11 @@ export interface Vendor {
   isActive: boolean
   backupWithholdingFlag: boolean
   backupWithholdingRate: number
+  onHold: boolean
+  insuranceCarrier?: string | null
+  insurancePolicyNumber?: string | null
+  insuranceExpiry?: string | null
+  diversityClassification?: string | null
   bankAccounts: VendorBankAccount[]
   createdOn: string
   modifiedOn?: string | null
@@ -39,6 +44,10 @@ export interface CreateVendorRequest {
   isActive: boolean
   backupWithholdingFlag: boolean
   backupWithholdingRate: number
+  insuranceCarrier?: string | null
+  insurancePolicyNumber?: string | null
+  insuranceExpiry?: string | null
+  diversityClassification?: string | null
   bankAccounts: CreateVendorBankAccountRequest[]
 }
 
@@ -50,6 +59,14 @@ export interface UpdateVendorRequest {
   defaultPaymentTermId?: string | null
   backupWithholdingFlag: boolean
   backupWithholdingRate: number
+  insuranceCarrier?: string | null
+  insurancePolicyNumber?: string | null
+  insuranceExpiry?: string | null
+  diversityClassification?: string | null
+}
+
+export interface SetVendorHoldRequest {
+  onHold: boolean
 }
 
 export interface PaymentTerm {

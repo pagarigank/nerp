@@ -17,6 +17,11 @@ public record VendorDto(
     bool IsActive,
     bool BackupWithholdingFlag,
     decimal BackupWithholdingRate,
+    bool OnHold,
+    string? InsuranceCarrier,
+    string? InsurancePolicyNumber,
+    DateTimeOffset? InsuranceExpiry,
+    string? DiversityClassification,
     IReadOnlyList<VendorBankAccountDto> BankAccounts,
     DateTimeOffset CreatedOn,
     DateTimeOffset? ModifiedOn);
@@ -38,6 +43,10 @@ public record CreateVendorRequest(
     bool IsActive,
     bool BackupWithholdingFlag,
     decimal BackupWithholdingRate,
+    string? InsuranceCarrier,
+    string? InsurancePolicyNumber,
+    DateTimeOffset? InsuranceExpiry,
+    string? DiversityClassification,
     IReadOnlyList<CreateVendorBankAccountRequest> BankAccounts);
 
 public record CreateVendorBankAccountRequest(
@@ -53,7 +62,13 @@ public record UpdateVendorRequest(
     Vendor1099Category? Form1099Category,
     Guid? DefaultPaymentTermId,
     bool BackupWithholdingFlag,
-    decimal BackupWithholdingRate);
+    decimal BackupWithholdingRate,
+    string? InsuranceCarrier,
+    string? InsurancePolicyNumber,
+    DateTimeOffset? InsuranceExpiry,
+    string? DiversityClassification);
+
+public record SetVendorHoldRequest(bool OnHold);
 
 public record PaymentTermDto(
     Guid Id,

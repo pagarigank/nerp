@@ -4,6 +4,7 @@ using ERP.Modules.AccountsPayable.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERP.Modules.AccountsPayable.Migrations
 {
     [DbContext(typeof(ApDbContext))]
-    partial class ApDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260822115729_Phase6VendorCompliance")]
+    partial class Phase6VendorCompliance
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Core.Common;
 using ERP.Modules.Purchasing.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,15 +13,18 @@ public class PurchaseOrderService : IPurchaseOrderService
     private readonly PurchasingDbContext _context;
     private readonly IRepository<PurchaseOrder> _poRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IBudgetAvailabilityCheck _budgetAvailabilityCheck;
 
     public PurchaseOrderService(
         PurchasingDbContext context,
         IRepository<PurchaseOrder> poRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IBudgetAvailabilityCheck budgetAvailabilityCheck)
     {
         _context = context;
         _poRepository = poRepository;
         _unitOfWork = unitOfWork;
+        _budgetAvailabilityCheck = budgetAvailabilityCheck;
     }
 
     public async Task<Guid> CreateChangeOrderAsync(Guid purchaseOrderId, CancellationToken cancellationToken = default)
@@ -103,5 +107,48 @@ public class PurchaseOrderService : IPurchaseOrderService
         var lines = await query.ToListAsync(cancellationToken);
 
         return lines.Sum(l => l.GetRemainingAmount());
+    }
+
+    public async Task<PurchaseOrder> ApproveWithBudgetCheckAsync(
+        Guid purchaseOrderId,
+        Guid approvedById,
+        bool budgetOverride = false,
+        CancellationToken cancellationToken = default)
+    {
+        var po = await _context.PurchaseOrders
+            .Include(p => p.Lines)
+            .FirstOrDefaultAsync(p => p.Id == purchaseOrderId, cancellationToken);
+
+        if (po == null)
+            throw new InvalidOperationException($"Purchase order {purchaseOrderId} not found.");
+
+        if (!budgetOverride)
+            await EnsureWithinBudgetAsync(po, cancellationToken);
+
+        po.Approve(approvedById);
+        _poRepository.Update(po);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return po;
+    }
+
+    private async Task EnsureWithinBudgetAsync(PurchaseOrder po, CancellationToken cancellationToken)
+    {
+        var chargeGroups = po.Lines
+            .Where(l => !l.IsCancelled && (l.ProjectId.HasValue || l.AccountId.HasValue))
+            .Select(l => new { l.ProjectId, l.AccountId })
+            .Distinct()
+            .ToList();
+
+        foreach (var chargeGroup in chargeGroups)
+        {
+            var committed = await CalculateCommittedCostAsync(chargeGroup.ProjectId, chargeGroup.AccountId, cancellationToken);
+            var remaining = await _budgetAvailabilityCheck.GetRemainingBudgetAsync(
+                po.CompanyId, chargeGroup.ProjectId, chargeGroup.AccountId, cancellationToken);
+
+            if (committed > remaining)
+                throw new InvalidOperationException(
+                    $"Budget exceeded for project/account commitment. Committed cost {committed} exceeds remaining budget {remaining}. Override required.");
+        }
     }
 }

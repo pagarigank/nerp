@@ -27,6 +27,7 @@ using ERP.Modules.Platform;
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting;
 using ERP.Modules.Purchasing;
+using ERP.Modules.Purchasing.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using ERP.Shared.Kernel.Posting;
 using FluentValidation;
@@ -366,6 +367,18 @@ public class Program
                 "outstanding-check-aging",
                 job => job.RunAsync(Guid.Empty, Guid.Empty, CancellationToken.None),
                 Cron.Weekly(DayOfWeek.Monday, 6, 0), // Weekly Monday 6:00 AM UTC
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<IBankStatementDownloadJob>(
+                "cash-statement-download",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(4, 30), // Daily at 4:30 AM UTC
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<IReorderPointScanJob>(
+                "purchasing-reorder-scan",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(2, 0), // Nightly at 2:00 AM UTC
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
             // Inventory recurring jobs

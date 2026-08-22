@@ -344,6 +344,20 @@ public class SalesOrder : AuditableAggregateRoot
                 Status = SalesOrderStatus.PartiallyShipped;
         }
     }
+
+    /// <summary>
+    /// Confirms the vendor drop-ship shipment of a single line (vendor ships directly
+    /// to the customer without passing through company inventory). Raises
+    /// <see cref="DropShipConfirmedEvent"/> so downstream modules can react.
+    /// </summary>
+    public void ConfirmDropShipLine(Guid lineId)
+    {
+        var line = _lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new InvalidOperationException($"Line {lineId} not found on this sales order.");
+
+        line.ConfirmDropShip();
+        AddDomainEvent(new DropShipConfirmedEvent(Id, line.Id, line.DropShipVendorId));
+    }
 }
 
 public enum SalesOrderStatus

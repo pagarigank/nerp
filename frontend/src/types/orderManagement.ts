@@ -22,6 +22,7 @@ export interface SalesOrderLineSummary {
   shippedQuantity: number
   lineTotal: number
   appliedPricingRuleId?: string | null
+  dropShipConfirmedOn?: string | null
 }
 
 export interface SalesOrderSummary {
@@ -32,6 +33,8 @@ export interface SalesOrderSummary {
   orderDate: string
   status: SalesOrderStatus
   totalAmount: number
+  pendingDropShipCount?: number
+  firstPendingDropShipLineId?: string | null
 }
 
 export interface SalesOrderDetail {

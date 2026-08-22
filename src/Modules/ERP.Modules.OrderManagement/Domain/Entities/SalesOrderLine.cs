@@ -68,6 +68,9 @@ public class SalesOrderLine : AuditableEntity
     public Guid? AppliedPricingRuleId { get; private set; }
     public bool IsDropShip { get; private set; }
     public Guid? DropShipVendorId { get; private set; }
+
+    /// <summary>UTC timestamp of the vendor drop-ship confirmation (Phase 6 gap 389).</summary>
+    public DateTimeOffset? DropShipConfirmedOn { get; private set; }
     public decimal ShippedQuantity { get; private set; }
 
     /// <summary>Portion of the order-level freight allocated to this line (Phase 8 gap 578).</summary>
@@ -133,5 +136,19 @@ public class SalesOrderLine : AuditableEntity
             throw new InvalidOperationException("Cannot ship more than the ordered quantity.");
 
         ShippedQuantity += quantity;
+    }
+
+    /// <summary>
+    /// Records the vendor's confirmation that this drop-ship line was shipped
+    /// directly to the customer (vendor drop-ship confirmation flow).
+    /// </summary>
+    public void ConfirmDropShip()
+    {
+        if (!IsDropShip)
+            throw new InvalidOperationException("Only drop-ship lines can be confirmed as drop-shipped.");
+        if (DropShipConfirmedOn is not null)
+            return;
+
+        DropShipConfirmedOn = DateTimeOffset.UtcNow;
     }
 }

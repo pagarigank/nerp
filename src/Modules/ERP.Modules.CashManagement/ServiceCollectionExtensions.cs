@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBankFeeService, BankFeeService>();
         services.AddScoped<ICashPositionJob, CashPositionJob>();
         services.AddScoped<IOutstandingCheckAgingJob, OutstandingCheckAgingJob>();
+        services.AddScoped<IBankStatementDownloadJob, BankStatementDownloadJob>();
+        services.AddHttpClient("bank-feeds");
 
         // Phase 11 item #1102: payroll -> Cash Management reconciliation. Consumes the
         // PayrollPostedEvent (shared ERP.Core contract) to record issued pay instruments.
