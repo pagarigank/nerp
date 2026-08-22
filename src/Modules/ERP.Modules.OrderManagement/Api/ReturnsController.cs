@@ -44,7 +44,9 @@ public class ReturnsController : ControllerBase
                 r.SalesOrderId,
                 r.ReturnDate,
                 r.Status,
-                r.Lines.Sum(l => (l.Quantity * l.UnitPrice) * ((1m - (l.DiscountPercent / 100m)) * (1m + (l.TaxPercent / 100m))))))
+                r.Lines.Sum(l => (l.Quantity * l.UnitPrice) * ((1m - (l.DiscountPercent / 100m)) * (1m + (l.TaxPercent / 100m)))),
+                r.Lines.Sum(l => l.Quantity * l.UnitPrice),
+                r.IsApproved))
             .ToListAsync(cancellationToken);
 
         return Ok(ApiResponse<List<ReturnSummary>>.Success(list));
@@ -72,6 +74,9 @@ public class ReturnsController : ControllerBase
             returnEntity.ReasonCode,
             returnEntity.Note,
             returnEntity.Status,
+            returnEntity.IsApproved,
+            returnEntity.RejectionReason,
+            returnEntity.GetReturnValue(),
             returnEntity.Lines.Select(l => new ReturnLineSummary(
                 l.Id,
                 l.LineNumber,
@@ -155,6 +160,73 @@ public class ReturnsController : ControllerBase
             return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
         }
     }
+
+    // ----- RMA value/approval workflow -----
+    [HttpPost("{id:guid}/submit-for-approval")]
+    public async Task<ActionResult<ApiResponse<string>>> SubmitForApprovalAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var returnEntity = await _context.Returns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+        if (returnEntity is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Return {id} not found." }));
+
+        try
+        {
+            returnEntity.SubmitForApproval();
+            await _context.SaveChangesAsync(cancellationToken);
+            return Ok(ApiResponse<string>.Success("PendingApproval"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
+        }
+    }
+
+    [HttpPost("{id:guid}/approve")]
+    public async Task<ActionResult<ApiResponse<string>>> ApproveAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var returnEntity = await _context.Returns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+        if (returnEntity is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Return {id} not found." }));
+
+        try
+        {
+            returnEntity.Approve(User.Identity?.Name ?? "system");
+            await _context.SaveChangesAsync(cancellationToken);
+            return Ok(ApiResponse<string>.Success("Approved"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
+        }
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    public async Task<ActionResult<ApiResponse<string>>> RejectAsync(Guid id, [FromBody] RejectReturnRequest request, CancellationToken cancellationToken)
+    {
+        var returnEntity = await _context.Returns
+            .Include(r => r.Lines)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+        if (returnEntity is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Return {id} not found." }));
+
+        try
+        {
+            returnEntity.Reject(request.Reason);
+            await _context.SaveChangesAsync(cancellationToken);
+            return Ok(ApiResponse<string>.Success("Rejected"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<string>.Failure(new[] { ex.Message }));
+        }
+    }
 }
 
 public record CreateReturnRequest(
@@ -192,7 +264,9 @@ public record ReturnSummary(
     Guid? SalesOrderId,
     DateTime ReturnDate,
     ReturnStatus Status,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    decimal ReturnValue,
+    bool IsApproved);
 
 public record ReturnLineSummary(
     Guid Id,
@@ -222,4 +296,9 @@ public record ReturnDetail(
     string? ReasonCode,
     string? Note,
     ReturnStatus Status,
+    bool IsApproved,
+    string? RejectionReason,
+    decimal ReturnValue,
     List<ReturnLineSummary> Lines);
+
+public record RejectReturnRequest(string Reason);

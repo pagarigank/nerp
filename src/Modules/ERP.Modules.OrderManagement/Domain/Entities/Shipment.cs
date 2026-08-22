@@ -53,6 +53,9 @@ public class Shipment : AuditableAggregateRoot
     public decimal FreightCost { get; private set; }
     public ShipmentStatus Status { get; private set; }
 
+    /// <summary>UTC timestamp when the tracking-update job confirmed delivery with the carrier.</summary>
+    public DateTimeOffset? DeliveredOn { get; private set; }
+
     public IReadOnlyCollection<ShipmentLine> Lines => _lines.AsReadOnly();
 
     public void AddLine(ShipmentLine line)
@@ -60,6 +63,15 @@ public class Shipment : AuditableAggregateRoot
         if (Status != ShipmentStatus.Draft)
             throw new InvalidOperationException("Cannot add lines to a non-draft shipment.");
         _lines.Add(line);
+    }
+
+    public void MarkDelivered()
+    {
+        if (DeliveredOn is not null)
+            return;
+
+        DeliveredOn = DateTimeOffset.UtcNow;
+        Status = ShipmentStatus.Delivered;
     }
 
     public void Confirm()

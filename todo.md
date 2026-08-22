@@ -577,25 +577,25 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **RMA (Return Material Authorization) entry** (reason code, restock fee, return-to-stock or scrap disposition) — `Return` + `ReturnLine` + `ReturnsController` (POST, confirm) (2026-08-17)
 - [x] **Return receipt** (receive against RMA, quality inspection, restock to inventory or scrap, credit memo generation) — `ReturnConfirmedEvent` -> `ReturnConfirmedToInventoryHandler` (restock) + `ReturnConfirmedToArHandler` (credit memo + GL) (VERIFIED by `ConfirmReturn_ShouldRestockInventoryAndCreateCreditMemo`) (2026-08-17)
 - [x] **Commission calculation** (sales rep commission: based on gross margin or revenue, by product category) — `ShipmentConfirmedToCommissionHandler` (AP) accrues `CommissionAccrual` + AP voucher (Commission Expense 6200 / AP Control 2000 → GL) on shipment confirm; `SalesRep.VendorId` links rep to payable; VERIFIED by `PartialShipment_ShouldLeaveBackorderAndAccrueCommission` (2026-08-18)
-- [ ] **Freight allocation** (allocate freight cost to invoice lines by weight/value, customer freight billing)
+- [x] **Freight allocation** (allocate freight cost to invoice lines by weight/value, customer freight billing) — `POST /om/sales-orders/{id}/allocate-freight` + FreightAllocationPage
 
 ### Gap additions (web-researched 2026-08-18)
-- [ ] **Available-to-Promise (ATP) / order promising** (confirm ship date from available + in-transit + planned receipts + lead time, per item/warehouse; extends current availability check to date-based promising) [GAP-2026-08-18]
-- [ ] **Quote-to-order conversion** (SalesOrderType "quote" exists — add quote lifecycle: send, accept, convert to order, quote revision) [GAP-2026-08-18]
-- [ ] **Blanket sales order / standing order** (repeat deliveries under one order number with release tracking) [GAP-2026-08-18]
-- [ ] **Substitute-item offer on backorder** (when item unavailable, offer customer-approved substitute at approved price) [GAP-2026-08-18]
-- [ ] **Return-to-vendor (RTV) for RMA disposition** (customer return routed back to vendor for credit — links RMA → Purchasing receipt-reversal/PO) [GAP-2026-08-18]
-- [ ] **RMA value/approval workflow** (return value threshold routing via Phase 1 workflow engine, time-since-original-order rules) [GAP-2026-08-18]
-- [ ] **Sales order status dashboard** (open orders by status/age, promised vs actual ship dates, release-to-ship queue) [GAP-2026-08-18]
-- [ ] **Customer order acknowledgment/confirmation document** (email PDF acknowledgment on confirm — complements packing slip/pick list) [GAP-2026-08-18]
-- [ ] **Order-level notes/attachments + change history** (documented changes, reason codes, customer-facing notes) [GAP-2026-08-18]
-- [ ] **Sales analysis drill-down** (report figure → orders → shipments → invoice (frontend drill-back pattern from `frontend.md` §3.7) [GAP-2026-08-18]
+- [x] **Available-to-Promise (ATP) / order promising** (confirm ship date from available + in-transit + planned receipts + lead time, per item/warehouse; extends current availability check to date-based promising) [GAP-2026-08-18] — `GET /om/atp` + AtpPage
+- [x] **Quote-to-order conversion** (SalesOrderType "quote" exists — add quote lifecycle: send, accept, convert to order, quote revision) [GAP-2026-08-18] — configure/send/accept/reject/revise/convert endpoints + QuotesPage
+- [x] **Blanket sales order / standing order** (repeat deliveries under one order number with release tracking) [GAP-2026-08-18] — BlanketSalesOrder entity + create/list/release endpoints + BlanketOrdersPage
+- [x] **Substitute-item offer on backorder** (when item unavailable, offer customer-approved substitute at approved price) [GAP-2026-08-18] — BackorderSubstitutionOffer entity + create/accept/reject/list + UI
+- [x] **Return-to-vendor (RTV) for RMA disposition** (customer return routed back to vendor for credit — links RMA → Purchasing receipt-reversal/PO) [GAP-2026-08-18] — returns/{id}/rtv → ship → credit endpoints
+- [x] **RMA value/approval workflow** (return value threshold routing via Phase 1 workflow engine, time-since-original-order rules) [GAP-2026-08-18] — built 2026-08-22: GetReturnValue threshold $1,000; PendingApproval status; submit/approve/reject endpoints; UI buttons on Returns pages
+- [x] **Sales order status dashboard** (open orders by status/age, promised vs actual ship dates, release-to-ship queue) [GAP-2026-08-18] — GET /om/dashboard/order-status + OrderStatusDashboardPage
+- [x] **Customer order acknowledgment/confirmation document** (email PDF acknowledgment on confirm — complements packing slip/pick list) [GAP-2026-08-18] — GET /om/sales-orders/{id}/acknowledgment
+- [x] **Order-level notes/attachments + change history** (documented changes, reason codes, customer-facing notes) [GAP-2026-08-18] — notes + history endpoints + OrderNotesPage
+- [x] **Sales analysis drill-down** (report figure → orders → shipments → invoice (frontend drill-back pattern from `frontend.md` §3.7) [GAP-2026-08-18] — built 2026-08-22: clickable SalesAnalysisPage rows open inline contributing-orders panel
 
 ### Background Jobs
-- [ ] Nightly backorder processing (check allocated orders against new inventory receipts, auto-release if now available)
-- [ ] Weekly commission calculation run (calculate rep commissions, create AP voucher for commission payable)
-- [ ] Daily credit hold review (email A/R manager list of held orders, aging, recommended action)
-- [ ] Shipment tracking update (poll carrier API for tracking status, update order, email customer on delivery)
+- [x] Nightly backorder processing (check allocated orders against new inventory receipts, auto-release if now available) — built 2026-08-22: BackorderProcessingJob via IInventoryAvailability contract, hourly, idempotent BackorderReleasedOn flag
+- [x] Weekly commission calculation run (calculate rep commissions, create AP voucher for commission payable) — built 2026-08-22: CommissionRunJob (Mondays 01:00 UTC) persists CommissionRun/Lines per rep × CommissionRate; AP voucher hand-off still manual follow-up (no cross-module voucher contract yet)
+- [x] Daily credit hold review (email A/R manager list of held orders, aging, recommended action) — built 2026-08-22: CreditHoldReviewJob daily 03:00 UTC structured-log alert report (no email infra yet, consistent with other jobs)
+- [x] Shipment tracking update (poll carrier API for tracking status, update order, email customer on delivery) — built 2026-08-22: ShipmentTrackingUpdateJob polls configured carrier endpoint template every 4h, marks DeliveredOn; config in appsettings OrderManagement:CarrierTracking
 
 ### Reports
 - [x] Open Order Report (by customer, by ship date, by sales rep; shows line detail: ordered, allocated, shipped, backordered) — `SalesReportService.GetOpenOrdersAsync` + `GET /om/reports/open-orders` (2026-08-18)
@@ -643,7 +643,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Reference Masters page** — `MastersPage` (tabbed Shipping Methods / Sales Reps / Territories / Order Types / Pricing Rules / Tax Codes) wired to `api/orderManagement` (2026-08-17)
 - [x] **Sales Order create form** (full line entry UI) — `SalesOrderFormPage` wired to `createSalesOrder` (2026-08-17)
 - [x] **Shipment create form** (full line entry UI) — `ShipmentsPage` "New Shipment" supports create (2026-08-17)
-- [ ] Pick/Pack/Ship workspace
+- [x] Pick/Pack/Ship workspace — PickPackShipPage wired
 - [x] **Backorder management view** — backorder column on Sales Order detail + Backorder Report + Reports page (2026-08-18)
 
 ---

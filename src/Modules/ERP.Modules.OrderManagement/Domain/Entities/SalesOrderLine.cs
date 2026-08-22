@@ -73,6 +73,9 @@ public class SalesOrderLine : AuditableEntity
     public DateTimeOffset? DropShipConfirmedOn { get; private set; }
     public decimal ShippedQuantity { get; private set; }
 
+    /// <summary>UTC timestamp when the backorder processor released this line for picking after stock became available.</summary>
+    public DateTimeOffset? BackorderReleasedOn { get; private set; }
+
     /// <summary>Portion of the order-level freight allocated to this line (Phase 8 gap 578).</summary>
     public decimal AllocatedFreight { get; private set; }
 
@@ -150,5 +153,20 @@ public class SalesOrderLine : AuditableEntity
             return;
 
         DropShipConfirmedOn = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks this backordered line as released to the pick queue after the
+    /// backorder processor confirmed available stock. Idempotent via the
+    /// <see cref="BackorderReleasedOn"/> flag.
+    /// </summary>
+    public void ReleaseBackorder()
+    {
+        if (BackorderedQuantity <= 0)
+            throw new InvalidOperationException("Only lines with an open backorder quantity can be released.");
+        if (BackorderReleasedOn is not null)
+            return;
+
+        BackorderReleasedOn = DateTimeOffset.UtcNow;
     }
 }

@@ -176,7 +176,7 @@ export interface CreateShipmentLineRequest {
   taxPercent: number
 }
 
-export type ReturnStatus = 'Draft' | 'Confirmed' | 'Received' | 'Cancelled'
+export type ReturnStatus = 'Draft' | 'Confirmed' | 'Received' | 'Cancelled' | 'PendingApproval'
 
 export interface ReturnLineSummary {
   id: string
@@ -206,6 +206,10 @@ export interface ReturnSummary {
   returnDate: string
   status: ReturnStatus
   totalAmount: number
+
+  /** Gross Σ qty × unit price — drives the approval threshold gate. */
+  returnValue: number
+  isApproved: boolean
 }
 
 export interface ReturnDetail {
@@ -219,6 +223,9 @@ export interface ReturnDetail {
   reasonCode?: string | null
   note?: string | null
   status: ReturnStatus
+  isApproved: boolean
+  rejectionReason?: string | null
+  returnValue: number
   lines: ReturnLineSummary[]
 }
 

@@ -34,6 +34,8 @@ public class OmDbContext : DispatchableDbContext
     public DbSet<ReturnToVendor> ReturnToVendors => Set<ReturnToVendor>();
     public DbSet<SalesOrderNote> SalesOrderNotes => Set<SalesOrderNote>();
     public DbSet<SalesOrderChangeHistory> SalesOrderChangeHistories => Set<SalesOrderChangeHistory>();
+    public DbSet<CommissionRun> CommissionRuns => Set<CommissionRun>();
+    public DbSet<CommissionRunLine> CommissionRunLines => Set<CommissionRunLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -127,6 +129,8 @@ public class OmDbContext : DispatchableDbContext
             e.Property(x => x.Status).HasConversion<int>().IsRequired();
             e.Property(x => x.ReasonCode).HasMaxLength(50);
             e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.ApprovedBy).HasMaxLength(256);
+            e.Property(x => x.RejectionReason).HasMaxLength(500);
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.ReturnId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.CompanyId, x.ReturnNumber }).IsUnique();
             e.HasIndex(x => x.CustomerId);
@@ -309,6 +313,30 @@ public class OmDbContext : DispatchableDbContext
             e.Property(x => x.NewValue).HasMaxLength(1000);
             e.Property(x => x.ReasonCode).HasMaxLength(50);
             e.HasIndex(x => new { x.CompanyId, x.SalesOrderId });
+        });
+
+        modelBuilder.Entity<CommissionRun>(e =>
+        {
+            e.ToTable("CommissionRuns");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RunNumber).HasMaxLength(50).IsRequired();
+            e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.CommissionRunId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.PeriodStart).IsUnique();
+            e.HasIndex(x => x.RunNumber).IsUnique();
+        });
+
+        modelBuilder.Entity<CommissionRunLine>(e =>
+        {
+            e.ToTable("CommissionRunLines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SalesRepCode).HasMaxLength(50).IsRequired();
+            e.Property(x => x.RevenueBase).HasColumnType("decimal(18,2)").IsRequired();
+            e.Property(x => x.CommissionRate).HasColumnType("decimal(9,4)").IsRequired();
+            e.Property(x => x.CommissionAmount).HasColumnType("decimal(18,2)").IsRequired();
+            e.HasIndex(x => x.CommissionRunId);
+
+            // One commission line per rep per period — makes duplicate runs impossible at the store level.
+            e.HasIndex(x => new { x.PeriodStart, x.SalesRepId }).IsUnique();
         });
     }
 }

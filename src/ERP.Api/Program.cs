@@ -22,6 +22,7 @@ using ERP.Modules.GeneralLedger.Infrastructure;
 using ERP.Modules.Inventory;
 using ERP.Modules.Inventory.Application.BackgroundJobs;
 using ERP.Modules.OrderManagement;
+using ERP.Modules.OrderManagement.Infrastructure.Jobs;
 using ERP.Modules.Payroll;
 using ERP.Modules.Platform;
 using ERP.Modules.Platform.Infrastructure;
@@ -379,6 +380,30 @@ public class Program
                 "purchasing-reorder-scan",
                 job => job.RunAsync(CancellationToken.None),
                 Cron.Daily(2, 0), // Nightly at 2:00 AM UTC
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<IBackorderProcessingJob>(
+                "om-backorder-processing",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Hourly, // Hourly: release backorders as inventory arrives
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ICommissionRunJob>(
+                "om-commission-run",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Weekly(DayOfWeek.Monday, 1, 0), // Mondays 1:00 AM UTC, prior ISO week
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ICreditHoldReviewJob>(
+                "om-credit-hold-review",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(3, 0), // Daily at 3:00 AM UTC
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<IShipmentTrackingUpdateJob>(
+                "om-shipment-tracking-update",
+                job => job.RunAsync(CancellationToken.None),
+                "0 */4 * * *", // Every 4 hours
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
             // Inventory recurring jobs

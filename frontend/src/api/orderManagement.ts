@@ -88,6 +88,21 @@ export function confirmReturn(id: string): Promise<string> {
   return post(`/om/returns/${id}/confirm`)
 }
 
+// RMA value/approval workflow (returns above $1,000 gross require approval)
+export const RETURN_APPROVAL_THRESHOLD = 1000
+
+export function submitReturnForApproval(id: string): Promise<string> {
+  return post(`/om/returns/${id}/submit-for-approval`, {})
+}
+
+export function approveReturn(id: string): Promise<string> {
+  return post(`/om/returns/${id}/approve`, {})
+}
+
+export function rejectReturn(id: string, reason: string): Promise<string> {
+  return post(`/om/returns/${id}/reject`, { reason })
+}
+
 // Reference masters
 export function getShippingMethods(companyIdParam?: string): Promise<import('@/types/orderManagement').ShippingMethodSummary[]> {
   return get('/om/shipping-methods', { companyId: companyIdParam ?? companyId() })

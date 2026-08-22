@@ -4,6 +4,7 @@
 
 using ERP.Modules.OrderManagement.Application.Services;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.OrderManagement.Infrastructure.Jobs;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -36,11 +37,14 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<SalesReportService>();
 
-        // Phase 8 background jobs (items 593-596).
-        services.AddHostedService<Application.Jobs.BackorderProcessingJob>();
-        services.AddHostedService<Application.Jobs.CommissionCalculationJob>();
-        services.AddHostedService<Application.Jobs.CreditHoldReviewJob>();
-        services.AddHostedService<Application.Jobs.ShipmentTrackingUpdateJob>();
+        // Phase 8 background jobs (items 593-596). Registered like Purchasing's
+        // LateDeliveryAlertJob / ReorderPointScanJob so a Hangfire recurring job
+        // can invoke RunAsync per schedule; see module docs for recommended crons.
+        services.AddScoped<IBackorderProcessingJob, BackorderProcessingJob>();
+        services.AddScoped<ICommissionRunJob, CommissionRunJob>();
+        services.AddScoped<ICreditHoldReviewJob, CreditHoldReviewJob>();
+        services.AddScoped<IShipmentTrackingUpdateJob, ShipmentTrackingUpdateJob>();
+        services.AddHttpClient("carrier-tracking");
 
         return services;
     }

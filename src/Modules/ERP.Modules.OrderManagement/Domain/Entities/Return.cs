@@ -17,6 +17,9 @@ public class Return : AuditableAggregateRoot
 {
     private readonly List<ReturnLine> _lines = [];
 
+    /// <summary>Returns above this value must pass through the approval workflow before confirmation.</summary>
+    public const decimal ApprovalThreshold = 1000m;
+
     protected Return() { }
 
     public Return(
@@ -54,7 +57,19 @@ public class Return : AuditableAggregateRoot
     public string? Note { get; private set; }
     public ReturnStatus Status { get; private set; }
 
+    /// <summary>Set when a return above the approval threshold has been approved and may be confirmed.</summary>
+    public bool IsApproved { get; private set; }
+
+    public string? ApprovedBy { get; private set; }
+
+    public string? RejectionReason { get; private set; }
+
     public IReadOnlyCollection<ReturnLine> Lines => _lines.AsReadOnly();
+
+    public bool RequiresApproval => GetReturnValue() > ApprovalThreshold;
+
+    /// <summary>Gross return value: sum of line quantity x unit price.</summary>
+    public decimal GetReturnValue() => _lines.Sum(l => l.ExtendedPrice);
 
     public void AddLine(ReturnLine line)
     {
@@ -63,12 +78,51 @@ public class Return : AuditableAggregateRoot
         _lines.Add(line);
     }
 
+    public void SubmitForApproval()
+    {
+        if (Status != ReturnStatus.Draft)
+            throw new InvalidOperationException($"Cannot submit a return in {Status} status for approval.");
+        if (_lines.Count == 0)
+            throw new InvalidOperationException("Cannot submit a return with no lines for approval.");
+
+        Status = ReturnStatus.PendingApproval;
+    }
+
+    public void Approve(string approvedBy)
+    {
+        if (Status != ReturnStatus.PendingApproval)
+            throw new InvalidOperationException($"Cannot approve a return in {Status} status.");
+        if (string.IsNullOrWhiteSpace(approvedBy))
+            throw new ArgumentException("Approver is required.", nameof(approvedBy));
+
+        IsApproved = true;
+        ApprovedBy = approvedBy;
+        RejectionReason = null;
+        Status = ReturnStatus.Draft;
+    }
+
+    public void Reject(string reason)
+    {
+        if (Status != ReturnStatus.PendingApproval)
+            throw new InvalidOperationException($"Cannot reject a return in {Status} status.");
+
+        IsApproved = false;
+        ApprovedBy = null;
+        RejectionReason = string.IsNullOrWhiteSpace(reason) ? "Rejected without reason." : reason;
+        Status = ReturnStatus.Draft;
+    }
+
     public void Confirm()
     {
         if (Status != ReturnStatus.Draft)
             throw new InvalidOperationException($"Cannot confirm return in {Status} status.");
         if (_lines.Count == 0)
             throw new InvalidOperationException("Cannot confirm a return with no lines.");
+        if (GetReturnValue() > ApprovalThreshold && !IsApproved)
+        {
+            throw new InvalidOperationException(
+                $"Return value {GetReturnValue():C} exceeds the {ApprovalThreshold:C} threshold; submit it for approval first.");
+        }
 
         Status = ReturnStatus.Confirmed;
         AddDomainEvent(new ReturnConfirmedEvent(
@@ -82,4 +136,5 @@ public enum ReturnStatus
     Confirmed = 1,
     Received = 2,
     Cancelled = 3,
+    PendingApproval = 4,
 }

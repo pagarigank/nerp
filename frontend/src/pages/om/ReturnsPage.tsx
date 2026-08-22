@@ -11,10 +11,21 @@ import { Input, Select, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getReturns, createReturn, confirmReturn, companyId, getSalesOrders, getShipments } from '@api/orderManagement'
+import {
+  RETURN_APPROVAL_THRESHOLD,
+  approveReturn,
+  companyId,
+  confirmReturn,
+  createReturn,
+  getReturns,
+  getSalesOrders,
+  getShipments,
+  rejectReturn,
+  submitReturnForApproval,
+} from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems, getWarehouses } from '@api/inventory'
-import type { ReturnSummary, SalesOrderSummary, ShipmentSummary } from '@/types/orderManagement'
+import type { ReturnStatus, ReturnSummary, SalesOrderSummary, ShipmentSummary } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
 import type { ItemSummary, WarehouseSummary } from '@/types/inventory'
 
@@ -63,6 +74,14 @@ const reasonOptions = [
 
 function fieldError(msg?: string) { return msg ? { error: msg } : {} }
 function formatCurrency(n: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n) }
+
+type BadgeVariant = 'success' | 'warning' | 'info' | 'neutral'
+function returnStatusVariant(status: ReturnStatus): BadgeVariant {
+  if (status === 'Confirmed') return 'success'
+  if (status === 'PendingApproval') return 'warning'
+  if (status === 'Draft') return 'neutral'
+  return 'info'
+}
 
 export function ReturnsPage() {
   const navigate = useNavigate()
@@ -161,6 +180,30 @@ export function ReturnsPage() {
   const confirmMut = useMutation({
     mutationFn: (id: string) => confirmReturn(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['om', 'returns'] }),
+    onError: e => setErr(getErrorMessage(e)),
+  })
+
+  const submitApprovalMut = useMutation({
+    mutationFn: (id: string) => submitReturnForApproval(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['om', 'returns'] }),
+    onError: e => setErr(getErrorMessage(e)),
+  })
+
+  const approveMut = useMutation({
+    mutationFn: (id: string) => approveReturn(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['om', 'returns'] }),
+    onError: e => setErr(getErrorMessage(e)),
+  })
+
+  const [rejectTarget, setRejectTarget] = useState<ReturnSummary | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const rejectMut = useMutation({
+    mutationFn: (d: { id: string; reason: string }) => rejectReturn(d.id, d.reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['om', 'returns'] })
+      setRejectTarget(null)
+      setRejectReason('')
+    },
     onError: e => setErr(getErrorMessage(e)),
   })
 
@@ -266,6 +309,17 @@ export function ReturnsPage() {
         </form>
       </Modal>
 
+      {/* Reject (with reason) modal */}
+      <Modal isOpen={rejectTarget !== null} onClose={() => setRejectTarget(null)} title={`Reject ${rejectTarget?.returnNumber ?? ''}`}
+        footer={<><Button variant="secondary" onClick={() => setRejectTarget(null)} disabled={rejectMut.isPending}>Cancel</Button>
+          <Button variant="destructive" isLoading={rejectMut.isPending}
+            onClick={() => rejectTarget && rejectMut.mutate({ id: rejectTarget.id, reason: rejectReason || 'Rejected without reason.' })}>Reject Return</Button></>}>
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600 dark:text-gray-400">The return goes back to Draft and stays blocked from confirmation while above the {formatCurrency(RETURN_APPROVAL_THRESHOLD)} approval threshold.</p>
+          <Textarea label="Rejection Reason" rows={3} value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Why is this return rejected?" />
+        </div>
+      </Modal>
+
       {/* List */}
       <Card>
         <CardHeader title="Returns (RMA)" description={`${returns.length} return(s)`}
@@ -290,11 +344,22 @@ export function ReturnsPage() {
                         <td className="px-3 py-3 font-medium text-gray-900 dark:text-white">{r.returnNumber}</td>                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{customers.find((c: ArCustomer) => c.id === r.customerId)?.name ?? r.customerId.slice(0, 8)}</td>
                         <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{new Date(r.returnDate).toLocaleDateString()}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(r.totalAmount)}</td>
-                        <td className="px-3 py-3"><Badge variant={r.status === 'Confirmed' ? 'success' : r.status === 'Draft' ? 'neutral' : 'info'} size="sm" dot>{r.status}</Badge></td>
+                        <td className="px-3 py-3"><Badge variant={returnStatusVariant(r.status)} size="sm" dot>{r.status}</Badge></td>
                         <td className="px-3 py-3 text-right">
                           <div className="flex justify-end gap-1">
                             <Button size="sm" variant="ghost" onClick={() => navigate(`/om/returns/${r.id}`)}><Eye className="h-4 w-4" /></Button>
-                            {r.status === 'Draft' && <Button size="sm" variant="primary" disabled={confirmMut.isPending} onClick={() => confirmMut.mutate(r.id)}>Confirm</Button>}
+                            {r.status === 'Draft' && r.returnValue > RETURN_APPROVAL_THRESHOLD && !r.isApproved && (
+                              <Button size="sm" variant="outline" disabled={submitApprovalMut.isPending} onClick={() => submitApprovalMut.mutate(r.id)}>Submit for Approval</Button>
+                            )}
+                            {r.status === 'Draft' && (r.returnValue <= RETURN_APPROVAL_THRESHOLD || r.isApproved) && (
+                              <Button size="sm" variant="primary" disabled={confirmMut.isPending} onClick={() => confirmMut.mutate(r.id)}>Confirm</Button>
+                            )}
+                            {r.status === 'PendingApproval' && (
+                              <Button size="sm" variant="success" disabled={approveMut.isPending} onClick={() => approveMut.mutate(r.id)}>Approve</Button>
+                            )}
+                            {r.status === 'PendingApproval' && (
+                              <Button size="sm" variant="destructive" disabled={rejectMut.isPending} onClick={() => setRejectTarget(r)}>Reject</Button>
+                            )}
                           </div>
                         </td>
                       </tr>
