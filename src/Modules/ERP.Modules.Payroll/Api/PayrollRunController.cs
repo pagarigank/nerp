@@ -273,6 +273,20 @@ public class PayrollRunController : ControllerBase
         return account.Id;
     }
 
+    internal async Task<bool> IsEmployeeDirectDepositEligibleAsync(
+        PayrollRun run, Guid employeeId, CancellationToken cancellationToken)
+    {
+        var deposits = await _context.DirectDeposits
+            .Where(d => d.EmployeeId == employeeId)
+            .ToListAsync(cancellationToken);
+        var postedPayDates = await _context.PayrollRuns
+            .Where(r => r.CompanyId == run.CompanyId && r.Status == PayrollRunStatus.Posted)
+            .Select(r => r.PayDate)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        return DirectDepositPaymentGuard.IsEmployeeEligible(deposits, postedPayDates, DateTimeOffset.UtcNow);
+    }
+
     private async Task<FiscalPeriod?> ResolveFiscalPeriodAsync(Guid companyId, DateTime transactionDate, CancellationToken cancellationToken)
     {
         var date = new DateTimeOffset(transactionDate);
@@ -428,8 +442,10 @@ public class PayrollRunController : ControllerBase
         int seq = request.StartingCheckNumber;
         foreach (var line in run.Lines)
         {
+            // Prenote guard: employees whose direct deposits are not yet cleared are paid by paper check.
+            var isDirectDeposit = request.DirectDeposit && await IsEmployeeDirectDepositEligibleAsync(run, line.EmployeeId, cancellationToken);
             var check = new PayrollCheck(run.Id, line.EmployeeId, line.NetPay, seq.ToString(), request.CheckDate);
-            check.SetDirectDeposit(request.DirectDeposit);
+            check.SetDirectDeposit(isDirectDeposit);
             _context.PayrollChecks.Add(check);
             checks.Add(new PayrollCheckDto
             {
@@ -437,7 +453,7 @@ public class PayrollRunController : ControllerBase
                 NetPay = line.NetPay,
                 CheckNumber = seq.ToString(),
                 CheckDate = request.CheckDate,
-                IsDirectDeposit = request.DirectDeposit,
+                IsDirectDeposit = isDirectDeposit,
             });
             seq++;
         }
@@ -459,6 +475,23 @@ public class PayrollRunController : ControllerBase
         var companyName = "ERP COMPANY";
         var companyId = run.CompanyId.ToString("N", inv)[..9].ToUpperInvariant();
         var fileIdModifier = BuildAchFileId();
+
+        // Prenote guard (spec §5.12): run lines whose employee has direct deposits but none
+        // cleared (verified, or pre-note sent ≥ 2 completed cycles) are excluded from the ACH
+        // file; those employees are paid by paper check instead.
+        var employeeIds = run.Lines.Select(l => l.EmployeeId).Distinct().ToList();
+        var deposits = await _context.DirectDeposits
+            .Where(d => employeeIds.Contains(d.EmployeeId))
+            .ToListAsync(cancellationToken);
+        var postedPayDates = await _context.PayrollRuns
+            .Where(r => r.CompanyId == run.CompanyId && r.Status == PayrollRunStatus.Posted)
+            .Select(r => r.PayDate)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var asOf = DateTimeOffset.UtcNow;
+        bool IsEligible(Guid employeeId) => DirectDepositPaymentGuard.IsEmployeeEligible(
+            deposits.Where(d => d.EmployeeId == employeeId).ToList(), postedPayDates, asOf);
+
         var sb = new System.Text.StringBuilder();
         // File header (record type 1)
         sb.Append("101  ").Append("1234567890  ").Append(companyId.PadRight(10))
@@ -475,6 +508,8 @@ public class PayrollRunController : ControllerBase
         int trace = 1;
         foreach (var line in run.Lines)
         {
+            if (deposits.Any(d => d.EmployeeId == line.EmployeeId) && !IsEligible(line.EmployeeId))
+                continue;
             var amountCents = (long)Math.Round(line.NetPay * 100m);
             // Entry detail (record type 6): PPD credit
             sb.Append("627 ").Append("1234567890".PadLeft(9)).Append(line.EmployeeId.ToString("N", inv)[..9].ToUpperInvariant().PadLeft(15, '0'))

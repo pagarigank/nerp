@@ -61,6 +61,10 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.SsnEncrypted).HasMaxLength(256);
             entity.Property(e => e.Email).HasMaxLength(200);
             entity.Property(e => e.DefaultRole).HasMaxLength(100);
+            entity.Property(e => e.AddressLine1).HasMaxLength(200);
+            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.StateCode).HasMaxLength(10);
+            entity.Property(e => e.PostalCode).HasMaxLength(20);
             entity.Property(e => e.AllocationPercentage).HasColumnType("decimal(5,2)");
             entity.HasIndex(e => new { e.CompanyId, e.EmployeeCode }).IsUnique();
         });
@@ -375,6 +379,8 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.AccountType).HasMaxLength(20);
             entity.Property(e => e.AllocationPercentage).HasColumnType("decimal(9,4)");
             entity.Property(e => e.FixedAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PrenoteSentOn);
+            entity.Property(e => e.VerifiedOn);
             entity.HasIndex(e => new { e.CompanyId, e.EmployeeId });
         });
 
@@ -392,6 +398,9 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.MedicareRate).HasColumnType("decimal(9,6)");
             entity.Property(e => e.FutaRate).HasColumnType("decimal(9,6)");
             entity.Property(e => e.SutaRate).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.OpenAccrualAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OpenAccrualEmployerTax).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OpenAccrualBatchRef).HasMaxLength(50);
             entity.HasIndex(e => e.CompanyId).IsUnique();
         });
 
@@ -443,6 +452,7 @@ public class PayrollDbContext : DispatchableDbContext
             entity.Property(e => e.DepositedAmount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Frequency).HasMaxLength(20);
             entity.Property(e => e.FormType).HasMaxLength(20);
+            entity.Property(e => e.PaidVoucherId);
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.DepositDate);
         });

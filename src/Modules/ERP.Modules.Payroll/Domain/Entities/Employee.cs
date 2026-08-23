@@ -56,6 +56,15 @@ public class Employee : AuditableEntity
     public decimal AllocationPercentage { get; private set; } = 100m;
     public bool IsBillable { get; private set; } = true;
 
+    /// <summary>Mailing address used on year-end forms (W-2) — validated by the W-2 readiness job.</summary>
+    public string? AddressLine1 { get; private set; }
+
+    public string? City { get; private set; }
+
+    public string? StateCode { get; private set; }
+
+    public string? PostalCode { get; private set; }
+
     public IReadOnlyCollection<EmployeeCompensation> CompensationHistory => _compensationHistory.AsReadOnly();
     public IReadOnlyCollection<EmployeePayCode> PayCodes => _payCodes.AsReadOnly();
 
@@ -88,6 +97,14 @@ public class Employee : AuditableEntity
     public void SetSsnEncrypted(string? ssnEncrypted)
     {
         SsnEncrypted = ssnEncrypted;
+    }
+
+    public void SetMailingAddress(string? addressLine1, string? city, string? stateCode, string? postalCode)
+    {
+        AddressLine1 = addressLine1;
+        City = city;
+        StateCode = stateCode;
+        PostalCode = postalCode;
     }
 
     public void Terminate(DateTime terminationDate)

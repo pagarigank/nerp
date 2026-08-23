@@ -38,6 +38,14 @@ public static class ModuleExtensions
         services.AddHostedService<Application.Jobs.AchReturnMonitorJob>();
         services.AddHostedService<Application.Jobs.BenefitRemittanceJob>();
 
+        // Phase 11 background jobs (Batch G): remaining payroll operations.
+        services.AddHostedService<Application.Jobs.BiWeeklyTaxTableUpdateCheckJob>();
+        services.AddHostedService<Application.Jobs.QuarterlyFilingReminderJob>();
+        services.AddHostedService<Application.Jobs.AnnualW2GenerationPrepJob>();
+        services.AddHostedService<Application.Jobs.WeeklyTimesheetReminderJob>();
+        services.AddHostedService<Application.Jobs.NewHireReportingSubmissionJob>();
+        services.AddHostedService<Application.Jobs.PayrollAccrualPostingJob>();
+
         return services;
     }
 }

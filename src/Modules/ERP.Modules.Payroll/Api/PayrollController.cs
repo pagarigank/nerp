@@ -114,7 +114,7 @@ public class PayrollController : ControllerBase
     {
         var rows = await _context.DirectDeposits
             .Where(d => d.EmployeeId == employeeId)
-            .Select(d => new { d.Id, d.BankName, d.RoutingNumber, d.AccountType, d.AllocationPercentage, d.FixedAmount, d.IsRemainder, d.AccountNumberEncrypted })
+            .Select(d => new { d.Id, d.BankName, d.RoutingNumber, d.AccountType, d.AllocationPercentage, d.FixedAmount, d.IsRemainder, d.AccountNumberEncrypted, d.PrenoteSentOn, d.VerifiedOn })
             .ToListAsync(cancellationToken);
 
         var dtos = rows.Select(d => new DirectDepositDto
@@ -126,6 +126,8 @@ public class PayrollController : ControllerBase
             AllocationPercentage = d.AllocationPercentage,
             FixedAmount = d.FixedAmount,
             IsRemainder = d.IsRemainder,
+            PrenoteSentOn = d.PrenoteSentOn,
+            VerifiedOn = d.VerifiedOn,
             // Account number masked; full value is PII stored encrypted.
             MaskedAccount = "****" + (d.AccountNumberEncrypted.Length > 4 ? d.AccountNumberEncrypted[^4..] : d.AccountNumberEncrypted),
         }).ToList();
@@ -139,6 +141,46 @@ public class PayrollController : ControllerBase
         if (dd is null)
             return NotFound(ApiResponse.Failure(new[] { "Direct deposit not found." }, 404));
         _context.DirectDeposits.Remove(dd);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("employees/{employeeId:guid}/direct-deposits/{id:guid}/send-prenote")]
+    public async Task<ActionResult<ApiResponse>> SendPrenote(
+        Guid employeeId, Guid id, CancellationToken cancellationToken)
+    {
+        var dd = await _context.DirectDeposits.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (dd is null || dd.EmployeeId != employeeId)
+            return NotFound(ApiResponse.Failure(new[] { "Direct deposit not found." }, 404));
+        try
+        {
+            dd.SendPrenote();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse.Success());
+    }
+
+    [HttpPost("employees/{employeeId:guid}/direct-deposits/{id:guid}/verify")]
+    public async Task<ActionResult<ApiResponse>> VerifyDirectDeposit(
+        Guid employeeId, Guid id, CancellationToken cancellationToken)
+    {
+        var dd = await _context.DirectDeposits.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (dd is null || dd.EmployeeId != employeeId)
+            return NotFound(ApiResponse.Failure(new[] { "Direct deposit not found." }, 404));
+        try
+        {
+            dd.Verify();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse.Failure(new[] { ex.Message }));
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse.Success());
     }
@@ -278,6 +320,8 @@ public class DirectDepositDto
     public decimal? FixedAmount { get; set; }
     public bool IsRemainder { get; set; }
     public string MaskedAccount { get; set; } = string.Empty;
+    public DateTimeOffset? PrenoteSentOn { get; set; }
+    public DateTimeOffset? VerifiedOn { get; set; }
 }
 
 public class CreateEmployeeRequest

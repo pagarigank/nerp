@@ -41,4 +41,9 @@ public class NewHireReportingConfig : AuditableEntity
     public string TransmissionMethod { get; private set; } = string.Empty;
     public string? SftpEndpoint { get; private set; }
     public string? AgencyId { get; private set; }
+
+    /// <summary>When the new-hire reporting file was transmitted to the state agency (null = pending).</summary>
+    public DateTimeOffset? SubmittedOn { get; private set; }
+
+    public void MarkSubmitted(DateTimeOffset submittedOn) => SubmittedOn = submittedOn;
 }

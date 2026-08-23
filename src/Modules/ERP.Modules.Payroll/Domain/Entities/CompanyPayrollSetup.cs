@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.ComponentModel.DataAnnotations;
 using ERP.Core.Domain.Common;
 
 namespace ERP.Modules.Payroll.Domain.Entities;
@@ -67,6 +68,19 @@ public class CompanyPayrollSetup : AuditableEntity
     public Guid PayrollLiabilityAccountId { get; private set; }
     public Guid ClearingAccountId { get; private set; }
 
+    /// <summary>Watermark: deduction liabilities accrued through this pay date have been remitted to benefit vendors.</summary>
+    public DateTimeOffset? BenefitRemittancePaidThrough { get; private set; }
+
+    /// <summary>Open auto-accrual total awaiting next-period reversal (accrual-reversal pairing without a new table).</summary>
+    public decimal? OpenAccrualAmount { get; private set; }
+
+    public decimal? OpenAccrualEmployerTax { get; private set; }
+
+    public DateTimeOffset? OpenAccrualPostedOn { get; private set; }
+
+    [MaxLength(50)]
+    public string? OpenAccrualBatchRef { get; private set; }
+
     public void Update(
         string? stateTaxId, string? sutAState, string eftpsPin, string depositSchedule,
         decimal socialSecurityRate, decimal medicareRate, decimal futaRate, decimal sutARate)
@@ -79,5 +93,23 @@ public class CompanyPayrollSetup : AuditableEntity
         MedicareRate = medicareRate;
         FutaRate = futaRate;
         SutaRate = sutARate;
+    }
+
+    public void MarkBenefitRemittedThrough(DateTimeOffset paidThrough) => BenefitRemittancePaidThrough = paidThrough;
+
+    public void SetOpenAccrual(decimal amount, decimal employerTax, DateTimeOffset postedOn, string batchRef)
+    {
+        OpenAccrualAmount = amount;
+        OpenAccrualEmployerTax = employerTax;
+        OpenAccrualPostedOn = postedOn;
+        OpenAccrualBatchRef = batchRef;
+    }
+
+    public void ClearOpenAccrual()
+    {
+        OpenAccrualAmount = null;
+        OpenAccrualEmployerTax = null;
+        OpenAccrualPostedOn = null;
+        OpenAccrualBatchRef = null;
     }
 }

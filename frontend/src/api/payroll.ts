@@ -310,3 +310,300 @@ export function getWorkersCompReport(companyId: string) {
 export function terminateEmployee(employeeId: string, body: any) {
   return post(`/payroll/employees/${employeeId}/terminate`, body)
 }
+
+// --- Batch F: extended reporting ---
+export interface TaxLiabilityRow {
+  jurisdiction: string
+  taxType: string
+  agency: string
+  formType: string | null
+  dueDate: string
+  amountOwed: number
+  depositedAmount: number | null
+  deposited: boolean
+  status: string
+}
+export interface TaxLiabilityReport {
+  companyId: string
+  year: number
+  quarter: number | null
+  totalEmployeeTaxWithheld: number
+  totalEmployerTaxAccrued: number
+  depositorStatus: string
+  nextDepositDue: string | null
+  dueDateHint: string
+  note: string
+  rows: TaxLiabilityRow[]
+}
+export interface DeductionRegisterRow {
+  benefitId: string
+  benefitCode: string
+  description: string
+  type: string
+  isPreTax: boolean
+  employeeId: string
+  amount: number
+  percent: number | null
+  startDate: string | null
+  endDate: string | null
+  glAccountNumber: string | null
+}
+export interface DeductionTypeTotal {
+  type: string
+  enrollmentCount: number
+  amountTotal: number
+}
+export interface DeductionRegisterReport {
+  companyId: string
+  asOf: string
+  totalRemittanceDue: number
+  note: string
+  typeTotals: DeductionTypeTotal[]
+  rows: DeductionRegisterRow[]
+}
+export interface CertifiedPayrollWh347Row {
+  employeeId: string
+  employeeCode: string
+  employeeName: string
+  tradeClassification: string
+  regularHours: number
+  overtimeHours: number
+  baseRate: number
+  fringeRate: number | null
+  fringeCost: number
+  gross: number
+  meetsPrevailing: boolean
+}
+export interface CertifiedPayrollWh347Report {
+  companyId: string
+  from: string | null
+  to: string | null
+  totalGross: number
+  totalFringe: number
+  note: string
+  rows: CertifiedPayrollWh347Row[]
+}
+export interface TimeExpenseProjectRow {
+  projectId: string | null
+  hours: number
+  laborCost: number
+  expenses: number
+  billableAmount: number
+}
+export interface TimeExpenseByProjectReport {
+  companyId: string
+  from: string | null
+  to: string | null
+  note: string
+  rows: TimeExpenseProjectRow[]
+}
+export interface EmployeeEarningsRow {
+  employeeId: string
+  employeeCode: string
+  employeeName: string
+  gross: number
+  employeeTax: number
+  employerTax: number
+  deductions: number
+  net: number
+  runCount: number
+}
+export interface EmployeeEarningsReport {
+  companyId: string
+  year: number
+  note: string
+  rows: EmployeeEarningsRow[]
+}
+export interface W2ReconciliationReport {
+  companyId: string
+  year: number
+  runWages: number
+  manualCheckWages: number
+  w2Wages: number
+  expectedGlWageExpense: number
+  variance: number
+  glTieOutPending: boolean
+  assumption: string
+  note: string
+}
+export interface Form941ReconciliationReport {
+  companyId: string
+  year: number
+  quarter: number
+  totalWages: number
+  federalIncomeTaxWithheldEstimated: number
+  employeeFicaEstimated: number
+  employerFicaEstimated: number
+  employerTaxResidual: number
+  employeeTaxWithheldActual: number
+  employerTaxActual: number
+  socialSecurityRateUsed: number
+  medicareRateUsed: number
+  glTieOutPending: boolean
+  note: string
+}
+export interface PayrollAccrualRow {
+  employeeId: string
+  hours: number
+  accruedWages: number
+}
+export interface PayrollAccrualReport {
+  companyId: string
+  asOf: string
+  lastPostedPeriodEnd: string | null
+  accruedWages: number
+  employerTaxAccrualEstimate: number
+  employerTaxRateUsed: number
+  note: string
+  rows: PayrollAccrualRow[]
+}
+export interface EftpsDepositRow {
+  depositId: string
+  taxType: string
+  agency: string
+  formType: string | null
+  frequency: string
+  depositDate: string
+  estimatedAmount: number
+  depositedAmount: number | null
+  depositedOn: string | null
+  deposited: boolean
+  state: string
+}
+export interface EftpsScheduleReport {
+  companyId: string
+  depositorStatus: string
+  upcomingCount: number
+  upcomingAmount: number
+  missedCount: number
+  missedAmount: number
+  depositedCount: number
+  depositedAmount: number
+  nextDueDate: string | null
+  note: string
+  rows: EftpsDepositRow[]
+}
+export interface AchReturnCodeSummary {
+  returnCode: string
+  count: number
+  amountTotal: number
+}
+export interface AchReturnReportRow {
+  returnId: string
+  payrollRunId: string | null
+  employeeId: string | null
+  traceNumber: string
+  returnCode: string
+  description: string
+  amount: number
+  action: string
+  processed: boolean
+}
+export interface AchReturnReportReport {
+  companyId: string
+  totalCount: number
+  totalAmount: number
+  unprocessedCount: number
+  note: string
+  byCode: AchReturnCodeSummary[]
+  rows: AchReturnReportRow[]
+}
+export interface NewHireReportRow {
+  employeeId: string
+  employeeCode: string
+  employeeName: string
+  hireDate: string
+  state: string
+  configFound: boolean
+  agencyName: string | null
+  dueWindowDays: number | null
+  dueBy: string | null
+  overdue: boolean
+  submissionStatus: string
+  confirmationNumber: string | null
+}
+export interface NewHireReportReport {
+  companyId: string
+  lookbackDays: number
+  confirmationNumber: string | null
+  note: string
+  rows: NewHireReportRow[]
+}
+export interface WorkersCompPremiumRow {
+  classCode: string
+  description: string
+  state: string
+  ratePer100: number
+  experienceModification: number
+  payrollBasis: number
+  estimatedPremium: number
+  actualBooked: number | null
+}
+export interface WorkersCompPremiumReport {
+  companyId: string
+  year: number | null
+  totalEstimatedPremium: number
+  unmatchedTradePayroll: number
+  note: string
+  rows: WorkersCompPremiumRow[]
+}
+
+function unwrapData<T>(p: Promise<unknown>): Promise<T> {
+  return p.then((res: any) => (res && typeof res === 'object' && 'data' in res ? res.data : res)) as Promise<T>
+}
+
+export function getTaxLiability(companyId: string, year: number, quarter?: number) {
+  const q = quarter ? { companyId, year, quarter } : { companyId, year }
+  return unwrapData<TaxLiabilityReport>(get('/payroll/reports/tax-liability', q))
+}
+export function getDeductionRegister(companyId: string) {
+  return unwrapData<DeductionRegisterReport>(get('/payroll/reports/deduction-register', { companyId }))
+}
+export function getCertifiedPayrollWh347(companyId: string) {
+  return unwrapData<CertifiedPayrollWh347Report>(get('/payroll/reports/certified-payroll', { companyId }))
+}
+export function getTimeExpenseByProject(companyId: string) {
+  return unwrapData<TimeExpenseByProjectReport>(get('/payroll/reports/time-expense-by-project', { companyId }))
+}
+export function getEmployeeEarnings(companyId: string, year: number) {
+  return unwrapData<EmployeeEarningsReport>(get('/payroll/reports/employee-earnings', { companyId, year }))
+}
+export function getW2Reconciliation(companyId: string, year: number) {
+  return unwrapData<W2ReconciliationReport>(get('/payroll/reports/w2-reconciliation', { companyId, year }))
+}
+export function getForm941Reconciliation(companyId: string, year: number, quarter: number) {
+  return unwrapData<Form941ReconciliationReport>(get('/payroll/reports/form-941-reconciliation', { companyId, year, quarter }))
+}
+export function getPayrollAccrual(companyId: string) {
+  return unwrapData<PayrollAccrualReport>(get('/payroll/reports/payroll-accrual', { companyId }))
+}
+export function getEftpsSchedule(companyId: string) {
+  return unwrapData<EftpsScheduleReport>(get('/payroll/reports/eftps-schedule', { companyId }))
+}
+export function getAchReturnReport(companyId: string) {
+  return unwrapData<AchReturnReportReport>(get('/payroll/reports/ach-return-report', { companyId }))
+}
+export function getNewHireReport(companyId: string, days?: number) {
+  return unwrapData<NewHireReportReport>(get('/payroll/reports/new-hire-report', days ? { companyId, days } : { companyId }))
+}
+export function getWorkersCompPremium(companyId: string, year?: number) {
+  return unwrapData<WorkersCompPremiumReport>(get('/payroll/reports/workers-comp-premium', year ? { companyId, year } : { companyId }))
+}
+
+// --- Batch G: liability payments / direct-deposit prenote / tax-filing exports ---
+export function getPendingLiabilityPayments(companyId: string) {
+  return get(`/payroll/liability-payments/pending?companyId=${companyId}`)
+}
+export function payLiabilities(data: any) {
+  return post('/payroll/liability-payments', data)
+}
+export function sendPrenote(employeeId: string, id: string) {
+  return post(`/payroll/employees/${employeeId}/direct-deposits/${id}/send-prenote`, {})
+}
+export function verifyDirectDeposit(employeeId: string, id: string) {
+  return post(`/payroll/employees/${employeeId}/direct-deposits/${id}/verify`, {})
+}
+export function getTaxFilingExport(kind: string, companyId: string, year: number, quarter?: number) {
+  const q = quarter ? `&quarter=${quarter}` : ''
+  return get(`/payroll/tax-filing-export/${kind}?companyId=${companyId}&year=${year}${q}`)
+}

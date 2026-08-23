@@ -55,6 +55,12 @@ public class DirectDeposit : AuditableEntity
     public decimal? FixedAmount { get; private set; }
     public bool IsRemainder { get; private set; }
 
+    /// <summary>When the zero-dollar pre-note was transmitted to the bank (null = not yet sent).</summary>
+    public DateTimeOffset? PrenoteSentOn { get; private set; }
+
+    /// <summary>When the bank confirmed the account (null = not yet verified).</summary>
+    public DateTimeOffset? VerifiedOn { get; private set; }
+
     public void Update(
         string bankName,
         string routingNumber,
@@ -71,5 +77,39 @@ public class DirectDeposit : AuditableEntity
         AllocationPercentage = allocationPercentage;
         FixedAmount = fixedAmount;
         IsRemainder = isRemainder;
+    }
+
+    /// <summary>Marks the pre-note as sent to the bank. Re-sending is allowed until verification.</summary>
+    public void SendPrenote()
+    {
+        if (VerifiedOn.HasValue)
+            throw new InvalidOperationException("Direct deposit is already verified; a pre-note is not needed.");
+        PrenoteSentOn = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>Records the bank's positive confirmation of the account.</summary>
+    public void Verify()
+    {
+        if (!PrenoteSentOn.HasValue)
+            throw new InvalidOperationException("A pre-note must be sent before the direct deposit can be verified.");
+        VerifiedOn = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Prenote rule (spec §5.12: direct deposit requires prenote validation): an account may
+    /// receive live payments when the bank has verified it, or when at least two completed
+    /// payroll cycles have elapsed since the pre-note was sent.
+    /// </summary>
+    public const int RequiredPrenoteCycles = 2;
+
+    public static bool IsEligibleForPayment(
+        DateTimeOffset? verifiedOn,
+        DateTimeOffset? prenoteSentOn,
+        DateTimeOffset asOf,
+        int completedCyclesSinceSent)
+    {
+        if (verifiedOn.HasValue)
+            return true;
+        return prenoteSentOn.HasValue && completedCyclesSinceSent >= RequiredPrenoteCycles;
     }
 }

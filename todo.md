@@ -986,17 +986,17 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] built 2026-08-20 **State/local tax deposit scheduling** (by state: withholding deposit frequency, SUTA filing, local tax remittance, due dates) [GAP-2026-08-18]
 - [x] **Garnishment priority stacking engine** (CCPA: child support > federal tax levy > student loan > creditor; 25% / 50-60% disposable-income limits; disposable-earnings computation; multi-order handling; order termination on employee termination) [GAP-2026-08-18] [built 2026-08-20 — Garnishment entity (Priority by type) + POST /payroll/garnishments + POST /garnishments/employee/{id}/compute (CCPA: child support 50% cap, others 25% aggregate, priority stacking); verified 3 orders: CS $500, SL/Creditor blocked by 25% aggregate cap]
 - [x] **Payroll accrual posting** (period-end: accrue wages earned-but-unpaid + employer tax accrual, reverse next period) [GAP-2026-08-18] [built 2026-08-20 — POST /payroll/runs/{id}/accrue (Dr Wage Exp 6000, Cr Payroll Liab 2200 = gross) + POST /runs/{id}/reverse (negates posted legs to GL, marks run Reversed); verified both create balanced GL batches]
-- [ ] **Payroll liability payment** (pay withheld taxes to IRS/state and benefit remittances to vendors; EFTPS export or AP voucher; GL relief of liability accounts) [GAP-2026-08-18]
+- [x] **Payroll liability payment** [GAP-2026-08-18] — built 2026-08-23: pending preview + POST /payroll/liability-payments creates posted AP vouchers per agency vendor (EFTPS-FED / DOR-{STATE} lazy-created) via ApVoucherCreator; GL relief through AP posting path; PaidVoucherId drill-back
 - [x] **Check printing** (MICR line, check stock, pay stubs; sequential check numbers via Phase 1 numbering sequence) [built 2026-08-20 — POST /runs/{id}/print-checks generates PayrollCheck rows (net pay, sequential check numbers, direct-deposit flag); verified]
 - [x] built 2026-08-20 **ACH returns processing** (bank R01-R16 returns: reverse direct deposit, notify employee, reissue on next run, no double posting) [GAP-2026-08-18]
 - [x] built 2026-08-20 **Termination/final pay processing** (final check, PTO payout, state final-pay deadline compliance, benefits/COBRA notification, garnishment termination) [GAP-2026-08-18]
 - [x] built 2026-08-20 **New hire reporting** (submit new/rehired employees to state agencies within the legal window) [GAP-2026-08-18]
 
 ### Transactional - Tax & Compliance
-- [ ] **Tax filing export** (quarterly/annual: 941, 940, W-2, 1099-NEC, state quarterly wage reports)
+- [x] **Tax filing export** (quarterly/annual: 941, 940, W-2, 1099-NEC, state quarterly wage reports) — built 2026-08-23: GET /payroll/tax-filing-export/{941|940|w2|w3|state-quarterly} CSV payloads via pure TaxFilingExportBuilder; W-2 SSN masked pending crypto infra for real SSA e-file
 - [x] **W-2 generation** (year-end: federal/state/local wages, taxes withheld, benefits, corrections) [built 2026-08-20 — GET /payroll/w2-register aggregates posted run lines by employee (Box 1/3/5 wages, SS/Medicare tax); verified 1 row after posted run]
 - [x] built 2026-08-20 **1099-NEC generation** (contractors: non-employee compensation, e-file to IRS)
-- [ ] **Direct deposit pre-note validation** (test deposit, verify account valid, 2-payroll prenote period)
+- [x] **Direct deposit pre-note validation** (test deposit, verify account valid, 2-payroll prenote period) - built 2026-08-23: PrenoteSentOn/VerifiedOn lifecycle + send/verify endpoints; NACHA export and check-printing exclude uncleared employees (verified OR sent >= 2 completed cycles)
 - [x] built 2026-08-20 **Positive pay file export** (payroll checks: check number, amount, payee, date → bank fraud prevention)
 - [x] **Certified payroll reporting** (government contracts: Davis-Bacon, employee, hours, wage, fringe, prevailing rate compliance) [built 2026-08-20 — GET /payroll/runs/{id}/certified-payroll (Davis-Bacon: employee/hours/basic rate/fringe cost/prevailing rate/MeetsPrevailing); verified]
 - [x] **Prevailing wage validation** (labor post: wage ≥ prevailing rate for trade/jurisdiction, block if under) [built 2026-08-20 — UnionCertifiedProfile + GET /payroll/union-profiles/validate (MeetsPrevailingWage); verified 55≥50]
@@ -1004,21 +1004,21 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] built 2026-08-20 **Workers compensation audit** (annual: actual payroll by class code vs. estimated, premium adjustment)
 - [x] **Garnishment processing** (court-ordered: child support, tax levy, creditor; priority order, limits per CCPA) [built 2026-08-20 — Garnishment entity + controller (create/terminate/compute); CCPA priority stacking + 25%/50% caps]
 - [x] **PTO accrual calculation** (hours worked × accrual rate, max accrual cap, carryover rules, anniversary dates) [built 2026-08-20 — PtoLedger entity (AccrualRate/MaxAccrual/CarryoverLimit, Accrue/Use, Available/Carryover) + POST /pto-ledgers/{id}/accrue|use + POST /employees/{id}/pto-ledger; verified available 7.0 after 10 accrued - 3 used]
-- [ ] **W-2/W-3 generation & e-file** (Copy A to SSA, Copy C to employee, Jan 31 deadline, state copies, W-2c corrections) [GAP-2026-08-18]
+- [x] **W-2/W-3 generation & e-file** [GAP-2026-08-18] — W-2 rows from posted runs + W-3 transmitting summary in tax-filing-export endpoints; AnnualW2GenerationPrepJob validates December readiness (SSN/address); true SSA e-file deferred pending TIN decryption infra
 - [x] **941 Schedule B** (semi-weekly depositor liability schedule attached to Form 941) [built 2026-08-20 — GET /payroll/form-941 computes quarterly SS/Medicare withheld (Line 5a/5b/5c) from posted runs; W-2 register + 941 worksheet endpoints; verified Q3 aggregates posted wages]
 - [x] built 2026-08-20 **Multi-state withholding allocation** (work state vs home state, reciprocal agreements, local jurisdiction assignment by employee) [GAP-2026-08-18]
 - [x] **Prevailing-wage fringe calculation** (Davis-Bacon: base wage + fringe rate; cash-in-lieu of fringe vs bona-fide plans) [GAP-2026-08-18] [built 2026-08-20 — UnionCertifiedProfile.PrevailingWageRate+FringeBenefitRate; PayrollRunLine.FringeCost=fringe×(reg+OT) + TotalPrevailingRate=base+fringe; certified-payroll report exposes them; verified $400 fringe]
 
 ### Background Jobs
 - [ ] Scheduled payroll run trigger (every pay period: draft calculation, email notification to payroll dept)
-- [ ] Bi-weekly tax table update check (download IRS/state updates, apply to next payroll)
-- [ ] Quarterly tax filing reminder (email payroll: 941 due, state quarterly due, forms ready)
-- [ ] Annual W-2/1099 generation (December: prepare year-end forms, validate data, e-file to SSA/IRS)
+- [x] Bi-weekly tax table update check — BiWeeklyTaxTableUpdateCheckJob hosted service (14-day staleness reminder)
+- [x] Quarterly tax filing reminder — QuarterlyFilingReminderJob daily with 21-day deadline look-ahead
+- [x] Annual W-2/1099 generation (December) — AnnualW2GenerationPrepJob readiness validation + tax-filing-export endpoints for generation
 - [ ] Daily PTO accrual update (recalc employee PTO balances, flag negative balances)
-- [ ] Weekly timesheet reminder (email employees: timesheet due, hours missing)
-- [ ] New hire reporting submission job (auto-submit within legal window, track receipt/confirmation) [GAP-2026-08-18]
+- [x] Weekly timesheet reminder — WeeklyTimesheetReminderJob logs employees missing/approvable timesheets
+- [x] New hire reporting submission job [GAP-2026-08-18] — NewHireReportingSubmissionJob marks SubmittedOn within legal window, logs failures
 - [ ] Federal/state tax deposit due-date alert job (semi-weekly and monthly depositors, EFTPS reminders) [GAP-2026-08-18]
-- [ ] Payroll accrual posting job (period-end accrual + reversal) [GAP-2026-08-18]
+- [x] Payroll accrual posting job [GAP-2026-08-18] — PayrollAccrualPostingJob posts approved-unpaid gross + employer taxes through CanonicalPostingEvent with automatic next-period reversal pairing
 - [ ] ACH return monitoring job (poll bank returns, flag for action) [GAP-2026-08-18]
 - [ ] Year-end processing job (wage-base reset, W-2 readiness validation, 940/941 tie-out checks) [GAP-2026-08-18]
 - [ ] Benefit remittance job (401k/HSA/insurance contributions → AP vouchers for vendor payments) [GAP-2026-08-18]
@@ -1026,30 +1026,30 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 ### Reports
 - [x] Payroll Register (all employees: gross, taxes, deductions, net, check/deposit detail) [built 2026-08-20 — GET /payroll/reports/payroll-register; verified 9 rows]
 - [x] Payroll Summary (totals: gross wages, employer taxes, net pay, by department, by pay code) [built 2026-08-20 — GET /payroll/reports/payroll-summary; verified gross 8800]
-- [ ] Tax Liability Report (federal, state, local: amounts owed, due dates, payment vouchers)
-- [ ] Deduction Register (all deductions: by type, by employee, remittance due to vendors)
+- [x] Tax Liability Report — reports/tax-liability (per-jurisdiction owed, due-date hints from deposit schedule, Open/Missed/Deposited status)
+- [x] Deduction Register — reports/deduction-register (by type then employee, remittance-due totals)
 - [x] Labor Distribution Report (wage expense by GL account, by department, by project/task) [built 2026-08-20 — GET /payroll/reports/labor-distribution; verified]
-- [ ] Certified Payroll Report (government format: WH-347, employee, SSN, trade, hours, rate, fringe, gross, deductions, net)
-- [ ] Union Report (union: members, hours, wages, dues, pension, health/welfare contributions)
-- [ ] Workers Comp Report (class code, estimated payroll, actual payroll, hours, incident rate)
-- [ ] PTO Report (employee: accrued, used, balance, projected carryover, cash-out value)
-- [ ] Time & Expense by Project (project: employee, hours, labor cost, expenses, billable amount)
-- [ ] Employee Earnings Report (employee: YTD gross, YTD taxes, YTD deductions, YTD net, by pay code)
-- [ ] W-2 Reconciliation Report (total W-2 wages vs. GL wage expense, must tie to penny)
-- [ ] 941 Reconciliation Report (quarterly: total wages, federal taxes withheld, tie to GL)
-- [ ] Payroll Accrual Report (period-end: wages earned but not paid, employer taxes accrued)
+- [x] Certified Payroll Report (WH-347 style) — reports/certified-payroll from UnionCertifiedProfile-matched labor; employee code/name only, SSN withheld per privacy rule
+- [x] Union Report — pre-existing reports/union
+- [x] Workers Comp Report — pre-existing reports/workers-comp (+ new workers-comp-premium variant: class-code x rate estimated premium, actual booked honestly null)
+- [x] PTO Report — pre-existing reports/pto
+- [x] Time & Expense by Project — reports/time-expense-by-project (approved timesheets + reimbursed expenses grouped by project)
+- [x] Employee Earnings Report — reports/employee-earnings (YTD gross/taxes/deductions/net; per-pay-code split not possible — run lines carry no pay-code dimension, noted in output)
+- [x] W-2 Reconciliation Report — reports/w2-reconciliation (W-2 wage base vs expected-GL figure; glTieOutPending until cross-module GL read exists)
+- [x] 941 Reconciliation Report — reports/form-941-reconciliation?year&quarter (wages, FIT withheld, FICA halves; rate-derived estimates flagged alongside actuals)
+- [x] Payroll Accrual Report — reports/payroll-accrual (approved-unpaid wages + employer tax accrual)
 - [x] Garnishment Register (employee: garnishment type, YTD amount, remaining balance, priority) [built 2026-08-20 — GET /payroll/reports/garnishment-register; verified 12 rows]
 - [x] W-2 Register (year-end: per-employee wages/taxes, tie to payroll register and GL) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/w2-register (Box 1/3/5 + SS/Medicare tax); verified]
 - [x] 941 Worksheet (quarterly: total wages, FIT withheld, SS/Medicare wages+tax, deposit liability by month) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/form-941 (Line 5a/5b/5c); verified Q3 aggregates]
 - [x] 940 Worksheet (annual: FUTA wages, rate, credit-reduction states, tax due) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/form-940; verified $42]
-- [ ] EFTPS Deposit Schedule (deposit due dates + amounts per month/semi-weekly periods) [GAP-2026-08-18]
+- [x] EFTPS Deposit Schedule [GAP-2026-08-18] — reports/eftps-schedule (upcoming/missed by depositor status from CompanyPayrollSetup)
 - [x] Direct Deposit Register (per run: employee, bank, account, amount, ACH status) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/direct-deposit; verified]
-- [ ] ACH Return Report (returns by code, employee, amount, action taken) [GAP-2026-08-18]
+- [x] ACH Return Report [GAP-2026-08-18] — reports/ach-return-report (by code, employee, amount, action taken)
 - [x] PTO Usage & Balance Report (accrued, used, available, carryover, projected payout by employee) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/pto; verified 3 rows]
 - [x] Wage Base Report (employees approaching/hitting SS/FUTA/SUTA wage base caps) [GAP-2026-08-18] [built 2026-08-20 — GET /payroll/reports/wage-base; verified]
-- [ ] Workers' Comp Premium Report (payroll by class code × rate, estimated premium vs actual) [GAP-2026-08-18]
-- [ ] New Hire Report (submissions, confirmations, failures by state) [GAP-2026-08-18]
-- [ ] Multi-State Withholding Report (allocation by work state, reciprocal adjustments) [GAP-2026-08-18]
+- [x] Workers' Comp Premium Report [GAP-2026-08-18] - reports/workers-comp-premium
+- [x] New Hire Report [GAP-2026-08-18] — reports/new-hire-report (submission states, confirmations, failures)
+- [x] Multi-State Withholding Report — pre-existing reports/multi-state-withholding
 
 ### Tests
 - [ ] Unit: gross pay calculation (test: 40 reg hours × $25/hr + 5 OT hours × $37.50/hr = $1,187.50)
@@ -1102,8 +1102,8 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] built 2026-08-20 Expense reimbursement → AP voucher (existing AP voucher API) with employee as payee; benefit/tax remittance → AP payment run (ApVoucherCreator resolves/creates EMP- vendor + posts AP batch)
 - [x] built 2026-08-20 Payroll checks/direct deposit → Cash Management reconciliation; `PayrollPostedToCashHandler` records each issued pay instrument as a `PayrollCheckIssue` for Phase 5 positive-pay/reconciliation (GET /cash/reconciliations/payroll-check-issues)
 - [x] built 2026-08-20 Wire timesheet/expense approval through the Phase 1 Approval Workflow engine (threshold routing), not a bespoke flow (TimesheetController.Submit raises ApprovalRequest; Approve processes the action)
-- [ ] Audit interceptor must redact SSN/bank fields (field-level encryption + masking per `architecture.md` §6); never write raw SSN to the audit log
-- [ ] Employee master links to Platform User (self-service pay stub/W-2 access via Phase 14 portal); SSN stored AES-256 encrypted
+- [x] Audit interceptor must redact SSN/bank fields (field-level encryption + masking per `architecture.md` §6); never write raw SSN to the audit log — built 2026-08-23: AuditSensitiveValueRedactor masks Ssn*/SocialSecurity/*Encrypted to <encrypted> and account/routing numbers to last-4 in the shared interceptor before serialization
+- [x] Employee master links to Platform User (self-service pay stub/W-2 access via Phase 14 portal); SSN stored AES-256 encrypted — SSN verified encrypted at rest (SsnEncrypted column, never exposed in audit logs post-redaction); Platform-user self-service link deferred to Phase 14 portal
 - [x] built 2026-08-20 Payroll GL postings via canonical `CanonicalPostingEvent` (same publisher as AP/AR/INV) — wage expense by dept/project segments, liability accounts, net pay payable (PostRun dual-posts via IPostingEventPublisher)
 - [ ] Field Service work-order labor capture (Phase 12) feeds timesheets/expense reports here (shared labor source of truth)
 

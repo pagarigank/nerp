@@ -51,10 +51,22 @@ public class TaxDepositSchedule : AuditableEntity
     public string? FormType { get; private set; }
     public bool Deposited { get; private set; }
 
+    /// <summary>AP voucher that settled this liability through the liability-payment flow (drill-back).</summary>
+    public Guid? PaidVoucherId { get; private set; }
+
     public void MarkDeposited(decimal depositedAmount, DateTime depositedOn)
     {
         DepositedAmount = depositedAmount;
         DepositedOn = depositedOn;
         Deposited = true;
+    }
+
+    /// <summary>Marks the liability paid via the AP voucher created by the liability-payment flow.</summary>
+    public void MarkPaid(Guid voucherId, DateTime paidOn)
+    {
+        DepositedAmount = EstimatedAmount;
+        DepositedOn = paidOn;
+        Deposited = true;
+        PaidVoucherId = voucherId;
     }
 }

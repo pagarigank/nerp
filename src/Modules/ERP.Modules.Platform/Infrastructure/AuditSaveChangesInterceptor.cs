@@ -79,7 +79,7 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
         var dict = new Dictionary<string, object?>();
         foreach (var prop in properties)
         {
-            dict[prop.Metadata.Name] = prop.CurrentValue;
+            dict[prop.Metadata.Name] = AuditSensitiveValueRedactor.Redact(prop.Metadata.Name, prop.CurrentValue);
         }
 
         return dict.Count > 0 ? JsonSerializer.Serialize(dict) : null;
@@ -154,8 +154,9 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
                     {
                         if (prop.IsModified || prop.Metadata.IsPrimaryKey())
                         {
-                            original[prop.Metadata.Name] = prop.OriginalValue;
-                            current[prop.Metadata.Name] = prop.CurrentValue;
+                            var name = prop.Metadata.Name;
+                            original[name] = AuditSensitiveValueRedactor.Redact(name, prop.OriginalValue);
+                            current[name] = AuditSensitiveValueRedactor.Redact(name, prop.CurrentValue);
                         }
                     }
 

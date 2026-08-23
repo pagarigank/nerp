@@ -28,6 +28,12 @@ import {
   getPayrollRegister, getPayrollSummary, getLaborDistribution,
   getGarnishmentRegister, getWageBaseReport, getPtoReport, getDirectDepositRegister,
   createGarnishment, getGarnishmentsForEmployee, computeGarnishments,
+  getTaxLiability, getDeductionRegister, getCertifiedPayrollWh347, getTimeExpenseByProject,
+  getEmployeeEarnings, getW2Reconciliation, getForm941Reconciliation, getPayrollAccrual,
+  getEftpsSchedule, getAchReturnReport, getNewHireReport, getWorkersCompPremium,
+  getPendingLiabilityPayments, payLiabilities,
+  sendPrenote, verifyDirectDeposit,
+  getTaxFilingExport,
 } from '@api/payroll'
 import { getProjects, getProjectTasks } from '@api/projectAccounting'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -91,6 +97,14 @@ export function EmployeesTab({ qc }: { qc: any }) {
     onSuccess: () => { setDdForm({ bankName: '', routingNumber: '', accountNumber: '', accountType: 'Checking', allocationPercentage: '', fixedAmount: '', isRemainder: false }); refetchDd() },
   })
   const delMut = useMutation({ mutationFn: (id: string) => deleteDirectDeposit(id), onSuccess: () => refetchDd() })
+  const prenoteMut = useMutation({
+    mutationFn: (p: { employeeId: string; id: string }) => sendPrenote(p.employeeId, p.id),
+    onSuccess: () => refetchDd(),
+  })
+  const verifyMut = useMutation({
+    mutationFn: (p: { employeeId: string; id: string }) => verifyDirectDeposit(p.employeeId, p.id),
+    onSuccess: () => refetchDd(),
+  })
   const filtered = (data as any[]).filter((e: any) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
@@ -129,7 +143,15 @@ export function EmployeesTab({ qc }: { qc: any }) {
             { key: 'allocationPercentage', header: '%', align: 'right', render: (v: any) => v != null ? `${v}%` : '' },
             { key: 'fixedAmount', header: 'Fixed', align: 'right', render: (v: any) => v != null ? MONEY(v) : '' },
             { key: 'isRemainder', header: 'Remainder', render: (v: boolean) => (v ? 'Yes' : '') },
-            { key: 'id', header: '', render: (_: unknown, r: any) => <Button size="sm" variant="destructive" onClick={() => delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button> },
+            { key: 'prenoteSentOn', header: 'Prenote Sent', render: (v: any) => v ? String(v).slice(0, 10) : '—' },
+            { key: 'verifiedOn', header: 'Verified', render: (v: any) => v ? String(v).slice(0, 10) : '—' },
+            { key: 'id', header: '', render: (_: unknown, r: any) => (
+              <div className="flex gap-1">
+                {!r.verifiedOn && <Button size="sm" variant="outline" onClick={() => prenoteMut.mutate({ employeeId: selId, id: r.id })}>Send Prenote</Button>}
+                {r.prenoteSentOn && !r.verifiedOn && <Button size="sm" onClick={() => verifyMut.mutate({ employeeId: selId, id: r.id })}>Verify</Button>}
+                <Button size="sm" variant="destructive" onClick={() => delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            )},
           ]} data={dds as any[]} emptyMessage="No direct deposit accounts." />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 items-end border-t pt-2">
             <Input label="Bank Name" value={ddForm.bankName} onChange={(v: any) => setDdForm({ ...ddForm, bankName: v })} />
@@ -443,6 +465,52 @@ export function RunsTab({ qc }: { qc: any }) {
           { key: 'id', header: '', render: (_: unknown, r: any) => !r.deposited ? <Button size="sm" onClick={() => depMut.mutate(r.id)}>Mark Dep.</Button> : null },
         ]} data={(depositsQ.data as any)?.data || []} emptyMessage="No tax deposits scheduled. Post a run and click Generate Tax Deposits." />
       </div>
+      <LiabilityPaymentsSection />
+    </div>
+  )
+}
+
+function LiabilityPaymentsSection() {
+  const qc = useQueryClient()
+  const cid = currentCompanyId()
+  const [results, setResults] = useState<any[] | null>(null)
+  const pendingQ = useQuery({ queryKey: ['payroll', 'liability-pending', cid], queryFn: () => getPendingLiabilityPayments(cid) })
+  const payMut = useMutation({
+    mutationFn: () => payLiabilities({ companyId: cid, payThroughDate: new Date().toISOString().slice(0, 10) }),
+    onSuccess: (r: any) => {
+      setResults((r?.data as any[]) || [])
+      qc.invalidateQueries({ queryKey: ['payroll', 'liability-pending', cid] })
+      qc.invalidateQueries({ queryKey: ['payroll', 'tax-deposits', cid] })
+    },
+  })
+  const groups = ((pendingQ.data as any)?.data || []) as any[]
+  return (
+    <div className="border rounded p-3 space-y-2">
+      <div className="font-semibold">Payroll Liability Payments (via AP vouchers)</div>
+      <DataTable columns={[
+        { key: 'vendorCode', header: 'Vendor' },
+        { key: 'agencyName', header: 'Agency' },
+        { key: 'kind', header: 'Kind' },
+        { key: 'amount', header: 'Amount', align: 'right', render: (v: any) => MONEY(v) },
+        { key: 'depositCount', header: 'Items' },
+        { key: 'uncoveredPostedRunCount', header: 'Unsched. Runs', render: (v: number) => v || '' },
+      ]} data={groups} loading={pendingQ.isLoading} emptyMessage="No unpaid liabilities due." />
+      <div className="flex gap-2">
+        <Button variant="secondary" disabled={groups.length === 0 || payMut.isPending} onClick={() => payMut.mutate()}>Pay Liabilities (create AP vouchers)</Button>
+      </div>
+      {(payMut.isError) && <p className="text-sm text-red-600">{getErrorMessage(payMut.error)}</p>}
+      {payMut.isSuccess && <p className="text-sm text-green-700">AP vouchers posted; GL payroll liabilities relieved through the AP posting path.</p>}
+      {results && results.length > 0 && (
+        <div className="border rounded p-2 text-sm space-y-1">
+          <div className="font-semibold">Payment Summary</div>
+          {results.map((r, i) => (
+            <div key={i} className="flex justify-between border-t pt-1">
+              <span>{r.vendorCode} — {r.agencyName}</span>
+              <span>{MONEY(r.amount)} | voucher {String(r.voucherId).slice(0, 8)}…</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -710,6 +778,217 @@ export function ReportsTab({ qc }: { qc: any }) {
 
       {/* Batch E: compliance & statutory reporting */}
       <ComplianceSection qc={qc} company={company} year={y} />
+
+      {/* Batch F: extended reporting */}
+      <BatchFReportsSection company={company} year={y} />
+
+      {/* Batch G: tax-filing exports */}
+      <TaxFilingExportsSection company={company} year={y} />
+    </div>
+  )
+}
+
+function TaxFilingExportsSection({ company, year }: { company: string; year: number }) {
+  const [quarter, setQuarter] = useState('1')
+  const [payload, setPayload] = useState<{ title: string; content: string } | null>(null)
+  const loadExport = (kind: string, withQuarter: boolean) => {
+    getTaxFilingExport(kind, company, year, withQuarter ? Number(quarter) : undefined)
+      .then((r: any) => setPayload({ title: kind.toUpperCase(), content: String(r?.data?.data ?? r?.data ?? '') }))
+  }
+  return (
+    <div className="border rounded p-3 space-y-2">
+      <div className="font-semibold">Tax Filing Exports</div>
+      <div className="flex gap-2 items-end flex-wrap">
+        <Input type="number" label="Quarter" value={quarter} onChange={(v: any) => setQuarter(v)} />
+        <Button size="sm" variant="secondary" onClick={() => loadExport('941', true)}>941 (Q)</Button>
+        <Button size="sm" variant="secondary" onClick={() => loadExport('940', false)}>940 (Y)</Button>
+        <Button size="sm" variant="secondary" onClick={() => loadExport('w2', false)}>W-2 (Y)</Button>
+        <Button size="sm" variant="secondary" onClick={() => loadExport('w3', false)}>W-3 (Y)</Button>
+        <Button size="sm" variant="secondary" onClick={() => loadExport('state-quarterly', true)}>State Quarterly (Q)</Button>
+      </div>
+      {payload && (
+        <div>
+          <div className="text-sm font-semibold mb-1">{payload.title} payload (first 1200 chars)</div>
+          <pre className="text-[11px] whitespace-pre-wrap border rounded p-2 max-h-48 overflow-auto">{payload.content.slice(0, 1200)}</pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const NOTE = 'mt-1 text-xs text-gray-500'
+const DATE = (v: string | null | undefined) => (v ? v.slice(0, 10) : '—')
+
+function BatchFReportsSection({ company, year }: { company: string; year: number }) {
+  const [quarter, setQuarter] = useState('1')
+  const qtr = Number(quarter)
+  const taxQ = useQuery({ queryKey: ['payroll', 'report', 'tax-liab', company, year, qtr], queryFn: () => getTaxLiability(company, year, qtr) })
+  const dedQ = useQuery({ queryKey: ['payroll', 'report', 'ded-reg', company], queryFn: () => getDeductionRegister(company) })
+  const cpQ = useQuery({ queryKey: ['payroll', 'report', 'cp347', company], queryFn: () => getCertifiedPayrollWh347(company) })
+  const tepQ = useQuery({ queryKey: ['payroll', 'report', 'time-exp', company], queryFn: () => getTimeExpenseByProject(company) })
+  const earnQ = useQuery({ queryKey: ['payroll', 'report', 'earnings', company, year], queryFn: () => getEmployeeEarnings(company, year) })
+  const w2Q = useQuery({ queryKey: ['payroll', 'report', 'w2rec', company, year], queryFn: () => getW2Reconciliation(company, year) })
+  const f941Q = useQuery({ queryKey: ['payroll', 'report', 'f941rec', company, year, qtr], queryFn: () => getForm941Reconciliation(company, year, qtr) })
+  const accrualQ = useQuery({ queryKey: ['payroll', 'report', 'accrual', company], queryFn: () => getPayrollAccrual(company) })
+  const eftpsQ = useQuery({ queryKey: ['payroll', 'report', 'eftps', company], queryFn: () => getEftpsSchedule(company) })
+  const achQ = useQuery({ queryKey: ['payroll', 'report', 'ach-ret', company], queryFn: () => getAchReturnReport(company) })
+  const nhQ = useQuery({ queryKey: ['payroll', 'report', 'new-hire', company], queryFn: () => getNewHireReport(company) })
+  const wcpQ = useQuery({ queryKey: ['payroll', 'report', 'wc-prem', company, year], queryFn: () => getWorkersCompPremium(company, year) })
+
+  return (
+    <div className="space-y-3 border-t pt-3 mt-3">
+      <div className="font-semibold">Extended Reporting (Batch F)</div>
+      <div className="flex items-end gap-2">
+        <Select label="Quarter (tax liability / 941)" value={quarter} onChange={(e: any) => setQuarter(e.target.value)} options={[{ value: '1', label: 'Q1' }, { value: '2', label: 'Q2' }, { value: '3', label: 'Q3' }, { value: '4', label: 'Q4' }]} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Tax Liability ({year} Q{qtr})</div>
+          <DataTable columns={[
+            { key: 'jurisdiction', header: 'Jurisdiction' },
+            { key: 'dueDate', header: 'Due', render: (r: any) => DATE(r.dueDate) },
+            { key: 'amountOwed', header: 'Owed', align: 'right', render: (r: any) => MONEY(r.amountOwed) },
+            { key: 'status', header: 'Status' },
+          ]} data={taxQ.data?.rows || []} loading={taxQ.isLoading} />
+          <p className={NOTE}>EE withheld {(taxQ.data as any)?.totalEmployeeTaxWithheld != null ? MONEY((taxQ.data as any).totalEmployeeTaxWithheld) : '—'} · ER accrued {(taxQ.data as any)?.totalEmployerTaxAccrued != null ? MONEY((taxQ.data as any).totalEmployerTaxAccrued) : '—'} · Depositor: {(taxQ.data as any)?.depositorStatus ?? '—'} · {(taxQ.data as any)?.dueDateHint ?? ''}</p>
+          <p className={NOTE}>{taxQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Deduction / Benefit Register</div>
+          <DataTable columns={[
+            { key: 'type', header: 'Type' },
+            { key: 'benefitCode', header: 'Code' },
+            { key: 'employeeId', header: 'Employee' },
+            { key: 'amount', header: 'Amount', render: (r: any) => MONEY(r.amount) },
+            { key: 'percent', header: '%', render: (r: any) => (r.percent != null ? `${r.percent}%` : '') },
+          ]} data={dedQ.data?.rows || []} loading={dedQ.isLoading} />
+          <p className={NOTE}>Remittance due to vendors: <b>{MONEY(dedQ.data?.totalRemittanceDue ?? null)}</b></p>
+          <p className={NOTE}>{dedQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Certified Payroll (WH-347 style)</div>
+          <DataTable columns={[
+            { key: 'employeeCode', header: 'Employee #' },
+            { key: 'employeeName', header: 'Name' },
+            { key: 'tradeClassification', header: 'Trade/Class' },
+            { key: 'regularHours', header: 'Reg Hrs' },
+            { key: 'overtimeHours', header: 'OT Hrs' },
+            { key: 'baseRate', header: 'Base Rate', render: (r: any) => MONEY(r.baseRate) },
+            { key: 'fringeCost', header: 'Fringe', render: (r: any) => MONEY(r.fringeCost) },
+            { key: 'gross', header: 'Gross', render: (r: any) => MONEY(r.gross) },
+            { key: 'meetsPrevailing', header: 'Prev.', render: (r: any) => (r.meetsPrevailing ? 'MEETS' : 'BELOW') },
+          ]} data={cpQ.data?.rows || []} loading={cpQ.isLoading} />
+          <p className={NOTE}>{cpQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Time &amp; Expense by Project</div>
+          <DataTable columns={[
+            { key: 'projectId', header: 'Project', render: (r: any) => r.projectId || '(unassigned)' },
+            { key: 'hours', header: 'Hours' },
+            { key: 'laborCost', header: 'Labor Cost', render: (r: any) => MONEY(r.laborCost) },
+            { key: 'expenses', header: 'Expenses', render: (r: any) => MONEY(r.expenses) },
+            { key: 'billableAmount', header: 'Billable', render: (r: any) => MONEY(r.billableAmount) },
+          ]} data={tepQ.data?.rows || []} loading={tepQ.isLoading} />
+          <p className={NOTE}>{tepQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Employee Earnings YTD ({year})</div>
+          <DataTable columns={[
+            { key: 'employeeCode', header: 'Code' },
+            { key: 'employeeName', header: 'Name' },
+            { key: 'gross', header: 'Gross', render: (r: any) => MONEY(r.gross) },
+            { key: 'employeeTax', header: 'EE Tax', render: (r: any) => MONEY(r.employeeTax) },
+            { key: 'deductions', header: 'Deduct', render: (r: any) => MONEY(r.deductions) },
+            { key: 'net', header: 'Net', render: (r: any) => MONEY(r.net) },
+          ]} data={earnQ.data?.rows || []} loading={earnQ.isLoading} />
+          <p className={NOTE}>{earnQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">W-2 Reconciliation ({year})</div>
+          {w2Q.data && (
+            <div className="text-sm space-y-0.5">
+              <div>W-2 wages: <b>{MONEY(w2Q.data.w2Wages)}</b> (runs {MONEY(w2Q.data.runWages)} + manual {MONEY(w2Q.data.manualCheckWages)})</div>
+              <div>Expected GL wage expense: <b>{MONEY(w2Q.data.expectedGlWageExpense)}</b> | Variance placeholder: {MONEY(w2Q.data.variance)} | GL tie-out: {w2Q.data.glTieOutPending ? 'PENDING' : 'Done'}</div>
+            </div>
+          )}
+          <p className={NOTE}>{w2Q.data?.assumption}</p>
+          <p className={NOTE}>{w2Q.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Form 941 Reconciliation ({year} Q{qtr})</div>
+          {f941Q.data && (
+            <div className="text-sm space-y-0.5">
+              <div>Total wages: <b>{MONEY(f941Q.data.totalWages)}</b></div>
+              <div>FIT withheld (est): {MONEY(f941Q.data.federalIncomeTaxWithheldEstimated)}</div>
+              <div>FICA EE (est): {MONEY(f941Q.data.employeeFicaEstimated)} | FICA ER (est): {MONEY(f941Q.data.employerFicaEstimated)}</div>
+              <div>Actual aggregate EE tax: {MONEY(f941Q.data.employeeTaxWithheldActual)} | ER tax: {MONEY(f941Q.data.employerTaxActual)}</div>
+              <div>GL tie-out: {f941Q.data.glTieOutPending ? 'PENDING' : 'Done'}</div>
+            </div>
+          )}
+          <p className={NOTE}>{f941Q.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Payroll Accrual (unpaid earned wages)</div>
+          {accrualQ.data && (
+            <div className="text-sm">
+              Accrued wages: <b>{MONEY(accrualQ.data.accruedWages)}</b> · ER tax est ({(accrualQ.data.employerTaxRateUsed * 100).toFixed(2)}%): {MONEY(accrualQ.data.employerTaxAccrualEstimate)} · Last posted period end: {DATE(accrualQ.data.lastPostedPeriodEnd)}
+            </div>
+          )}
+          <DataTable columns={[
+            { key: 'employeeId', header: 'Employee' },
+            { key: 'hours', header: 'Hours' },
+            { key: 'accruedWages', header: 'Accrued', render: (r: any) => MONEY(r.accruedWages) },
+          ]} data={accrualQ.data?.rows || []} loading={accrualQ.isLoading} />
+          <p className={NOTE}>{accrualQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">EFTPS Deposit Schedule ({(eftpsQ.data as any)?.depositorStatus ?? '—'})</div>
+          <DataTable columns={[
+            { key: 'taxType', header: 'Type' },
+            { key: 'depositDate', header: 'Due', render: (r: any) => DATE(r.depositDate) },
+            { key: 'estimatedAmount', header: 'Est.', render: (r: any) => MONEY(r.estimatedAmount) },
+            { key: 'state', header: 'State' },
+          ]} data={eftpsQ.data?.rows || []} loading={eftpsQ.isLoading} />
+          <p className={NOTE}>Upcoming {(eftpsQ.data as any)?.upcomingCount ?? 0} ({MONEY((eftpsQ.data as any)?.upcomingAmount ?? null)}) · Missed {(eftpsQ.data as any)?.missedCount ?? 0} ({MONEY((eftpsQ.data as any)?.missedAmount ?? null)}) · Next due {DATE((eftpsQ.data as any)?.nextDueDate)}</p>
+          <p className={NOTE}>{eftpsQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">ACH Return Report</div>
+          <DataTable columns={[
+            { key: 'returnCode', header: 'Code' },
+            { key: 'description', header: 'Description' },
+            { key: 'amount', header: 'Amount', render: (r: any) => MONEY(r.amount) },
+            { key: 'action', header: 'Action' },
+            { key: 'processed', header: 'Processed', render: (r: any) => (r.processed ? 'Yes' : 'No') },
+          ]} data={achQ.data?.rows || []} loading={achQ.isLoading} />
+          <p className={NOTE}>{achQ.data?.byCode.map((c: any) => `${c.returnCode}: ${c.count}`).join(' · ')}</p>
+          <p className={NOTE}>{achQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">New-Hire Reporting (last 90 days)</div>
+          <DataTable columns={[
+            { key: 'employeeCode', header: 'Code' },
+            { key: 'hireDate', header: 'Hired', render: (r: any) => DATE(r.hireDate) },
+            { key: 'state', header: 'State' },
+            { key: 'agencyName', header: 'Agency' },
+            { key: 'dueBy', header: 'Due By', render: (r: any) => DATE(r.dueBy) },
+            { key: 'submissionStatus', header: 'Status', render: (r: any) => (r.overdue ? `${r.submissionStatus} (OVERDUE)` : r.submissionStatus) },
+          ]} data={nhQ.data?.rows || []} loading={nhQ.isLoading} />
+          <p className={NOTE}>{nhQ.data?.note}</p>
+        </div>
+        <div className="border rounded p-2">
+          <div className="font-semibold mb-1">Workers&apos; Comp Premium ({year})</div>
+          <DataTable columns={[
+            { key: 'classCode', header: 'Class Code' },
+            { key: 'state', header: 'State' },
+            { key: 'payrollBasis', header: 'Payroll Basis', render: (r: any) => MONEY(r.payrollBasis) },
+            { key: 'estimatedPremium', header: 'Est. Premium', render: (r: any) => MONEY(r.estimatedPremium) },
+            { key: 'actualBooked', header: 'Actual', render: (r: any) => (r.actualBooked != null ? MONEY(r.actualBooked) : 'n/a') },
+          ]} data={wcpQ.data?.rows || []} loading={wcpQ.isLoading} />
+          <p className={NOTE}>Total estimated premium: <b>{MONEY(wcpQ.data?.totalEstimatedPremium ?? null)}</b> · Unmatched trade payroll: {MONEY(wcpQ.data?.unmatchedTradePayroll ?? null)}</p>
+          <p className={NOTE}>{wcpQ.data?.note}</p>
+        </div>
+      </div>
     </div>
   )
 }

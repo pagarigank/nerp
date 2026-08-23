@@ -6,6 +6,7 @@ using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.AccountsPayable.Infrastructure;
 using ERP.Modules.Payroll.Domain.Entities;
+using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,15 +24,18 @@ public sealed class ApVoucherCreator
     private readonly ApDbContext _apContext;
     private readonly IVoucherService _voucherService;
     private readonly PlatformDbContext _platformContext;
+    private readonly PayrollDbContext _payrollContext;
 
     public ApVoucherCreator(
         ApDbContext apContext,
         IVoucherService voucherService,
-        PlatformDbContext platformContext)
+        PlatformDbContext platformContext,
+        PayrollDbContext payrollContext)
     {
         _apContext = apContext ?? throw new ArgumentNullException(nameof(apContext));
         _voucherService = voucherService ?? throw new ArgumentNullException(nameof(voucherService));
         _platformContext = platformContext ?? throw new ArgumentNullException(nameof(platformContext));
+        _payrollContext = payrollContext ?? throw new ArgumentNullException(nameof(payrollContext));
     }
 
     public async Task<Guid> CreateReimbursementVoucherAsync(
@@ -111,6 +115,121 @@ public sealed class ApVoucherCreator
         await _voucherService.ReleaseBatchAsync(batch.Id, cancellationToken);
         await _voucherService.PostBatchAsync(batch.Id, cancellationToken);
         return voucher.Id;
+    }
+
+    /// <summary>
+    /// Phase 11 liability payment: creates ONE posted AP voucher per tax-agency/benefit
+    /// vendor for a payroll liability settlement. Resolves (or lazily creates) the agency
+    /// vendor by code convention ('EFTPS-FED' federal, 'DOR-{state}' state revenue
+    /// agencies, 'BENEFIT-REMIT' benefit-plan vendors). The voucher debits the
+    /// payroll-liability GL account and credits the AP control account, so GL relief
+    /// happens through the normal AP posting path; the AP payment run settles cash.
+    /// </summary>
+    public async Task<Guid> CreateLiabilityPaymentVoucherAsync(
+        Guid companyId,
+        string vendorCode,
+        string vendorName,
+        decimal amount,
+        DateTime paymentDate,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(vendorCode))
+            throw new ArgumentException("Vendor code is required.", nameof(vendorCode));
+        if (amount <= 0m)
+            throw new ArgumentException("Liability payment amount must be positive.", nameof(amount));
+
+        var vendor = await _apContext.Vendors
+            .FirstOrDefaultAsync(v => v.VendorId == vendorCode, cancellationToken);
+        if (vendor is null)
+        {
+            vendor = new Vendor(vendorCode, vendorName, vendorName, null, null, null, true);
+            _apContext.Vendors.Add(vendor);
+            await _apContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var period = await ResolveFiscalPeriodAsync(companyId, paymentDate, cancellationToken);
+        if (period is null)
+            throw new InvalidOperationException("No fiscal period found for the liability payment company.");
+
+        var payrollLiabilityId = await ResolvePayrollLiabilityAccountAsync(companyId, cancellationToken);
+        var apControlId = await ResolveApLiabilityAccountAsync(companyId, cancellationToken);
+
+        var distributions = new List<VoucherDistributionDto>
+        {
+            new(payrollLiabilityId, amount, null, null, null),
+            new(apControlId, null, amount, null, null),
+        };
+
+        var invoiceNumber = $"TAXPMT-{paymentDate:yyyyMMdd}-{vendorCode}";
+        var batchNumber = $"PAY-LIAB-{Guid.NewGuid():N}";
+
+        var batch = await _voucherService.CreateVoucherBatchAsync(
+            companyId,
+            batchNumber,
+            $"Payroll liability payment {vendorCode}",
+            new DateTimeOffset(paymentDate),
+            period.Id,
+            cancellationToken);
+
+        var voucher = await _voucherService.AddVoucherToBatchAsync(
+            batch.Id,
+            vendor.Id,
+            VoucherType.Invoice,
+            invoiceNumber,
+            new DateTimeOffset(paymentDate),
+            new DateTimeOffset(paymentDate).AddDays(30),
+            amount,
+            0m,
+            $"Payroll liability payment to {vendorName}",
+            null,
+            null,
+            null,
+            0m,
+            0m,
+            distributions,
+            cancellationToken);
+
+        await _voucherService.ReleaseBatchAsync(batch.Id, cancellationToken);
+        await _voucherService.PostBatchAsync(batch.Id, cancellationToken);
+        return voucher.Id;
+    }
+
+    private async Task<Guid> ResolvePayrollLiabilityAccountAsync(Guid companyId, CancellationToken cancellationToken)
+    {
+        var setupAccount = await _payrollContext.CompanyPayrollSetups
+            .Where(s => s.CompanyId == companyId)
+            .Select(s => (Guid?)s.PayrollLiabilityAccountId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (setupAccount.HasValue && setupAccount.Value != Guid.Empty)
+            return setupAccount.Value;
+
+        foreach (var code in new[] { "2200", "2210", "2220" })
+        {
+            var accountId = await _platformContext.Accounts
+                .Where(a => a.CompanyId == companyId && a.AccountNumber == code)
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (accountId != Guid.Empty)
+                return accountId;
+        }
+
+        var any = await _platformContext.Accounts
+            .Where(a => a.CompanyId == companyId)
+            .OrderBy(a => a.AccountNumber)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (any == Guid.Empty)
+            throw new InvalidOperationException("No payroll liability account available for liability payment.");
+        return any;
+    }
+
+    private async Task<FiscalPeriod?> ResolveFiscalPeriodAsync(Guid companyId, DateTime transactionDate, CancellationToken cancellationToken)
+    {
+        var date = new DateTimeOffset(transactionDate);
+        return await _platformContext.FiscalPeriods
+            .Where(p => p.CompanyId == companyId && p.StartDate <= date && p.EndDate >= date)
+            .OrderBy(p => p.StartDate)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<Guid> ResolveExpenseAccountAsync(Guid companyId, CancellationToken cancellationToken)
