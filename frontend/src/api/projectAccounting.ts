@@ -2,6 +2,29 @@
 import { useAuthStore } from '@stores/authStore'
 import { get, post, put, del } from './client'
 import { companyId as defaultCompanyId } from './inventory'
+import type {
+  Asc606AllocateResult,
+  Asc606RecognitionStatus,
+  Asc606RecognizeResult,
+  CertifiedPayrollRow,
+  ContractAssetLiabilityRow,
+  ContractValueAnalysisRow,
+  EacPortfolioPoint,
+  EacTrendPoint,
+  EarnedValueRow,
+  EmployeeProfitabilityRow,
+  EmployeeUtilizationRow,
+  FiveStepSummary,
+  LienWaiverRegisterRow,
+  PendingCoImpactRow,
+  PerformanceObligation,
+  PmPerformanceRow,
+  PortfolioDashboardRow,
+  ProjectAgingRow,
+  ProjectDocumentItem,
+  SubcontractCommitmentRow,
+  SubcontractStatusRow,
+} from '@types/projectAccounting'
 
 // --- Projects ---
 export function getProjects(companyIdParam?: string, status?: string) {
@@ -127,4 +150,150 @@ export function getChangeOrderSummary(projectId: string) {
 }
 export function getCostDetail(projectId: string) {
   return get(`/projects/${projectId}/analysis/cost-detail`)
+}
+
+// --- Portfolio analysis reports (Phase 10 long-tail reports) ---
+export function getEmployeeUtilizationReport(params?: { from?: string; to?: string; capacityHours?: number }) {
+  const query: Record<string, string | number> = { companyId: defaultCompanyId() }
+  if (params?.from) query.from = params.from
+  if (params?.to) query.to = params.to
+  if (params?.capacityHours != null) query.capacityHours = params.capacityHours
+  return get<EmployeeUtilizationRow[]>('/projects/analysis/employee-utilization', query)
+}
+
+export function getEmployeeProfitabilityReport(params?: { from?: string; to?: string }) {
+  const query: Record<string, string | number> = { companyId: defaultCompanyId() }
+  if (params?.from) query.from = params.from
+  if (params?.to) query.to = params.to
+  return get<EmployeeProfitabilityRow[]>('/projects/analysis/employee-profitability', query)
+}
+
+export function getSubcontractStatusReport(projectId?: string) {
+  const query: Record<string, string | number> = { companyId: defaultCompanyId() }
+  if (projectId) query.projectId = projectId
+  return get<SubcontractStatusRow[]>('/projects/analysis/subcontract-status', query)
+}
+
+export function getSubcontractCommitmentReport() {
+  return get<SubcontractCommitmentRow[]>('/projects/analysis/subcontract-commitment', {
+    companyId: defaultCompanyId(),
+  })
+}
+
+export function getCertifiedPayrollReport(params?: { from?: string; to?: string }) {
+  const query: Record<string, string | number> = { companyId: defaultCompanyId() }
+  if (params?.from) query.from = params.from
+  if (params?.to) query.to = params.to
+  return get<CertifiedPayrollRow[]>('/projects/analysis/certified-payroll', query)
+}
+
+export function getPortfolioDashboard() {
+  return get<PortfolioDashboardRow[]>('/projects/analysis/portfolio-dashboard', {
+    companyId: defaultCompanyId(),
+  })
+}
+
+export function getProjectAgingReport() {
+  return get<ProjectAgingRow[]>('/projects/analysis/project-aging', { companyId: defaultCompanyId() })
+}
+
+export function getContractValueAnalysisReport() {
+  return get<ContractValueAnalysisRow[]>('/projects/analysis/contract-value-analysis', {
+    companyId: defaultCompanyId(),
+  })
+}
+
+export function getPmPerformanceReport() {
+  return get<PmPerformanceRow[]>('/projects/analysis/pm-performance', { companyId: defaultCompanyId() })
+}
+
+export function getEarnedValueReport() {
+  return get<EarnedValueRow[]>('/projects/analysis/earned-value', { companyId: defaultCompanyId() })
+}
+
+export function getPendingCoImpactReport() {
+  return get<PendingCoImpactRow[]>('/projects/analysis/pending-co-impact', { companyId: defaultCompanyId() })
+}
+
+export function getLienWaiverRegisterReport() {
+  return get<LienWaiverRegisterRow[]>('/projects/analysis/lien-waiver-register', {
+    companyId: defaultCompanyId(),
+  })
+}
+
+export function getContractAssetLiabilityReport() {
+  return get<ContractAssetLiabilityRow[]>('/projects/analysis/contract-asset-liability', {
+    companyId: defaultCompanyId(),
+  })
+}
+
+// --- ASC 606 revenue recognition (Phase 10) ---
+export function getAsc606Obligations(projectId: string) {
+  return get<PerformanceObligation[]>(`/projects/${projectId}/asc606`)
+}
+
+export function createAsc606Obligation(
+  projectId: string,
+  data: { description: string; transactionPriceAllocated: number; standaloneSellingPriceBasis?: string },
+) {
+  return post<string>(`/projects/${projectId}/asc606`, data)
+}
+
+export function updateAsc606Obligation(
+  projectId: string,
+  obligationId: string,
+  data: { description?: string; transactionPriceAllocated?: number; standaloneSellingPriceBasis?: string },
+) {
+  return put(`/projects/${projectId}/asc606/${obligationId}`, data)
+}
+
+export function deleteAsc606Obligation(projectId: string, obligationId: string) {
+  return del(`/projects/${projectId}/asc606/${obligationId}`)
+}
+
+export function allocateAsc606ContractPrice(projectId: string, totalContractPrice: number) {
+  return post<Asc606AllocateResult>(`/projects/${projectId}/asc606/allocate`, { totalContractPrice })
+}
+
+export function getAsc606RecognitionStatus(projectId: string) {
+  return get<Asc606RecognitionStatus>(`/projects/${projectId}/asc606/recognition-status`)
+}
+
+export function recognizeAsc606Revenue(
+  projectId: string,
+  obligationId: string,
+  data: { amount: number; asOf?: string },
+) {
+  return post<Asc606RecognizeResult>(`/projects/${projectId}/asc606/${obligationId}/recognize`, data)
+}
+
+export function getAsc606FiveStepSummary(projectId: string) {
+  return get<FiveStepSummary>(`/projects/${projectId}/asc606/five-step-summary`)
+}
+
+// --- Project documents (attachments) ---
+export function getProjectDocuments(projectId: string) {
+  return get<ProjectDocumentItem[]>(`/projects/${projectId}/documents`)
+}
+
+export function addProjectDocument(
+  projectId: string,
+  data: { name: string; documentType: string; fileReference: string; contentType?: string; sizeBytes?: number },
+) {
+  return post<string>(`/projects/${projectId}/documents`, data)
+}
+
+export function deleteProjectDocument(projectId: string, documentId: string) {
+  return del(`/projects/${projectId}/documents/${documentId}`)
+}
+
+// --- Profit fade / EAC trend snapshots ---
+export function getEacTrend(projectId: string) {
+  return get<EacTrendPoint[]>('/projects/analysis/eac-trend', { projectId })
+}
+
+export function getEacTrendPortfolio() {
+  return get<EacPortfolioPoint[]>('/projects/analysis/eac-trend/portfolio', {
+    companyId: defaultCompanyId(),
+  })
 }

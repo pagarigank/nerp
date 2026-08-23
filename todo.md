@@ -741,7 +741,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] Employee-Project assignment (employee, project, task, role, allocation %, effective dates) [built 2026-08-19 — EmployeeProjectAssignment + ProjectMastersController CRUD + verified]
 - [x] Project cost category → GL account mapping (job-costing overlay: each project account category maps to GL expense/asset accounts per company — drives dual-posting) [GAP-2026-08-18] [built 2026-08-19 — ProjectCostCategoryMapping entity + migration + CostTransactionDualPostingHandler resolves per-company mapping (fallback defaults: Labor→6000, Materials→5000, Subcontract→6100, Equipment→1500, Overhead→6200, Other→7000)]
 - [x] Contract currency & exchange rate (project in foreign currency, billable in base or project currency — multi-currency per spec §5.6) [GAP-2026-08-18] [built 2026-08-19 — Project.SetCurrency(CurrencyCode, ExchangeRate) + PUT /projects/{id}/currency + DTO fields + verified]
-- [ ] Project attachments/documents (contract PDFs, drawings, correspondence — links to object storage per architecture §3) [GAP-2026-08-18]
+- [x] Project attachments/documents (contract PDFs, drawings, correspondence — links to object storage per architecture §3) [GAP-2026-08-18] — built 2026-08-23: ProjectDocument entity (reference-string model), /projects/{id}/documents CRUD, Documents tab in project workspace
 
 ### Transactional - Cost Management
 - [x] **Project budget entry** (original budget: by task, by account category, hours and dollars) [built 2026-08-19 — BudgetLine + verified]
@@ -760,7 +760,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Committed cost tracking** (open POs against project: reserved but not yet received/invoiced) [built 2026-08-19 — ProjectCommittedCost + POST /project-accounting/committed-costs + feeds budget-committed-actual; PO integration hook ready]
 - [x] **Project budget vs. committed vs. actual** (three-way view per task/category: budget − committed (open PO) − actual = remaining; drives PM decisions) [GAP-2026-08-18] [built 2026-08-19 — GET /projects/{id}/analysis/budget-committed-actual + verified]
 - [x] **Contingency/management reserve on budget** (separate contingency line per project, release via change order) [GAP-2026-08-18] [built 2026-08-19 — Project.ContingencyAmount/ReleasedContingency + SetContingency/ReleaseContingency (approves CO, lifts revised budget) + verified]
-- [ ] **Pending change order impact on EAC** (approved + pending COs both shown in forecast; EAC includes pending per GAAP constraint rules) [GAP-2026-08-18]
+- [x] **Pending change order impact on EAC** (approved + pending COs both shown in forecast; EAC includes pending per GAAP constraint rules) [GAP-2026-08-18] — built 2026-08-23: pending-co-impact report (excluding/including columns) + PendingChangeOrderAmount captured in EAC snapshots
 
 ### Transactional - Billing Management
 - [x] **Project Allocator** (CRITICAL: markup/burden calculation engine) [built 2026-08-19 — IProjectAllocator + ProjectAllocator (resolves active allocation rule by category) + POST /projects/{id}/costs/calculate-burden + verified (base 1000, OH 10%, markup 15% → burden 265, billable 1265)]
@@ -779,12 +779,12 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
   - **Not-to-Exceed (NTE) enforcement:** T&M/Cost-Plus with cap, prevent invoice over NTE without Change Order
 - [x] **Billing review/approval** (review unbilled amounts, adjust billing %, approve for invoice generation) [built 2026-08-20 — POST /projects/{id}/billing/approve sets BillingApprovedBy/On (Project.ApproveBilling); verified 200]
 - [x] **Retainage management** (customer retainage: track retained amount, release trigger: % complete, final approval) [built 2026-08-20 — POST /projects/{id}/retainage/release calls Project.ReleaseRetainage (rejects over-held); verified reject-when-empty + held-path]
-- [ ] **Retention release** (release held retention to invoice, partial/full release, approval workflow)
+- [x] **Retention release** (release held retention to invoice, partial/full release, approval workflow) — pre-existing POST /subcontracts/{id}/release-retainage
 - [x] **Invoice generation to AR** (call AR invoice API, pass project detail, update project ledger: relieve unbilled AR/revenue) [built 2026-08-19 — BillingController.GenerateInvoice calls ArInvoiceCreator which creates+releases AR invoice via ArDbContext; 4100 Contract Revenue account auto-seeded; verified AR invoice created]
 - [x] **Billing hold** (prevent invoicing on project: dispute, customer request, compliance issue) [built 2026-08-19 — Project.SetBillingHold(BillingHold, Reason) + PUT /projects/{id}/billing-hold + GenerateInvoice enforces hold (returns 400 "Billing is on hold"); verified]
-- [ ] **ASC 606 five-step contract accounting** (identify contract/performance obligations, transaction price incl. variable consideration constraint on change orders, allocate, recognize as obligations satisfied — modernize the legacy %-complete engine) [GAP-2026-08-18]
+- [x] **ASC 606 five-step contract accounting** [GAP-2026-08-18] — built 2026-08-23: ContractPerformanceObligation entity, SSP-weighted price allocation, recognition recording with epsilon guards, five-step-summary endpoint incl. variable-consideration constraint note (pending COs); GL posting flagged glPostingPending for revenue-path integration
 - [x] **Contract asset vs. contract liability presentation** (unbilled revenue = contract asset; billings in excess of earned revenue = contract liability — WIP over/under billing mapped to the right balance-sheet side) [GAP-2026-08-18] [built 2026-08-19 — GET /projects/{id}/analysis/contract-position computes costsIncurred, billingsToDate, contractAsset (costs>billings), contractLiability (billings>costs); verified (costs 1900, billings 6840 -> liability 4940)]
-- [ ] **Revenue recognition by performance obligation** (multiple deliverables per contract recognized separately — e.g., mobilization, engineering, install) [GAP-2026-08-18]
+- [x] **Revenue recognition by performance obligation** (multiple deliverables recognized separately) [GAP-2026-08-18] — per-obligation recognition-status endpoint with cost-to-cost proxy and % satisfied
 
 ### Transactional - Subcontract Management
 - [x] **Subcontract entry** (vendor, contract amount, retainage %, scope, linked to parent project/task) [built 2026-08-19 — SubcontractController create + verified]
@@ -813,7 +813,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Forecast-at-Completion (FAC) calculation** (trend-based: project final margin based on current burn rate) [built 2026-08-19 — analysis/forecast]
 - [x] **Budget vs. Actual variance analysis** (by task, by category, by period; favorable/unfavorable variance) [built 2026-08-19 — analysis/budget-vs-actual + verified]
 - [x] **Earned Value Analysis (EVA)** (BCWS, BCWP, ACWP, SPI, CPI calculations for government contracts) [built 2026-08-19 — analysis/forecast SPI/CPI + verified]
-- [ ] **Profit fade / estimate-at-complete trend** (original vs. current estimate, margin erosion by period, per-project and portfolio) [GAP-2026-08-18]
+- [x] **Profit fade / estimate-at-complete trend** [GAP-2026-08-18] — built 2026-08-23: ProjectEacSnapshot daily captures via IEacSnapshotService wired into weekly EAC job; eac-trend + portfolio trend endpoints; EAC Trend tab in reports page
 - [x] **Project cash-flow forecast** (expected billings vs. cost burn vs. retainage release by period — feeds Cash Management forecast) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/cash-flow-forecast (expected billings, remaining cost-to-complete, retainage held, net cash flow); verified]
 
 ### Transactional - Reconciliation & Close
@@ -825,12 +825,12 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Project close-out checklist engine** (retainage released, lien waivers collected, final invoice billed, unbilled = 0, budget variance explained, archive) [GAP-2026-08-18] [built 2026-08-20 — GET /projects/{id}/analysis/close-out-checklist returns checklist items (retainage released, final invoice billed, unbilled=0, completed, billing hold cleared) + AllPassed; verified]
 
 ### Background Jobs
-- [ ] Nightly cost posting processor (consume cost events from AP/Payroll/Inventory, post to project ledger)
-- [ ] Nightly allocator run (apply burden/markup rules to unallocated costs, post unbilled AR/revenue)
-- [ ] Weekly EAC recalculation (update forecast for all active projects based on latest costs/progress)
-- [ ] Monthly WIP schedule generation (prepare WIP report for financial close)
-- [ ] Daily project-to-GL reconciliation check (alert if variance detected, email project accounting manager)
-- [ ] Weekly project performance alerts (email PM if over-budget, negative margin, schedule slip)
+- [x] Nightly cost posting processor — built 2026-08-23: VoucherPostedEvent defined in ERP.Core, emitted from AP PostBatchAsync, consumed by VoucherPostedToProjectHandler creating project CostTransactions; CostPostingProcessorJob daily 01:00 UTC health report
+- [x] Nightly allocator run — built 2026-08-23: AllocatorRunJob daily 01:30 UTC drives IProjectAllocator over unallocated posted costs
+- [x] Weekly EAC recalculation — built 2026-08-23: EacRecalculationJob Saturdays 04:00 UTC, now capturing EAC snapshots
+- [x] Monthly WIP schedule generation — built 2026-08-23: WipScheduleGenerationJob monthly 1st 05:00 UTC mirroring WIP math with totals report
+- [x] Daily project-to-GL reconciliation check — built 2026-08-23: GlReconciliationCheckJob daily 06:00 UTC, RECONCILIATION ALERT warnings beyond $1 variance
+- [x] Weekly project performance alerts — built 2026-08-23: PerformanceAlertJob Mondays 07:00 UTC scanning over-budget, negative-margin, schedule-slip projects
 
 ### Reports (20+ critical reports)
 - [x] Project Profitability Report (revenue, costs, margin, margin %, by project, by customer, by PM, YTD) [built 2026-08-19 — analysis/profitability + verified]
@@ -840,21 +840,21 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] Unbilled AR/Revenue Report (earned but not invoiced: by project, by customer, aging) [built 2026-08-19 — analysis/unbilled + verified]
 - [x] Change Order Summary (project: original budget, approved COs, revised budget, pending COs) [built 2026-08-19 — analysis/change-orders + verified]
 - [x] Change Order Log (all COs: number, project, description, amount, status, approval date) [built 2026-08-19 — change-orders endpoint + verified]
-- [ ] Employee Utilization Report (employee: hours by project, billable %, utilization %, revenue generated)
-- [ ] Employee Profitability Report (employee: billed amount - cost, margin per employee)
-- [ ] Subcontract Status Report (subcontract: vendor, amount, invoiced-to-date, retention held, remaining)
-- [ ] Subcontract Commitment Report (open subcontracts by project, impact on project budget remaining)
-- [ ] Certified Payroll Report (government format: employee, trade, hours, wage, fringe, prevailing rate compliance)
-- [ ] Project Portfolio Dashboard (all active projects: margin %, % complete, forecast EAC, risk status)
-- [ ] Project Aging Report (projects by status: planning, active, on-hold, over 1 year old, actionable)
-- [ ] Contract Value Analysis (contract types, customers, avg margin by type, win rate)
-- [ ] Project Manager Performance (PM: # projects, avg margin, on-time %, on-budget %, customer satisfaction)
-- [ ] Earned Value Report (government contracts: BCWS, BCWP, ACWP, SV, CV, SPI, CPI, EAC)
-- [ ] Project Forecast Report (EAC vs. budget, forecast margin, risk factors, recommended action)
-- [ ] Retainage Aging Report (customer + subcontractor retainage by expected release date) [GAP-2026-08-18]
-- [ ] Contract Asset / Liability Report (unbilled revenue vs. billings-in-excess by project, tie to balance sheet) [GAP-2026-08-18]
-- [ ] Pending Change Order Impact Report (approved vs. pending CO effect on contract value, EAC, margin) [GAP-2026-08-18]
-- [ ] Lien Waiver Register (per subcontract/payment: waiver type, status, date, amount) [GAP-2026-08-18]
+- [x] Employee Utilization Report — analysis/employee-utilization (hours by project, billable/utilization % vs capacity param)
+- [x] Employee Profitability Report — analysis/employee-profitability (billed/unbilled vs labor cost margin)
+- [x] Subcontract Status Report — analysis/subcontract-status (vendor, amount, invoiced-to-date, retention held, remaining)
+- [x] Subcontract Commitment Report — analysis/subcontract-commitment (open commitments vs budget remaining)
+- [x] Certified Payroll Report — analysis/certified-payroll (WH-347-style rows from labor cost transactions; compliance/fringe columns omitted honestly — no prevailing-rate source yet)
+- [x] Project Portfolio Dashboard — analysis/portfolio-dashboard (margin %, % complete, EAC, risk classification)
+- [x] Project Aging Report — analysis/project-aging (status/age buckets >1yr, actionable flags)
+- [x] Contract Value Analysis — analysis/contract-value-analysis
+- [x] Project Manager Performance — analysis/pm-performance (# projects, avg margin, on-budget %)
+- [x] Earned Value Report — analysis/earned-value (BCWS/BCWP/ACWP/SV/CV/SPI/CPI/EAC; straight-line BCWS fallback noted)
+- [x] Project Forecast Report — pre-existing GET analysis/forecast
+- [x] Retainage Aging Report — pre-existing GET analysis/retainage-aging
+- [x] Contract Asset / Liability Report [GAP-2026-08-18] — built 2026-08-23: analysis/contract-asset-liability (unbilled vs billings-in-excess, net classification)
+- [x] Pending Change Order Impact Report [GAP-2026-08-18] — built 2026-08-23: analysis/pending-co-impact (approved vs pending effect on value/EAC/margin)
+- [x] Lien Waiver Register [GAP-2026-08-18] — built 2026-08-23: analysis/lien-waiver-register (waiver type/status/date/amount joined to subcontracts)
 
 ### Tests (Largest test suite in the system)
 - [ ] Unit: markup/burden calculation (test: labor cost $100, burden 50% → billable base $150, markup 20% → bill $180)

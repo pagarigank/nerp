@@ -431,6 +431,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Billing', to: '/projects/billing' },
       { label: 'Change Orders', to: '/projects/change-orders' },
       { label: 'WIP / Analysis', to: '/projects/analysis' },
+      { label: 'Reports', to: '/projects/reports' },
     ],
   },
   {

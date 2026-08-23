@@ -172,6 +172,7 @@ import { ProjectCostsPage } from '@pages/projects/ProjectCostsPage'
 import { ProjectBillingPage } from '@pages/projects/ProjectBillingPage'
 import { ProjectChangeOrdersPage } from '@pages/projects/ProjectChangeOrdersPage'
 import { ProjectAnalysisPage } from '@pages/projects/ProjectAnalysisPage'
+import { ProjectsReportsPage } from '@pages/projects/ProjectsReportsPage'
 import { PayrollLayout } from '@pages/payroll/PayrollLayout'
 import { EmployeesPage } from '@pages/payroll/EmployeesPage'
 import { PayCodesPage } from '@pages/payroll/PayCodesPage'
@@ -417,6 +418,7 @@ function App() {
           <Route path="billing" element={<ProjectBillingPage />} />
           <Route path="change-orders" element={<ProjectChangeOrdersPage />} />
           <Route path="analysis" element={<ProjectAnalysisPage />} />
+          <Route path="reports" element={<ProjectsReportsPage />} />
         </Route>
         <Route path="payroll" element={<PayrollLayout />}>
           <Route index element={<Navigate to="employees" replace />} />

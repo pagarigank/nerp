@@ -5,6 +5,7 @@
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Infrastructure;
 using ERP.Modules.ProjectAccounting.Infrastructure.Handlers;
+using ERP.Modules.ProjectAccounting.Infrastructure.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,7 @@ public static class ModuleExtensions
         services.AddScoped<IProjUnitOfWork, ProjUnitOfWork>();
         services.AddScoped<ERP.Modules.ProjectAccounting.Domain.Services.IProjectAllocator, ERP.Modules.ProjectAccounting.Domain.Services.ProjectAllocator>();
         services.AddScoped<ArInvoiceCreator>();
+        services.AddScoped<IEacSnapshotService, EacSnapshotService>();
 
         // Shared cross-module contract consumed by Payroll (timesheet/expense approval) to
         // validate project/task budget without a compile-time module cycle (mirrors AR's
@@ -38,6 +40,16 @@ public static class ModuleExtensions
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.ProjectAccounting.Domain.Events.ProjectCostPostedEvent>, CostTransactionDualPostingHandler>();
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.Inventory.Domain.Events.InventoryTransactionPostedEvent>, InventoryPostedToProjectHandler>();
         services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Core.Domain.Events.LaborPostedToProjectEvent>, PayrollPostedToProjectHandler>();
+        services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Core.Common.VoucherPostedEvent>, VoucherPostedToProjectHandler>();
+
+        // Phase 10 background jobs (registered as interfaces so Hangfire resolves them
+        // through DI; recurring schedules live in the API composition root).
+        services.AddScoped<ICostPostingProcessorJob, CostPostingProcessorJob>();
+        services.AddScoped<IAllocatorRunJob, AllocatorRunJob>();
+        services.AddScoped<IEacRecalculationJob, EacRecalculationJob>();
+        services.AddScoped<IWipScheduleGenerationJob, WipScheduleGenerationJob>();
+        services.AddScoped<IGlReconciliationCheckJob, GlReconciliationCheckJob>();
+        services.AddScoped<IPerformanceAlertJob, PerformanceAlertJob>();
 
         return services;
     }

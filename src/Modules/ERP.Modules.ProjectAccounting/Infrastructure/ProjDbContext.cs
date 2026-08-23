@@ -35,6 +35,9 @@ public class ProjDbContext : DispatchableDbContext
     public DbSet<SubcontractInvoice> SubcontractInvoices => Set<SubcontractInvoice>();
     public DbSet<SubcontractCompliance> SubcontractCompliances => Set<SubcontractCompliance>();
     public DbSet<LienWaiver> LienWaivers => Set<LienWaiver>();
+    public DbSet<ContractPerformanceObligation> ContractPerformanceObligations => Set<ContractPerformanceObligation>();
+    public DbSet<ProjectDocument> ProjectDocuments => Set<ProjectDocument>();
+    public DbSet<ProjectEacSnapshot> ProjectEacSnapshots => Set<ProjectEacSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -355,6 +358,54 @@ public class ProjDbContext : DispatchableDbContext
             entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.HasIndex(e => e.SubcontractId);
+        });
+
+        // ContractPerformanceObligation (ASC 606)
+        modelBuilder.Entity<ContractPerformanceObligation>(entity =>
+        {
+            entity.ToTable("ContractPerformanceObligations");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.StandaloneSellingPriceBasis).HasMaxLength(100);
+            entity.Property(e => e.TransactionPriceAllocated).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RecognizedRevenueToDate).HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.Status);
+        });
+
+        // ProjectDocument
+        modelBuilder.Entity<ProjectDocument>(entity =>
+        {
+            entity.ToTable("ProjectDocuments");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.DocumentType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.FileReference).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.ContentType).HasMaxLength(100);
+            entity.Property(e => e.UploadedBy).HasMaxLength(256);
+
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.DocumentType);
+        });
+
+        // ProjectEacSnapshot (profit fade / EAC trend, one per project per UTC day)
+        modelBuilder.Entity<ProjectEacSnapshot>(entity =>
+        {
+            entity.ToTable("ProjectEacSnapshots");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.BudgetAtCompletion).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.EstimateAtCompletion).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.EstimatedMarginPct).HasColumnType("decimal(9,4)");
+            entity.Property(e => e.PendingChangeOrderAmount).HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(e => new { e.ProjectId, e.CapturedOn });
+            entity.HasIndex(e => e.CompanyId);
         });
     }
 }

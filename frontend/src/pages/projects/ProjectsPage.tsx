@@ -40,6 +40,7 @@ import {
 } from '@api/projectAccounting'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ProjectSummary, ProjectTask, BudgetLine, CostTransaction, ChangeOrder, ContractLine, WipSchedule, CostSummary } from '@/types/projectAccounting'
+import { Asc606Tab, DocumentsTab, EacTrendTab } from './ProjectWorkspaceTabs'
 
 const MONEY = (v: number | null) => (v != null ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—')
 const PCT = (v?: number | null) => (v != null && !Number.isNaN(v) ? `${v.toFixed(1)}%` : '—')
@@ -47,9 +48,9 @@ const PCT = (v?: number | null) => (v != null && !Number.isNaN(v) ? `${v.toFixed
 export function ProjectsPage() {
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  const sectionParam = searchParams.get('section') as 'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis' | null
+  const sectionParam = searchParams.get('section') as 'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis' | 'asc606' | 'documents' | 'eac-trend' | null
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis'>(sectionParam ?? 'overview')
+  const [tab, setTab] = useState<'overview' | 'tasks' | 'budget' | 'costs' | 'billing' | 'change-orders' | 'analysis' | 'asc606' | 'documents' | 'eac-trend'>(sectionParam ?? 'overview')
 
   // Sync tab with URL query param when navigating via sidebar submenu
   useEffect(() => {
@@ -184,6 +185,9 @@ function ProjectDetail({ project, tab, setTab, onBack, setError, queryClient }: 
     { key: 'billing', label: 'Billing' },
     { key: 'change-orders', label: 'Change Orders' },
     { key: 'analysis', label: 'Analysis' },
+    { key: 'asc606', label: 'ASC 606' },
+    { key: 'documents', label: 'Documents' },
+    { key: 'eac-trend', label: 'EAC Trend' },
   ]
 
   return (
@@ -229,6 +233,9 @@ function ProjectDetail({ project, tab, setTab, onBack, setError, queryClient }: 
       {tab === 'billing' && <BillingTab project={project} setError={setError} queryClient={queryClient} />}
       {tab === 'change-orders' && <ChangeOrdersTab project={project} setError={setError} queryClient={queryClient} />}
       {tab === 'analysis' && <AnalysisTab project={project} />}
+      {tab === 'asc606' && <Asc606Tab project={project} setError={setError} queryClient={queryClient} />}
+      {tab === 'documents' && <DocumentsTab project={project} setError={setError} queryClient={queryClient} />}
+      {tab === 'eac-trend' && <EacTrendTab project={project} />}
     </div>
   )
 }

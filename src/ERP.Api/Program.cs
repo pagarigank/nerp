@@ -401,6 +401,42 @@ public class Program
                 Cron.Weekly(DayOfWeek.Sunday, 3, 0), // Sundays 3:00 AM UTC: standard-cost recalculation
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.ICostPostingProcessorJob>(
+                "proj-cost-posting-processor",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(1, 0), // Daily at 1:00 AM UTC: project cost posting health report
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.IAllocatorRunJob>(
+                "proj-allocator-run",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(1, 30), // Daily at 1:30 AM UTC: apply burden/markup to unallocated costs
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.IEacRecalculationJob>(
+                "proj-eac-recalculation",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Weekly(DayOfWeek.Saturday, 4, 0), // Saturdays 4:00 AM UTC: EAC recalc + snapshot capture
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.IWipScheduleGenerationJob>(
+                "proj-wip-schedule",
+                job => job.RunAsync(CancellationToken.None),
+                "0 5 1 * *", // Monthly on the 1st at 5:00 AM UTC
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.IGlReconciliationCheckJob>(
+                "proj-gl-reconciliation-check",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(6, 0), // Daily at 6:00 AM UTC: alert on project-to-GL variance
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.ProjectAccounting.Infrastructure.Jobs.IPerformanceAlertJob>(
+                "proj-performance-alerts",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Weekly(DayOfWeek.Monday, 7, 0), // Mondays 7:00 AM UTC: over-budget / negative margin / slip alerts
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
             recurringJobManager.AddOrUpdate<ICommissionRunJob>(
                 "om-commission-run",
                 job => job.RunAsync(CancellationToken.None),

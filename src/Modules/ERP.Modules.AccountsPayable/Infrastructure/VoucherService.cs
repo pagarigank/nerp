@@ -2,6 +2,8 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Core.Common;
+using ERP.Core.Domain.Events;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Posting;
@@ -16,19 +18,22 @@ public class VoucherService : IVoucherService
     private readonly ICurrentUserService _currentUser;
     private readonly IPeriodService _periodService;
     private readonly ISodService _sodService;
+    private readonly IDomainEventDispatcher _eventDispatcher;
 
     public VoucherService(
         ApDbContext context,
         IPostingEventPublisher postingPublisher,
         ICurrentUserService currentUser,
         IPeriodService periodService,
-        ISodService sodService)
+        ISodService sodService,
+        IDomainEventDispatcher eventDispatcher)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _postingPublisher = postingPublisher ?? throw new ArgumentNullException(nameof(postingPublisher));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
         _periodService = periodService ?? throw new ArgumentNullException(nameof(periodService));
         _sodService = sodService ?? throw new ArgumentNullException(nameof(sodService));
+        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
     }
 
     public async Task<VoucherBatch> CreateVoucherBatchAsync(
@@ -194,6 +199,36 @@ public class VoucherService : IVoucherService
                 PostingMetadata.Create(postedBy, Guid.NewGuid(), vendorId: null, projectId: null));
 
             await _postingPublisher.PublishAsync(postingEvent, cancellationToken);
+        }
+
+        // Cross-module lifecycle signal (architecture.md §4): one VoucherPostedEvent per
+        // voucher with project-tagged distributions so Project Accounting job-costs the
+        // vendor-invoice spend. Credit legs arrive as negative amounts.
+        foreach (var voucher in batch.Vouchers)
+        {
+            var costLines = voucher.Distributions
+                .Where(d => d.ProjectId.HasValue)
+                .Select(d => new VoucherCostLine(
+                    d.ProjectId,
+                    d.TaskId,
+                    d.Debit - d.Credit,
+                    null))
+                .ToList();
+
+            if (costLines.Count == 0)
+            {
+                continue;
+            }
+
+            await _eventDispatcher.DispatchAsync(
+                new VoucherPostedEvent(
+                    batch.CompanyId,
+                    voucher.Id,
+                    voucher.VendorId,
+                    voucher.InvoiceNumber,
+                    postingDate,
+                    costLines),
+                cancellationToken);
         }
 
         return batch;
