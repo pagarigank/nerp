@@ -154,6 +154,7 @@ import { RtvPage } from '@pages/om/RtvPage'
 import { OrderNotesPage } from '@pages/om/OrderNotesPage'
 import { OrderStatusDashboardPage } from '@pages/om/OrderStatusDashboardPage'
 import { SalesAnalysisPage } from '@pages/om/SalesAnalysisPage'
+import { CommissionRunsPage } from '@pages/om/CommissionRunsPage'
 import { AtpPage } from '@pages/om/AtpPage'
 import { FreightAllocationPage } from '@pages/om/FreightAllocationPage'
 import { PickPackShipPage } from '@pages/om/PickPackShipPage'
@@ -392,6 +393,7 @@ function App() {
           <Route path="order-notes" element={<OrderNotesPage />} />
           <Route path="order-dashboard" element={<OrderStatusDashboardPage />} />
           <Route path="sales-analysis" element={<SalesAnalysisPage />} />
+          <Route path="commissions" element={<CommissionRunsPage />} />
           <Route path="atp" element={<AtpPage />} />
           <Route path="freight" element={<FreightAllocationPage />} />
           <Route path="pick-pack-ship" element={<PickPackShipPage />} />

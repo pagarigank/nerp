@@ -7,21 +7,37 @@ using System.Threading;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Application.Services;
+using ERP.Modules.OrderManagement.Domain.Entities;
+using ERP.Modules.OrderManagement.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.OrderManagement.Api;
+
+public sealed record CommissionRunRow(
+    Guid Id,
+    string RunNumber,
+    DateTimeOffset PeriodStart,
+    DateTimeOffset PeriodEnd,
+    int RepCount,
+    decimal TotalRevenue,
+    decimal TotalCommission);
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/om/reports")]
+#pragma warning disable S6960
 public class SalesReportsController : ControllerBase
+#pragma warning restore S6960
 {
     private readonly SalesReportService _reportService;
+    private readonly OmDbContext _context;
 
-    public SalesReportsController(SalesReportService reportService)
+    public SalesReportsController(SalesReportService reportService, OmDbContext context)
     {
         _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     [HttpGet("open-orders")]
@@ -77,6 +93,31 @@ public class SalesReportsController : ControllerBase
 
         var rows = await _reportService.GetCreditHoldsAsync(companyId.Value, cancellationToken);
         return Ok(ApiResponse<IReadOnlyList<CreditHoldRow>>.Success(rows));
+    }
+
+    [HttpGet("commission-runs")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CommissionRunRow>>>> CommissionRunsAsync(CancellationToken cancellationToken)
+    {
+        var runs = await _context.CommissionRuns.AsNoTracking()
+            .OrderByDescending(r => r.PeriodStart)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+        var ids = runs.Select(r => r.Id).ToList();
+        var lines = await _context.CommissionRunLines.AsNoTracking()
+            .Where(l => ids.Contains(l.CommissionRunId))
+            .ToListAsync(cancellationToken);
+
+        var rows = runs.Select(r => new CommissionRunRow(
+            r.Id,
+            r.RunNumber,
+            r.PeriodStart,
+            r.PeriodEnd,
+            lines.Count(l => l.CommissionRunId == r.Id),
+            lines.Where(l => l.CommissionRunId == r.Id).Sum(l => l.RevenueBase),
+            lines.Where(l => l.CommissionRunId == r.Id).Sum(l => l.CommissionAmount)))
+            .ToList();
+
+        return Ok(ApiResponse<IReadOnlyList<CommissionRunRow>>.Success(rows));
     }
 
     [HttpGet("drop-ship-status")]

@@ -737,3 +737,13 @@ export interface AtpResult {
   isSufficient: boolean
   promisedDate: string
 }
+
+export interface CommissionRunSummary {
+  id: string
+  runNumber: string
+  periodStart: string
+  periodEnd: string
+  repCount: number
+  totalRevenue: number
+  totalCommission: number
+}

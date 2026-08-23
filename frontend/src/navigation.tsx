@@ -394,6 +394,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Notes & History', to: '/om/order-notes' },
       { label: 'Order Dashboard', to: '/om/order-dashboard' },
       { label: 'Sales Analysis', to: '/om/sales-analysis' },
+      { label: 'Commissions', to: '/om/commissions' },
       { label: 'ATP', to: '/om/atp' },
       { label: 'Freight', to: '/om/freight' },
       { label: 'Pick/Pack/Ship', to: '/om/pick-pack-ship' },

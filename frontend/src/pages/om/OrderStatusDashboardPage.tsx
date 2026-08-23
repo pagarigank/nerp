@@ -3,19 +3,25 @@ import { Card } from '@components/ui/Card'
 import { DataTable } from '@components/ui/DataTable'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getOrderStatusDashboard, companyId } from '@api/orderManagement'
-import type { OrderStatusRow } from '@/types/orderManagement'
+import { formatDate } from '@utils/helpers'
+import { getOrderStatusDashboard, getCreditHoldsReport, companyId } from '@api/orderManagement'
+import type { OrderStatusRow, CreditHoldRow } from '@/types/orderManagement'
 
 export function OrderStatusDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<OrderStatusRow[]>([])
+  const [holds, setHolds] = useState<CreditHoldRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    getOrderStatusDashboard(companyId())
-      .then((res) => setData((res as { data: OrderStatusRow[] }).data ?? []))
+    Promise.all([
+      getOrderStatusDashboard(companyId()),
+      getCreditHoldsReport().catch(() => []),
+    ])
+      .then(([dash, holdRes]) => {
+        setData((dash as { data: OrderStatusRow[] }).data ?? [])
+        setHolds((holdRes as { data?: CreditHoldRow[] }).data ?? (holdRes as CreditHoldRow[]))
+      })
       .catch((e) => setError(getErrorMessage(e)))
       .finally(() => setLoading(false))
   }, [])
@@ -26,11 +32,27 @@ export function OrderStatusDashboardPage() {
     { key: 'remainingToShip', header: 'Units Remaining to Ship' },
   ]
 
+  const holdColumns = [
+    { key: 'orderNumber', header: 'Order #' },
+    { key: 'reason', header: 'Hold Reason' },
+    { key: 'orderDate', header: 'Order Date', render: (v: string) => formatDate(v) },
+    { key: 'status', header: 'Status' },
+  ]
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Sales Order Status Dashboard (587)</h1>
+      <h1 className="text-2xl font-bold">Sales Order Status Dashboard</h1>
       <Card>
         <DataTable columns={columns} data={data} loading={loading} emptyMessage="No orders" />
+      </Card>
+      <Card>
+        <h2 className="text-lg font-semibold px-4 pt-4">Orders on Credit Hold</h2>
+        <DataTable
+          columns={holdColumns}
+          data={holds}
+          loading={loading}
+          emptyMessage="No orders on credit hold"
+        />
       </Card>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>

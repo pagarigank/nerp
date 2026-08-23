@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, AlertCircle, Check, X, Trash2 } from 'lucide-react'
+import { Plus, Search, AlertCircle, Check, X, Trash2, RefreshCw } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
 import { UomSelect } from '@components/ui/UomSelect'
@@ -66,6 +66,8 @@ export function RequisitionsPage() {
   const [open, setOpen] = useState(false)
   const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [scanResult, setScanResult] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
@@ -189,8 +191,39 @@ export function RequisitionsPage() {
         </div>
       )}
       <Card>
+        {scanResult && (
+          <div className="mx-4 mt-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-300">
+            {scanResult}
+            <button className="ml-3 underline" onClick={() => setScanResult(null)}>dismiss</button>
+          </div>
+        )}
         <CardHeader title="Requisitions" description={`${rows.length} requisition(s)`}
-          action={<Button variant="primary" size="sm" onClick={openForm} leftIcon={<Plus className="h-4 w-4" />}>New Requisition</Button>} />
+          action={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<RefreshCw className="h-4 w-4" />}
+                disabled={scanning}
+                onClick={async () => {
+                  setScanning(true)
+                  setScanResult(null)
+                  try {
+                    const r = await runReorderScan()
+                    const d = (r as { data?: { itemsBelowReorderPoint: number; requisitionsCreated: number } }).data ?? (r as { itemsBelowReorderPoint: number; requisitionsCreated: number })
+                    setScanResult(`Scan complete: ${d.requisitionsCreated} requisition(s) created from ${d.itemsBelowReorderPoint} item(s) below reorder point.`)
+                  } catch (e) {
+                    setScanResult(getErrorMessage(e))
+                  } finally {
+                    setScanning(false)
+                  }
+                }}
+              >
+                {scanning ? 'Scanning...' : 'Run Reorder Scan'}
+              </Button>
+              <Button variant="primary" size="sm" onClick={openForm} leftIcon={<Plus className="h-4 w-4" />}>New Requisition</Button>
+            </div>
+          } />
         <CardContent>
           <div className="mb-4 max-w-md"><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." aria-label="Search requisitions" leftIcon={<Search className="h-4 w-4" />} /></div>
           {isLoading ? <p className="text-sm text-gray-500 py-8 text-center">Loading…</p> :

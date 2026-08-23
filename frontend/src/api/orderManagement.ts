@@ -348,3 +348,7 @@ export function checkAtp(itemId: string, warehouseId: string, quantity: number) 
   return get(`/om/atp?itemId=${itemId}&warehouseId=${warehouseId}&quantity=${quantity}`)
 }
 
+
+export function getCommissionRuns(): Promise<import('@/types/orderManagement').CommissionRunSummary[]> {
+  return get('/om/reports/commission-runs')
+}

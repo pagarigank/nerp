@@ -248,3 +248,13 @@ export function getPriceVarianceReport(threshold?: number): Promise<import('@/ty
 export function getOverReceiptExceptionReport(): Promise<import('@/types/purchasing').OverReceiptExceptionReportRow[]> {
   return get('/purchasing/reports/over-receipt-exceptions')
 }
+
+export interface ReorderScanReport {
+  itemsBelowReorderPoint: number
+  requisitionsCreated: number
+  skipped: string[]
+}
+
+export function runReorderScan(): Promise<ReorderScanReport> {
+  return post('/purchasing/requisitions/run-reorder-scan')
+}
