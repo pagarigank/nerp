@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Core.Common;
 using ERP.Core.Domain.Events;
 using ERP.Modules.BillOfMaterials.Domain.Entities;
 using ERP.Modules.BillOfMaterials.Infrastructure;
@@ -12,34 +13,44 @@ using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using InvInventoryContext = ERP.Modules.Inventory.Infrastructure.InventoryDbContext;
 using InvIUnitOfWork = ERP.Modules.Inventory.IUnitOfWork;
 
 namespace ERP.Modules.BillOfMaterials.Api;
 
 #pragma warning disable S6960 // Controller actions should be grouped logically
+/// <summary>
+/// Build order lifecycle endpoints (create / release / complete / disassemble / backflush).
+/// </summary>
 [ApiController]
 [Route("api/v1/bom/build-orders")]
-public class BuildOrderController : ControllerBase
+public partial class BuildOrderController : ControllerBase
 {
     private readonly BomDbContext _bomContext;
     private readonly InvInventoryContext _invContext;
     private readonly IBomUnitOfWork _bomUnitOfWork;
     private readonly InvIUnitOfWork _invUnitOfWork;
     private readonly IDomainEventDispatcher _eventDispatcher;
+    private readonly IComponentReservationService _reservationService;
+    private readonly ILogger<BuildOrderController> _logger;
 
     public BuildOrderController(
         BomDbContext bomContext,
         InvInventoryContext invContext,
         IBomUnitOfWork bomUnitOfWork,
         InvIUnitOfWork invUnitOfWork,
-        IDomainEventDispatcher eventDispatcher)
+        IDomainEventDispatcher eventDispatcher,
+        IComponentReservationService reservationService,
+        ILogger<BuildOrderController> logger)
     {
         _bomContext = bomContext;
         _invContext = invContext;
         _bomUnitOfWork = bomUnitOfWork;
         _invUnitOfWork = invUnitOfWork;
         _eventDispatcher = eventDispatcher;
+        _reservationService = reservationService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -191,8 +202,32 @@ public class BuildOrderController : ControllerBase
         order.UpdateStatus(BuildOrderStatus.Released);
         await _bomUnitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Ok(ApiResponse.Success("Build order released."));
+        var components = order.Lines
+            .Where(l => !l.IsLabor && !l.IsOverhead && l.QuantityRequired > 0)
+            .Select(l => new ComponentReservationRequest(l.ComponentItemId, l.QuantityRequired, l.UnitOfMeasure))
+            .ToList();
+
+        int reservedCount = 0;
+        try
+        {
+            reservedCount = await _reservationService.ReserveForBuildOrderAsync(
+                order.CompanyId, order.Id, components, cancellationToken);
+        }
+#pragma warning disable CA1031 // Reservation failure must not block a released build order
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogReservationFailure(ex, order.Id);
+        }
+
+        return Ok(ApiResponse.Success(
+            reservedCount > 0
+                ? $"Build order released. {reservedCount} component reservations created."
+                : "Build order released."));
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Component reservation failed for build order {BuildOrderId}.")]
+    private partial void LogReservationFailure(Exception exception, Guid buildOrderId);
 
     [HttpPost("{id:guid}/complete")]
     public async Task<ActionResult<ApiResponse>> Complete(

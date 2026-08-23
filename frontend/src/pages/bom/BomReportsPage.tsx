@@ -1,11 +1,22 @@
 import { useState, useMemo } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
+import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { getBomListing, getBuildHistory, getBomAccuracy, getComponentShortage, getRevisionHistory, getBuildVariance, getWorkCenterUtilization } from '@api/bom'
+import {
+  getBomListing,
+  getBuildHistory,
+  getBomAccuracy,
+  getComponentShortage,
+  getRevisionHistory,
+  getBuildVariance,
+  getWorkCenterUtilization,
+  runBomValidation,
+  runCostRollup,
+} from '@api/bom'
 import { getItems } from '@api/inventory'
-import { useQuery } from '@tanstack/react-query'
-import type { BomListingItem, BuildHistoryEntry, BomAccuracyItem } from '@/types/bom'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import type { BomListingItem, BuildHistoryEntry, BomAccuracyItem, BomValidationReport, CostRollupReport } from '@/types/bom'
 
 interface ComponentShortageItem { componentItemId: string; itemCode: string; onHand: number; allocated: number; available: number; required: number; shortage: number }
 interface RevisionHistoryItem { bomHeaderId: string; parentItemId: string; revision: string; changeDate: string; changeType: string; description: string | null; changedBy: string | null }
@@ -17,6 +28,27 @@ const MONEY = (v: number | null) => (v != null ? `$${Number(v).toFixed(4)}` : '�
 
 export function BomReportsPage() {
   const [tab, setTab] = useState<'listing' | 'history' | 'accuracy'>('listing')
+  const [jobResult, setJobResult] = useState<string | null>(null)
+  const [jobError, setJobError] = useState<string | null>(null)
+
+  const validationMutation = useMutation({
+    mutationFn: runBomValidation,
+    onSuccess: (r: BomValidationReport) =>
+      setJobResult(`BOM validation: ${r.totalBomsChecked} BOMs checked, ${r.issues.length} issues found.`),
+    onError: (e: any) => setJobError(getErrorMessage(e)),
+  })
+
+  const rollupMutation = useMutation({
+    mutationFn: runCostRollup,
+    onSuccess: (r: CostRollupReport) => {
+      const top = r.biggestDeltas[0]
+      setJobResult(
+        `Cost roll-up: ${r.updatedCount} updated, ${r.unchangedCount} unchanged` +
+        (top ? `. Largest delta ${top.parentItemCode}: ${top.previousCost.toFixed(2)} → ${top.newCost.toFixed(2)}` : ''),
+      )
+    },
+    onError: (e: any) => setJobError(getErrorMessage(e)),
+  })
 
   const { data: items = [] } = useQuery({
     queryKey: ['inventory', 'items'],
@@ -27,11 +59,29 @@ export function BomReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <BarChart3 className="h-6 w-6" /> BOM Reports
         </h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setJobResult(null); setJobError(null); validationMutation.mutate() }} disabled={validationMutation.isPending}>
+            Run Validation
+          </Button>
+          <Button variant="outline" onClick={() => { setJobResult(null); setJobError(null); rollupMutation.mutate() }} disabled={rollupMutation.isPending}>
+            Cost Roll-Up
+          </Button>
+        </div>
       </div>
+
+      {(jobResult || jobError || validationMutation.isPending || rollupMutation.isPending) && (
+        <div className={`rounded-md p-3 text-sm ${
+          jobError
+            ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+            : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+        }`}>
+          {jobError ?? (validationMutation.isPending ? 'Running BOM validation…' : rollupMutation.isPending ? 'Running cost roll-up…' : jobResult)}
+        </div>
+      )}
 
       <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         {[

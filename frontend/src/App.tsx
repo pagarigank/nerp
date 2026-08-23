@@ -161,6 +161,7 @@ import { PickPackShipPage } from '@pages/om/PickPackShipPage'
 import { BomsPage } from '@pages/bom/BomsPage'
 import { BuildOrdersPage } from '@pages/bom/BuildOrdersPage'
 import { WorkCentersPage } from '@pages/bom/WorkCentersPage'
+import { RoutingOperationsPage } from '@pages/bom/RoutingOperationsPage'
 import { BomReportsPage } from '@pages/bom/BomReportsPage'
 import { ProjectsLayout } from '@pages/projects/ProjectsLayout'
 import { ProjectsListPage } from '@pages/projects/ProjectsListPage'
@@ -403,6 +404,7 @@ function App() {
         <Route path="bom/*">
           <Route index element={<BomsPage />} />
           <Route path="work-centers" element={<WorkCentersPage />} />
+          <Route path="routing-operations" element={<RoutingOperationsPage />} />
           <Route path="build-orders" element={<BuildOrdersPage />} />
           <Route path="reports" element={<BomReportsPage />} />
         </Route>

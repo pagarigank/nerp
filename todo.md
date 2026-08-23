@@ -655,7 +655,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] BOM Header CRUD (parent item, effective dates, revision, status: active/pending/obsolete) [built 2026-08-19]
 - [x] BOM Component Line CRUD (component item, qty per parent, scrap factor, operation sequence) [built 2026-08-19]
 - [x] BOM revision history (track changes, effectivity dates, reason for change) [built 2026-08-19]
-- [ ] Operation/Routing master (operation code, description, work center, standard time)
+- [x] Operation/Routing master (operation code, description, work center, standard time) — built 2026-08-23: RoutingOperation entity + CRUD under /bom/routing-operations (company-scoped list), BomComponentLine.RoutingOperationId link, RoutingOperationsPage + nav
 - [x] Work Center master (code, name, department, capacity, efficiency, cost rate per hour — needed for labor/overhead in cost roll-up) [GAP-2026-08-18] [built 2026-08-19]
 - [x] Phantom/transient BOM type (component consumed directly into parent, not stocked or planned separately) [GAP-2026-08-18] [built 2026-08-19]
 - [x] Alternate BOM / effectivity by date-range (A vs B design, customer-specific BOM) [GAP-2026-08-18] [built 2026-08-19 — AlternateCode + effective dates + verified]
@@ -679,8 +679,8 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 - [x] **Co-product/by-product handling** (assembly produces parent + by-products with cost split) [GAP-2026-08-18] [built 2026-08-20 — BomCoProduct/BomCoProductCost entities + BomHeader.AddCoProduct; POST/GET /bom/bom-headers/{id}/co-products + POST .../cost-split (joint cost allocation); verified (25% of 1000 = 250)]
 
 ### Background Jobs
-- [ ] Nightly BOM validation (check for circular references, inactive components, cost anomalies)
-- [ ] Weekly cost roll-up recalculation (update standard costs based on current component costs)
+- [x] Nightly BOM validation — built 2026-08-23: BomValidationJob (`bom-validation-nightly` Hangfire 02:30 UTC) checks circular refs via DFS, inactive components (IInventoryItemLookup contract), null/zero/negative costs, inactive work centers, duplicate operation sequences; manual trigger POST /bom/validation/run + UI buttons on BomReportsPage
+- [x] Weekly cost roll-up recalculation — built 2026-08-23: CostRollupJob (`bom-cost-rollup-weekly` Hangfire Sundays 03:00 UTC) multi-level bottom-up memoized roll-up using live item costs via IInventoryItemLookup; persists changed EstimatedMaterialCost only; manual trigger POST /bom/cost-rollup/run
 
 ### Reports
 - [x] BOM Listing (single-level: parent + immediate components with qty, cost) [built 2026-08-19]
@@ -712,7 +712,7 @@ Web-researched review of how Phases 11-14 must connect to already-built Phases 1
 ### Wiring & Cross-Module Integration [GAP-2026-08-18]
 - [x] Build transaction → Inventory production receipt (parent in at rolled-up cost) + component issue (Phase 7 issue transaction); consumes the same `ItemIssued`/`GoodsReceived` event pipeline to GL [built 2026-08-19]
 - [x] Cost roll-up updates Item standard cost (Phase 7 item costing) and flows to Inventory valuation + GL inventory asset; requires Phase 7 item cost-layer APIs [built 2026-08-19 — apply-cost-to-item endpoint updates Item.StandardCost + verified]
-- [ ] Component allocation uses Phase 7 item reservation (reserved qty not available to sales orders)
+- [x] Component allocation uses Phase 7 item reservation (reserved qty not available to sales orders) — built 2026-08-23: IComponentReservationService contract implemented by Inventory; Build Order release now reserves components (ProductionOrder source type) idempotently and bumps ItemStock.AllocatedQuantity
 - [ ] Labor/overhead from Work Center rates could feed Phase 11 payroll labor costing and Phase 10 project cost (planned build → project linkage)
 
 ### Frontend ✅ COMPLETE (2026-08-19)

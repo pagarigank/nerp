@@ -45,6 +45,7 @@ public class BomComponentLine : AuditableEntity
     public decimal ScrapFactor { get; private set; }
     public int OperationSequence { get; private set; }
     public Guid? WorkCenterId { get; private set; }
+    public Guid? RoutingOperationId { get; private set; }
     public bool IsPhantom { get; private set; }
     public bool IsCritical { get; private set; }
     public string? Notes { get; private set; }
@@ -106,6 +107,8 @@ public class BomComponentLine : AuditableEntity
     }
 
     public void SetEstimatedUnitCost(decimal cost) => EstimatedUnitCost = cost;
+
+    public void SetRoutingOperation(Guid? routingOperationId) => RoutingOperationId = routingOperationId;
 
     public void ReplaceComponent(Guid newComponentItemId) => ComponentItemId = newComponentItemId;
 }

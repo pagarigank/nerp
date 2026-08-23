@@ -4,6 +4,7 @@
 
 using ERP.Modules.BillOfMaterials.Domain.Services;
 using ERP.Modules.BillOfMaterials.Infrastructure;
+using ERP.Modules.BillOfMaterials.Infrastructure.Jobs;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,6 +39,8 @@ public static class ModuleExtensions
 
         services.AddScoped(typeof(IBomRepository<>), typeof(BomRepository<>));
         services.AddScoped<IBomUnitOfWork, BomUnitOfWork>();
+        services.AddScoped<IBomValidationJob, BomValidationJob>();
+        services.AddScoped<ICostRollupJob, CostRollupJob>();
 
         return services;
     }

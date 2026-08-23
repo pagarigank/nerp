@@ -18,6 +18,7 @@ public class BomDbContext : DispatchableDbContext
     public DbSet<BomHeader> BomHeaders => Set<BomHeader>();
     public DbSet<BomComponentLine> BomComponentLines => Set<BomComponentLine>();
     public DbSet<WorkCenter> WorkCenters => Set<WorkCenter>();
+    public DbSet<RoutingOperation> RoutingOperations => Set<RoutingOperation>();
     public DbSet<BuildOrder> BuildOrders => Set<BuildOrder>();
     public DbSet<BuildOrderLine> BuildOrderLines => Set<BuildOrderLine>();
     public DbSet<BomRevisionHistory> BomRevisionHistories => Set<BomRevisionHistory>();
@@ -91,6 +92,21 @@ public class BomDbContext : DispatchableDbContext
             entity.Property(e => e.CostRatePerHour).HasColumnType("decimal(18,4)");
 
             entity.HasIndex(e => new { e.CompanyId, e.Code }).IsUnique();
+        });
+
+        // RoutingOperation
+        modelBuilder.Entity<RoutingOperation>(entity =>
+        {
+            entity.ToTable("RoutingOperations");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.OperationCode).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.StandardSetupTimeMinutes).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.StandardRunTimeMinutesPerUnit).HasColumnType("decimal(18,4)");
+
+            entity.HasIndex(e => new { e.CompanyId, e.OperationCode }).IsUnique();
+            entity.HasIndex(e => e.WorkCenterId);
         });
 
         // BuildOrder

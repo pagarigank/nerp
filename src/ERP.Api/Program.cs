@@ -14,6 +14,7 @@ using ERP.Modules.AccountsPayable;
 using ERP.Modules.AccountsReceivable;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.BillOfMaterials;
+using ERP.Modules.BillOfMaterials.Infrastructure.Jobs;
 using ERP.Modules.CashManagement;
 using ERP.Modules.CashManagement.Infrastructure;
 using ERP.Modules.FieldService;
@@ -386,6 +387,18 @@ public class Program
                 "om-backorder-processing",
                 job => job.RunAsync(CancellationToken.None),
                 Cron.Hourly, // Hourly: release backorders as inventory arrives
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<IBomValidationJob>(
+                "bom-validation-nightly",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(2, 30), // Nightly at 2:30 AM UTC: cycles, inactive components, cost anomalies
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ICostRollupJob>(
+                "bom-cost-rollup-weekly",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Weekly(DayOfWeek.Sunday, 3, 0), // Sundays 3:00 AM UTC: standard-cost recalculation
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
             recurringJobManager.AddOrUpdate<ICommissionRunJob>(

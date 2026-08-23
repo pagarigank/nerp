@@ -411,6 +411,7 @@ export const mainNavigation: NavModule[] = [
     sub: [
       { label: 'BOMs', to: '/bom' },
       { label: 'Work Centers', to: '/bom/work-centers' },
+      { label: 'Routing Operations', to: '/bom/routing-operations' },
       { label: 'Build Orders', to: '/bom/build-orders' },
       { label: 'Reports', to: '/bom/reports' },
     ],

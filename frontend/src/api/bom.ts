@@ -59,6 +59,34 @@ export function deleteWorkCenter(id: string) {
   return del(`/bom/work-centers/${id}`)
 }
 
+// --- Routing Operations ---
+export function getRoutingOperations(companyIdParam?: string) {
+  return get('/bom/routing-operations', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function createRoutingOperation(data: any) {
+  return post('/bom/routing-operations', data)
+}
+export function updateRoutingOperation(id: string, data: any) {
+  return put(`/bom/routing-operations/${id}`, data)
+}
+export function activateRoutingOperation(id: string) {
+  return post(`/bom/routing-operations/${id}/activate`, {})
+}
+export function deactivateRoutingOperation(id: string) {
+  return post(`/bom/routing-operations/${id}/deactivate`, {})
+}
+export function deleteRoutingOperation(id: string) {
+  return del(`/bom/routing-operations/${id}`)
+}
+
+// --- Background Jobs (manual triggers) ---
+export function runBomValidation() {
+  return post('/bom/validation/run', {})
+}
+export function runCostRollup() {
+  return post('/bom/cost-rollup/run', {})
+}
+
 // --- Build Orders ---
 export function getBuildOrders(companyIdParam?: string, status?: string) {
   const params: any = { companyId: companyIdParam ?? defaultCompanyId() }

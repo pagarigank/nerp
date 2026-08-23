@@ -28,6 +28,7 @@ export interface BomComponentLine {
   scrapFactor: number
   operationSequence: number
   workCenterId: string | null
+  routingOperationId: string | null
   isPhantom: boolean
   isCritical: boolean
   estimatedUnitCost: number | null
@@ -44,6 +45,44 @@ export interface WorkCenterSummary {
   efficiencyPercentage: number
   costRatePerHour: number
   isActive: boolean
+}
+
+export interface RoutingOperationSummary {
+  id: string
+  companyId: string
+  operationCode: string
+  description: string | null
+  workCenterId: string | null
+  standardSetupTimeMinutes: number
+  standardRunTimeMinutesPerUnit: number
+  isActive: boolean
+}
+
+export interface BomValidationIssue {
+  bomHeaderId: string
+  parentItemCode: string
+  issueType: string
+  message: string
+}
+
+export interface BomValidationReport {
+  totalBomsChecked: number
+  issues: BomValidationIssue[]
+}
+
+export interface CostRollupDelta {
+  bomHeaderId: string
+  parentItemCode: string
+  previousCost: number
+  newCost: number
+  changeAmount: number
+}
+
+export interface CostRollupReport {
+  totalBomsChecked: number
+  updatedCount: number
+  unchangedCount: number
+  biggestDeltas: CostRollupDelta[]
 }
 
 export interface BuildOrderSummary {

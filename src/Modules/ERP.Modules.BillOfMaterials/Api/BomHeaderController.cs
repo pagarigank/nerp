@@ -861,6 +861,7 @@ public class BomHeaderController : ControllerBase
         ScrapFactor = c.ScrapFactor,
         OperationSequence = c.OperationSequence,
         WorkCenterId = c.WorkCenterId,
+        RoutingOperationId = c.RoutingOperationId,
         IsPhantom = c.IsPhantom,
         IsCritical = c.IsCritical,
         EstimatedUnitCost = c.EstimatedUnitCost,
@@ -901,6 +902,7 @@ public class BomComponentLineDto
     public decimal ScrapFactor { get; set; }
     public int OperationSequence { get; set; }
     public Guid? WorkCenterId { get; set; }
+    public Guid? RoutingOperationId { get; set; }
     public bool IsPhantom { get; set; }
     public bool IsCritical { get; set; }
     public decimal? EstimatedUnitCost { get; set; }
