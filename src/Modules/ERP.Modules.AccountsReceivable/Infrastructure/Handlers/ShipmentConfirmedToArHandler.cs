@@ -106,6 +106,14 @@ public sealed class ShipmentConfirmedToArHandler : IDomainEventHandler<ShipmentC
         _arContext.InvoiceBatches.Add(batch);
         batch.Release();
         batch.Post();
+
+        // Phase 8 gap: Update customer balance on invoice generation
+        var invoiceTotal = domainEvent.Lines.Sum(l => (l.Quantity * l.UnitPrice) - ((l.Quantity * l.UnitPrice) * (l.DiscountPercent / 100m)) + (((l.Quantity * l.UnitPrice) - ((l.Quantity * l.UnitPrice) * (l.DiscountPercent / 100m))) * (l.TaxPercent / 100m)));
+        if (domainEvent.FreightCost > 0)
+            invoiceTotal += domainEvent.FreightCost;
+        customer.CurrentBalance += invoiceTotal;
+        _arContext.Customers.Update(customer);
+
         await _arContext.SaveChangesAsync(cancellationToken);
     }
 

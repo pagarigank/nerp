@@ -169,6 +169,8 @@ export interface ItemSummary {
   longDescription?: string | null
   itemType: string
   baseUnitOfMeasure: string
+  defaultUnitOfMeasure?: string | null
+  defaultWarehouseId?: string | null
   costingMethod?: string | null
   status: string
   standardCost?: number | null
@@ -189,6 +191,8 @@ export interface CreateItemRequest {
   companyId: string
   itemType: number
   baseUnitOfMeasure: string
+  defaultUnitOfMeasure?: string | null
+  defaultWarehouseId?: string | null
   costingMethod: number
   itemCategoryId: string
   standardCost?: number | null
@@ -234,6 +238,8 @@ export interface UpdateItemRequest {
   isLotControlled?: boolean
   isSerialControlled?: boolean
   status?: string | null
+  defaultUnitOfMeasure?: string | null
+  defaultWarehouseId?: string | null
 }
 
 // --- Warehouse (master) ---

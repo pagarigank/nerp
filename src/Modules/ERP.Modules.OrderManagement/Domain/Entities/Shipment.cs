@@ -51,6 +51,7 @@ public class Shipment : AuditableAggregateRoot
     public string? Carrier { get; private set; }
     public string? TrackingNumber { get; private set; }
     public decimal FreightCost { get; private set; }
+    public string? Notes { get; private set; }
     public ShipmentStatus Status { get; private set; }
 
     /// <summary>UTC timestamp when the tracking-update job confirmed delivery with the carrier.</summary>
@@ -72,6 +73,23 @@ public class Shipment : AuditableAggregateRoot
 
         DeliveredOn = DateTimeOffset.UtcNow;
         Status = ShipmentStatus.Delivered;
+    }
+
+    public void Update(string? carrier, string? trackingNumber, decimal freightCost, string? notes = null)
+    {
+        if (Status != ShipmentStatus.Draft)
+            throw new InvalidOperationException("Only Draft shipments can be edited.");
+        Carrier = carrier;
+        TrackingNumber = trackingNumber;
+        FreightCost = freightCost;
+        Notes = notes;
+    }
+
+    public void ClearLines()
+    {
+        if (Status != ShipmentStatus.Draft)
+            throw new InvalidOperationException("Only Draft shipments can be edited.");
+        _lines.Clear();
     }
 
     public void Confirm()

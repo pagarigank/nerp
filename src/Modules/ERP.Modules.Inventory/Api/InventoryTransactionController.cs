@@ -4,6 +4,7 @@
 
 using ERP.Core.Domain.Common;
 using ERP.Core.Domain.Events;
+using ERP.Modules.Inventory.Application.Services;
 using ERP.Modules.Inventory.Domain.Entities;
 using ERP.Modules.Inventory.Domain.Events;
 using ERP.Modules.Inventory.Infrastructure;
@@ -21,15 +22,18 @@ public class InventoryTransactionController : ControllerBase
     private readonly InventoryDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
+    private readonly LotSerialTrackingService _lotSerialTracking;
 
     public InventoryTransactionController(
         InventoryDbContext context,
         IUnitOfWork unitOfWork,
-        IDomainEventDispatcher domainEventDispatcher)
+        IDomainEventDispatcher domainEventDispatcher,
+        LotSerialTrackingService lotSerialTracking)
     {
         _context = context;
         _unitOfWork = unitOfWork;
         _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
+        _lotSerialTracking = lotSerialTracking ?? throw new ArgumentNullException(nameof(lotSerialTracking));
     }
 
     [HttpGet]
@@ -109,6 +113,17 @@ public class InventoryTransactionController : ControllerBase
             return BadRequest(ApiResponse<InventoryTransactionDto>.Failure(new[] { $"Warehouse {dto.WarehouseId} not found" }));
         }
 
+        // Lot/serial enforcement (Phase 7 gap closure)
+        try
+        {
+            await _lotSerialTracking.ValidateLotTrackingAsync(dto.ItemId, dto.WarehouseId, dto.Quantity, dto.LotNumber, TransactionType.Receipt, false, cancellationToken);
+            await _lotSerialTracking.ValidateSerialTrackingAsync(dto.ItemId, dto.WarehouseId, dto.Quantity, dto.SerialNumber, TransactionType.Receipt, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<InventoryTransactionDto>.Failure(new[] { ex.Message }));
+        }
+
         var transaction = new InventoryTransaction(
             dto.CompanyId,
             dto.ItemId,
@@ -150,6 +165,17 @@ public class InventoryTransactionController : ControllerBase
         if (warehouse == null)
         {
             return BadRequest(ApiResponse<InventoryTransactionDto>.Failure(new[] { $"Warehouse {dto.WarehouseId} not found" }));
+        }
+
+        // Lot/serial enforcement (Phase 7 gap closure)
+        try
+        {
+            await _lotSerialTracking.ValidateLotTrackingAsync(dto.ItemId, dto.WarehouseId, dto.Quantity, dto.LotNumber, TransactionType.Issue, false, cancellationToken);
+            await _lotSerialTracking.ValidateSerialTrackingAsync(dto.ItemId, dto.WarehouseId, dto.Quantity, dto.SerialNumber, TransactionType.Issue, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<InventoryTransactionDto>.Failure(new[] { ex.Message }));
         }
 
         // Check available quantity
@@ -492,6 +518,7 @@ public record CreateReceiptDto
     public DateTime? TransactionDate { get; init; }
     public Guid? BinId { get; init; }
     public Guid? LotId { get; init; }
+    public string? LotNumber { get; init; }
     public string? SerialNumber { get; init; }
     public string? ReferenceNumber { get; init; }
     public Guid? ProjectId { get; init; }
@@ -508,6 +535,7 @@ public record CreateIssueDto
     public DateTime? TransactionDate { get; init; }
     public Guid? BinId { get; init; }
     public Guid? LotId { get; init; }
+    public string? LotNumber { get; init; }
     public string? SerialNumber { get; init; }
     public string? ReferenceNumber { get; init; }
     public Guid? ProjectId { get; init; }

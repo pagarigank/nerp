@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage();
+page.on('console', msg => console.log('BROWSER', msg.text()));
+page.on('request', r => { if (r.url().includes('/api/')) console.log('REQ', r.method(), r.url()) });
+page.on('response', r => { if (r.url().includes('/api/')) console.log('RES', r.status(), r.url()) });
+await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle' });
+await page.fill('#email', 'demo@erp.com');
+await page.fill('#password', 'password123');
+await page.click('button[type="submit"]');
+console.log('Clicked, waiting 15s...');
+await page.waitForTimeout(15000);
+console.log('URL after 15s:', page.url());
+const ls = await page.evaluate(() => localStorage.getItem('erp-auth-storage'));
+console.log('LS 15s:', ls ? ls.slice(0, 500) : 'null');
+await browser.close();

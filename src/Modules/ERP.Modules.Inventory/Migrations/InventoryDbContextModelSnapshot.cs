@@ -398,6 +398,13 @@ namespace ERP.Modules.Inventory.Migrations
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("DefaultUnitOfMeasure")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DefaultWarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DeletedBy")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");

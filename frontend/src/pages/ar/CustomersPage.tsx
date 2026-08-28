@@ -32,7 +32,16 @@ const customerSchema = z.object({
   salesRepId: z.string().optional(),
   taxCodeId: z.string().optional(),
   taxExemptionCertificateId: z.string().optional(),
-  // Contact / address fields (for future backend support)
+  billingAddress: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingState: z.string().optional(),
+  billingZipCode: z.string().optional(),
+  billingCountry: z.string().optional(),
+  shippingAddress: z.string().optional(),
+  shippingCity: z.string().optional(),
+  shippingState: z.string().optional(),
+  shippingZipCode: z.string().optional(),
+  shippingCountry: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -60,6 +69,16 @@ const defaultValues: CustomerForm = {
   salesRepId: '',
   taxCodeId: '',
   taxExemptionCertificateId: '',
+  billingAddress: '',
+  billingCity: '',
+  billingState: '',
+  billingZipCode: '',
+  billingCountry: 'US',
+  shippingAddress: '',
+  shippingCity: '',
+  shippingState: '',
+  shippingZipCode: '',
+  shippingCountry: 'US',
   address: '',
   city: '',
   state: '',
@@ -182,6 +201,16 @@ export function CustomersPage() {
       salesRepId: customer.salesRepId ?? '',
       taxCodeId: customer.taxCodeId ?? '',
       taxExemptionCertificateId: customer.taxExemptionCertificateId ?? '',
+      billingAddress: customer.billingAddress ?? '',
+      billingCity: customer.billingCity ?? '',
+      billingState: customer.billingState ?? '',
+      billingZipCode: customer.billingZipCode ?? '',
+      billingCountry: customer.billingCountry ?? 'US',
+      shippingAddress: customer.shippingAddress ?? '',
+      shippingCity: customer.shippingCity ?? '',
+      shippingState: customer.shippingState ?? '',
+      shippingZipCode: customer.shippingZipCode ?? '',
+      shippingCountry: customer.shippingCountry ?? 'US',
       address: '',
       city: '',
       state: '',
@@ -219,6 +248,16 @@ export function CustomersPage() {
           salesRepId: data.salesRepId || null,
           taxCodeId: data.taxCodeId || null,
           taxExemptionCertificateId: data.taxExemptionCertificateId || null,
+          billingAddress: data.billingAddress || null,
+          billingCity: data.billingCity || null,
+          billingState: data.billingState || null,
+          billingZipCode: data.billingZipCode || null,
+          billingCountry: data.billingCountry || null,
+          shippingAddress: data.shippingAddress || null,
+          shippingCity: data.shippingCity || null,
+          shippingState: data.shippingState || null,
+          shippingZipCode: data.shippingZipCode || null,
+          shippingCountry: data.shippingCountry || null,
         },
       })
       return
@@ -237,6 +276,16 @@ export function CustomersPage() {
       salesRepId: data.salesRepId || null,
       taxCodeId: data.taxCodeId || null,
       taxExemptionCertificateId: data.taxExemptionCertificateId || null,
+      billingAddress: data.billingAddress || null,
+      billingCity: data.billingCity || null,
+      billingState: data.billingState || null,
+      billingZipCode: data.billingZipCode || null,
+      billingCountry: data.billingCountry || null,
+      shippingAddress: data.shippingAddress || null,
+      shippingCity: data.shippingCity || null,
+      shippingState: data.shippingState || null,
+      shippingZipCode: data.shippingZipCode || null,
+      shippingCountry: data.shippingCountry || null,
     })
   }
 
@@ -478,16 +527,46 @@ export function CustomersPage() {
             </div>
           </div>
 
-          {/* Address */}
+          {/* Billing Address */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Address</h4>
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Billing Address</h4>
             <div className="space-y-3">
-              <Textarea {...register('address')} label="Street Address" placeholder="123 Main St, Suite 100" rows={2} />
+              <Textarea {...register('billingAddress')} label="Street Address" placeholder="123 Main St, Suite 100" rows={2} />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Input {...register('city')} label="City" placeholder="City" />
-                <Select {...register('state')} label="State" placeholder="Select..." options={stateOptions} />
-                <Input {...register('zipCode')} label="ZIP Code" placeholder="12345" />
+                <Input {...register('billingCity')} label="City" placeholder="City" />
+                <Select {...register('billingState')} label="State" placeholder="Select..." options={stateOptions} />
+                <Input {...register('billingZipCode')} label="ZIP Code" placeholder="12345" />
               </div>
+              <Input {...register('billingCountry')} label="Country" placeholder="US" />
+            </div>
+          </div>
+
+          {/* Shipping Address */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white">Shipping Address</h4>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" onChange={e => {
+                  if (e.target.checked) {
+                    const billingAddress = watch('billingAddress')
+                    const billingCity = watch('billingCity')
+                    const billingState = watch('billingState')
+                    const billingZipCode = watch('billingZipCode')
+                    const billingCountry = watch('billingCountry')
+                    reset({ ...watch(), shippingAddress: billingAddress, shippingCity: billingCity, shippingState: billingState, shippingZipCode: billingZipCode, shippingCountry: billingCountry || 'US' })
+                  }
+                }} className="h-4 w-4 rounded border-gray-300" />
+                Same as billing
+              </label>
+            </div>
+            <div className="space-y-3">
+              <Textarea {...register('shippingAddress')} label="Street Address" placeholder="123 Main St, Suite 100" rows={2} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Input {...register('shippingCity')} label="City" placeholder="City" />
+                <Select {...register('shippingState')} label="State" placeholder="Select..." options={stateOptions} />
+                <Input {...register('shippingZipCode')} label="ZIP Code" placeholder="12345" />
+              </div>
+              <Input {...register('shippingCountry')} label="Country" placeholder="US" />
             </div>
           </div>
 

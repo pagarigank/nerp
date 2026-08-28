@@ -34,6 +34,7 @@ public static class ModuleExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<CostingService>();
         services.AddScoped<InventoryReportService>();
+        services.AddScoped<LotSerialTrackingService>();
         services.AddScoped<ERP.Core.Common.IInventoryAvailability, InventoryAvailabilityService>();
         services.AddScoped<ERP.Core.Common.IInventoryReorderSource, InventoryReorderSource>();
         services.AddScoped<ERP.Core.Common.IInventoryItemLookup, InventoryItemLookup>();

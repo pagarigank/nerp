@@ -122,6 +122,7 @@ public enum CycleCountStatus
     Draft = 1,
     InProgress = 2,
     Completed = 3,
-    Posted = 4,
-    Cancelled = 5,
+    Approved = 4,
+    Posted = 5,
+    Cancelled = 6,
 }

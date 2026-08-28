@@ -282,6 +282,11 @@ export function addProjectDocument(
 ) {
   return post<string>(`/projects/${projectId}/documents`, data)
 }
+export function uploadProjectDocument(projectId: string, file: File, documentType = 'General') {
+  const fd = new FormData()
+  fd.append('file', file)
+  return fetch(`/api/v1/projects/${projectId}/documents/upload?documentType=${encodeURIComponent(documentType)}`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${useAuthStore.getState().accessToken}` } }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json() })
+}
 
 export function deleteProjectDocument(projectId: string, documentId: string) {
   return del(`/projects/${projectId}/documents/${documentId}`)

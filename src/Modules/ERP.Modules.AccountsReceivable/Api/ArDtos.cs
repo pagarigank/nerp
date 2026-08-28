@@ -17,7 +17,17 @@ public record CreateCustomerRequest(
     string? CurrencyCode,
     Guid? SalesRepId,
     Guid? TaxCodeId,
-    Guid? TaxExemptionCertificateId);
+    Guid? TaxExemptionCertificateId,
+    string? BillingAddress,
+    string? BillingCity,
+    string? BillingState,
+    string? BillingZipCode,
+    string? BillingCountry,
+    string? ShippingAddress,
+    string? ShippingCity,
+    string? ShippingState,
+    string? ShippingZipCode,
+    string? ShippingCountry);
 
 public record UpdateCustomerRequest(
     string Name,
@@ -31,7 +41,17 @@ public record UpdateCustomerRequest(
     string? CurrencyCode,
     Guid? SalesRepId,
     Guid? TaxCodeId,
-    Guid? TaxExemptionCertificateId);
+    Guid? TaxExemptionCertificateId,
+    string? BillingAddress,
+    string? BillingCity,
+    string? BillingState,
+    string? BillingZipCode,
+    string? BillingCountry,
+    string? ShippingAddress,
+    string? ShippingCity,
+    string? ShippingState,
+    string? ShippingZipCode,
+    string? ShippingCountry);
 
 public record CustomerResponse(
     Guid Id,
@@ -48,7 +68,17 @@ public record CustomerResponse(
     bool IsActive,
     Guid? SalesRepId,
     Guid? TaxCodeId,
-    Guid? TaxExemptionCertificateId);
+    Guid? TaxExemptionCertificateId,
+    string? BillingAddress,
+    string? BillingCity,
+    string? BillingState,
+    string? BillingZipCode,
+    string? BillingCountry,
+    string? ShippingAddress,
+    string? ShippingCity,
+    string? ShippingState,
+    string? ShippingZipCode,
+    string? ShippingCountry);
 
 public record CreateInvoiceBatchRequest(
     Guid CompanyId,

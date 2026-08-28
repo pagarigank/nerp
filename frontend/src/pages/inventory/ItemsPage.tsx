@@ -10,7 +10,7 @@ import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getItems, createItem, updateItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts, getItemUomConversions, createItemUomConversion, deleteItemUomConversion } from '@api/inventory'
+import { getItems, createItem, updateItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts, getItemUomConversions, createItemUomConversion, deleteItemUomConversion, getUnitOfMeasures } from '@api/inventory'
 import { getVendors } from '@api/ap'
 import { getAccounts } from '@api/platform'
 import type { ItemSummary, CreateItemRequest, UpdateItemRequest, ItemCategorySummary, ItemVendorAssignmentDto, ItemGlAccountDefaultsDto, UomConversionDto } from '@/types/inventory'
@@ -63,6 +63,8 @@ const itemSchema = z.object({
   longDescription: z.string().optional(),
   itemType: z.string().min(1, 'Item type is required'),
   baseUnitOfMeasure: z.string().trim().min(1, 'Unit of measure is required'),
+  defaultUnitOfMeasure: z.string().optional(),
+  defaultWarehouseId: z.string().optional(),
   costingMethod: z.string().min(1, 'Costing method is required'),
   itemCategoryId: z.string().min(1, 'Category is required'),
   standardCost: z.coerce.number().min(0).optional(),
@@ -93,6 +95,8 @@ const defaultValues: ItemForm = {
   longDescription: '',
   itemType: '1',
   baseUnitOfMeasure: 'EA',
+  defaultUnitOfMeasure: '',
+  defaultWarehouseId: '',
   costingMethod: '4',
   itemCategoryId: '',
   standardCost: undefined,
@@ -174,6 +178,26 @@ export function ItemsPage() {
     [categories],
   )
 
+  const { data: warehousesForItem = [] } = useQuery({
+    queryKey: ['inventory', 'warehouses-for-item'],
+    queryFn: () => import('@api/inventory').then(m => m.getWarehouses()),
+  })
+
+  const warehouseOptionsForItem = useMemo(
+    () => warehousesForItem.map((w: any) => ({ value: w.id, label: `${w.warehouseCode} - ${w.warehouseName}` })),
+    [warehousesForItem],
+  )
+
+  const { data: uoms = [] } = useQuery({
+    queryKey: ['inventory', 'uoms'],
+    queryFn: () => getUnitOfMeasures(),
+  })
+
+  const uomOptions = useMemo(
+    () => uoms.map((u: any) => ({ value: u.code, label: `${u.code} - ${u.description}` })),
+    [uoms],
+  )
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['inventory', 'items'] })
   }
@@ -218,6 +242,8 @@ export function ItemsPage() {
       longDescription: item.longDescription ?? '',
       itemType: itemTypeLabels[item.itemType] ? String(Object.entries(itemTypeLabels).find(([k, v]) => v === item.itemType)?.[0] ?? '1') : '1',
       baseUnitOfMeasure: item.baseUnitOfMeasure,
+      defaultUnitOfMeasure: (item as any).defaultUnitOfMeasure ?? item.baseUnitOfMeasure,
+      defaultWarehouseId: (item as any).defaultWarehouseId ?? '',
       costingMethod: item.costingMethod ? (costingMethodLabels[item.costingMethod] ? String(Object.entries(costingMethodLabels).find(([k, v]) => v === item.costingMethod)?.[0] ?? '4') : '4') : '4',
       itemCategoryId: '',
       standardCost: item.standardCost ?? undefined,
@@ -297,6 +323,8 @@ export function ItemsPage() {
         isKit: data.isKit ?? false,
         isLotControlled: data.isLotControlled ?? false,
         isSerialControlled: data.isSerialControlled ?? false,
+        defaultUnitOfMeasure: (data as any).defaultUnitOfMeasure || null,
+        defaultWarehouseId: (data as any).defaultWarehouseId || null,
       }
       updateMutation.mutate({ id: editItem.id, data: payload })
     } else {
@@ -327,6 +355,8 @@ export function ItemsPage() {
         isKit: data.isKit ?? false,
         isLotControlled: data.isLotControlled ?? false,
         isSerialControlled: data.isSerialControlled ?? false,
+        defaultUnitOfMeasure: (data as any).defaultUnitOfMeasure || null,
+        defaultWarehouseId: (data as any).defaultWarehouseId || null,
       }
       createMutation.mutate(payload)
     }
@@ -486,12 +516,26 @@ export function ItemsPage() {
               required
               disabled={!!editItem}
             />
-            <Input
+            <Select
               {...register('baseUnitOfMeasure')}
               label="Base Unit of Measure"
-              placeholder="e.g. EA, CS, PL"
+              placeholder="Select UOM..."
+              options={uomOptions}
               {...fieldError(errors.baseUnitOfMeasure?.message)}
               required
+            />
+            <Select
+              {...register('defaultUnitOfMeasure')}
+              label="Default Sales UOM"
+              placeholder="Defaults to Base UOM"
+              options={[{ value: '', label: '— Defaults to Base UOM —' }, ...uomOptions]}
+              hint="UOM used when adding to sales order"
+            />
+            <Select
+              {...register('defaultWarehouseId')}
+              label="Default Warehouse"
+              placeholder="Select default warehouse..."
+              options={[{ value: '', label: '— None —' }, ...warehouseOptionsForItem]}
             />
             <Select
               {...register('costingMethod')}

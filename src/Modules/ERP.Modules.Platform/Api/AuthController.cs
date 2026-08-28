@@ -2,12 +2,17 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+#pragma warning disable SA1210
+
 using System.Globalization;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using Asp.Versioning;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -157,7 +162,14 @@ public class AuthController : ControllerBase
             permissions);
 
         var response = new LoginResponse(token, token, isSuperAdmin, userDto, companies, periods);
-        return Ok(ApiResponse<LoginResponse>.Success(response));
+        var payload = ApiResponse<LoginResponse>.Success(response);
+#pragma warning disable CA1869
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+#pragma warning restore CA1869
+        Response.ContentType = "application/json";
+        Response.ContentLength = Encoding.UTF8.GetByteCount(json);
+        await Response.WriteAsync(json, cancellationToken);
+        return new EmptyResult();
     }
 
     [HttpGet("me")]

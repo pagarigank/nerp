@@ -9,6 +9,7 @@ using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ERP.Modules.Inventory.Api;
 
@@ -19,13 +20,16 @@ public class NegativeInventoryOverrideController : ControllerBase
 {
     private readonly InventoryDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<NegativeInventoryOverrideController> _logger;
 
     public NegativeInventoryOverrideController(
         InventoryDbContext context,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<NegativeInventoryOverrideController> logger)
     {
         _context = context;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -134,6 +138,10 @@ public class NegativeInventoryOverrideController : ControllerBase
 
         _context.NegativeInventoryOverrides.Add(override_);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Phase 7 gap: Notify warehouse manager of negative inventory override request
+        _logger.LogWarning("NEGATIVE_INVENTORY_OVERRIDE_REQUESTED ItemId={ItemId} WarehouseId={WarehouseId} RequestedBy={RequestedBy} Quantity={Quantity} Reason={Reason}",
+            request.ItemId, request.WarehouseId, request.RequestedBy, request.RequestedQuantity, request.Reason);
 
         var dto = MapToDto(override_);
         return CreatedAtAction(nameof(GetById), new { id = override_.Id }, ApiResponse<NegativeInventoryOverrideDto>.Success(dto));

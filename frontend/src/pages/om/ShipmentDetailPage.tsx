@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { getShipment, getPackingSlip, confirmShipment } from '@api/orderManagement'
+import { deleteShipment, getShipment, getPackingSlip, confirmShipment } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import type { ShipmentDetail, PackingSlip } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
@@ -65,9 +65,17 @@ export function ShipmentDetailPage() {
         </Button>
         <div className="flex items-center gap-2">
           {shipment.status === 'Draft' && (
-            <Button variant="success" disabled={confirming} onClick={handleConfirm}>
-              <CheckCircle className="h-4 w-4" /> Confirm Shipment
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => navigate(`/om/shipments?edit=${shipment.id}`)}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+              <Button variant="outline" onClick={async () => { if (confirm(`Delete shipment ${shipment.shipmentNumber}?`)) { try { await deleteShipment(shipment.id); navigate('/om/shipments') } catch (e) { setError(getErrorMessage(e)) } } }}>
+                <Trash2 className="h-4 w-4 text-red-500" /> Delete
+              </Button>
+              <Button variant="success" disabled={confirming} onClick={handleConfirm}>
+                <CheckCircle className="h-4 w-4" /> Confirm Shipment
+              </Button>
+            </>
           )}
           <Button
           variant="outline"

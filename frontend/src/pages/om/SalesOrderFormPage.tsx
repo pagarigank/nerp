@@ -37,7 +37,7 @@ const lineSchema = z.object({
 })
 
 const orderSchema = z.object({
-  orderNumber: z.string().trim().min(1, 'Order number is required'),
+  orderNumber: z.string().trim().optional(),
   customerId: z.string().min(1, 'Customer is required'),
   orderDate: z.string().min(1, 'Order date is required'),
   shipToAddress: z.string().optional(),
@@ -242,6 +242,20 @@ export function SalesOrderFormPage() {
     setValue('customerId', customer.id, { shouldValidate: true })
     setCustomerSearch(customer.name)
     setShowCustomerDropdown(false)
+    const formatAddress = (addr?: string | null, city?: string | null, state?: string | null, zip?: string | null, country?: string | null) => {
+      const line1 = addr || ''
+      const line2 = [city, state].filter(Boolean).join(', ')
+      const line3 = [zip, country].filter(Boolean).join(' ')
+      return [line1, line2, line3].filter(Boolean).join('\n')
+    }
+    const billing = formatAddress(customer.billingAddress, customer.billingCity, customer.billingState, customer.billingZipCode, customer.billingCountry)
+    const shipping = formatAddress(customer.shippingAddress, customer.shippingCity, customer.shippingState, customer.shippingZipCode, customer.shippingCountry)
+    if (billing) setValue('billToAddress', billing)
+    if (shipping) setValue('shipToAddress', shipping)
+    if (customer.defaultPaymentTermId) setValue('paymentTermId', customer.defaultPaymentTermId)
+    if (customer.salesRepId) setValue('salesRepId', customer.salesRepId)
+    if (customer.taxCodeId) setValue('taxCodeId', customer.taxCodeId)
+    if (customer.taxExemptionCertificateId) setValue('taxExemptionCertificateId', customer.taxExemptionCertificateId)
   }
 
   function selectItem(index: number, selectedItemId: string) {
@@ -250,6 +264,12 @@ export function SalesOrderFormPage() {
     setValue(`lines.${index}.itemId`, selectedItemId, { shouldValidate: true })
     setValue(`lines.${index}.description`, item.description)
     setValue(`lines.${index}.itemCategoryId`, item.itemCategoryId || null, { shouldValidate: false })
+    const defaultUom = (item as any).defaultUnitOfMeasure || item.baseUnitOfMeasure || 'EA'
+    setValue(`lines.${index}.unitOfMeasure`, defaultUom, { shouldValidate: true })
+    const defaultWh = (item as any).defaultWarehouseId
+    if (defaultWh) setValue(`lines.${index}.warehouseId`, defaultWh)
+    const arAccount = (glAccounts as any[]).find((a: any) => a.accountNumber === '1200' || a.description?.toLowerCase().includes('receivable'))
+    if (arAccount) setValue(`lines.${index}.accountId`, arAccount.id)
     // Load UOM conversions and build options for this line
     const baseUom = item.baseUnitOfMeasure || 'EA'
     setLineUomOptions(prev => ({ ...prev, [index]: [{ value: baseUom, label: baseUom + ' (base)' }] }))
@@ -317,7 +337,7 @@ export function SalesOrderFormPage() {
     setFormError(null)
     try {
       const payload = {
-        orderNumber: data.orderNumber,
+        orderNumber: data.orderNumber?.trim() || null,
         companyId: DEMO_COMPANY_ID,
         customerId: data.customerId,
         orderDate: new Date(data.orderDate).toISOString(),
@@ -372,10 +392,11 @@ export function SalesOrderFormPage() {
               <Input
                 {...register('orderNumber')}
                 label="Order Number"
-                placeholder="SO-1001"
+                placeholder="Auto-generated"
+                hint="Leave blank to auto-generate"
                 {...fieldError(errors.orderNumber?.message)}
-                required
               />
+              <input type="hidden" {...register('customerId')} />
               <div className="relative">
                 <Input
                   value={selectedCustomer?.name ?? customerSearch}

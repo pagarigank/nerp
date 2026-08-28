@@ -57,6 +57,10 @@ export function deleteWarehouse(id: string): Promise<string> {
   return del(`/inventory/warehouses/${id}`)
 }
 
+export function getUnitOfMeasures(companyIdParam?: string): Promise<any[]> {
+  return get('/inventory/uoms', { companyId: companyIdParam ?? companyId() })
+}
+
 // --- Warehouse bins ---
 export function getWarehouseBins(warehouseId?: string): Promise<import('@/types/inventory').WarehouseBinSummary[]> {
   return get('/inventory/warehouse-bins', { warehouseId })

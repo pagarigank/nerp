@@ -43,7 +43,17 @@ public class CustomersController : ControllerBase
                 c.IsActive,
                 c.SalesRepId,
                 c.TaxCodeId,
-                c.TaxExemptionCertificateId))
+                c.TaxExemptionCertificateId,
+                c.BillingAddress,
+                c.BillingCity,
+                c.BillingState,
+                c.BillingZipCode,
+                c.BillingCountry,
+                c.ShippingAddress,
+                c.ShippingCity,
+                c.ShippingState,
+                c.ShippingZipCode,
+                c.ShippingCountry))
             .ToListAsync(cancellationToken);
 
         return Ok(customers);
@@ -73,7 +83,17 @@ public class CustomersController : ControllerBase
             customer.IsActive,
             customer.SalesRepId,
             customer.TaxCodeId,
-            customer.TaxExemptionCertificateId));
+            customer.TaxExemptionCertificateId,
+            customer.BillingAddress,
+            customer.BillingCity,
+            customer.BillingState,
+            customer.BillingZipCode,
+            customer.BillingCountry,
+            customer.ShippingAddress,
+            customer.ShippingCity,
+            customer.ShippingState,
+            customer.ShippingZipCode,
+            customer.ShippingCountry));
     }
 
     [HttpPost]
@@ -94,7 +114,17 @@ public class CustomersController : ControllerBase
             request.CurrencyCode,
             request.SalesRepId,
             request.TaxCodeId,
-            request.TaxExemptionCertificateId);
+            request.TaxExemptionCertificateId,
+            request.BillingAddress,
+            request.BillingCity,
+            request.BillingState,
+            request.BillingZipCode,
+            request.BillingCountry,
+            request.ShippingAddress,
+            request.ShippingCity,
+            request.ShippingState,
+            request.ShippingZipCode,
+            request.ShippingCountry);
 
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
@@ -114,7 +144,17 @@ public class CustomersController : ControllerBase
             customer.IsActive,
             customer.SalesRepId,
             customer.TaxCodeId,
-            customer.TaxExemptionCertificateId));
+            customer.TaxExemptionCertificateId,
+            customer.BillingAddress,
+            customer.BillingCity,
+            customer.BillingState,
+            customer.BillingZipCode,
+            customer.BillingCountry,
+            customer.ShippingAddress,
+            customer.ShippingCity,
+            customer.ShippingState,
+            customer.ShippingZipCode,
+            customer.ShippingCountry));
     }
 
     [HttpPut("{id:guid}")]
@@ -141,7 +181,17 @@ public class CustomersController : ControllerBase
             request.CurrencyCode,
             request.SalesRepId,
             request.TaxCodeId,
-            request.TaxExemptionCertificateId);
+            request.TaxExemptionCertificateId,
+            request.BillingAddress,
+            request.BillingCity,
+            request.BillingState,
+            request.BillingZipCode,
+            request.BillingCountry,
+            request.ShippingAddress,
+            request.ShippingCity,
+            request.ShippingState,
+            request.ShippingZipCode,
+            request.ShippingCountry);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -160,7 +210,17 @@ public class CustomersController : ControllerBase
             customer.IsActive,
             customer.SalesRepId,
             customer.TaxCodeId,
-            customer.TaxExemptionCertificateId));
+            customer.TaxExemptionCertificateId,
+            customer.BillingAddress,
+            customer.BillingCity,
+            customer.BillingState,
+            customer.BillingZipCode,
+            customer.BillingCountry,
+            customer.ShippingAddress,
+            customer.ShippingCity,
+            customer.ShippingState,
+            customer.ShippingZipCode,
+            customer.ShippingCountry));
     }
 
     [HttpDelete("{id:guid}")]

@@ -23,7 +23,17 @@ public class Customer : AuditableAggregateRoot
         string? currencyCode,
         Guid? salesRepId = null,
         Guid? taxCodeId = null,
-        Guid? taxExemptionCertificateId = null)
+        Guid? taxExemptionCertificateId = null,
+        string? billingAddress = null,
+        string? billingCity = null,
+        string? billingState = null,
+        string? billingZipCode = null,
+        string? billingCountry = null,
+        string? shippingAddress = null,
+        string? shippingCity = null,
+        string? shippingState = null,
+        string? shippingZipCode = null,
+        string? shippingCountry = null)
         : base(Guid.NewGuid())
     {
         if (string.IsNullOrWhiteSpace(customerId))
@@ -44,6 +54,16 @@ public class Customer : AuditableAggregateRoot
         SalesRepId = salesRepId;
         TaxCodeId = taxCodeId;
         TaxExemptionCertificateId = taxExemptionCertificateId;
+        BillingAddress = billingAddress;
+        BillingCity = billingCity;
+        BillingState = billingState;
+        BillingZipCode = billingZipCode;
+        BillingCountry = billingCountry ?? "US";
+        ShippingAddress = shippingAddress;
+        ShippingCity = shippingCity;
+        ShippingState = shippingState;
+        ShippingZipCode = shippingZipCode;
+        ShippingCountry = shippingCountry ?? "US";
         IsActive = true;
     }
 
@@ -76,6 +96,26 @@ public class Customer : AuditableAggregateRoot
     /// <summary>Default tax-exemption certificate applied to this customer's sales orders.</summary>
     public Guid? TaxExemptionCertificateId { get; private set; }
 
+    public string? BillingAddress { get; private set; }
+
+    public string? BillingCity { get; private set; }
+
+    public string? BillingState { get; private set; }
+
+    public string? BillingZipCode { get; private set; }
+
+    public string? BillingCountry { get; private set; }
+
+    public string? ShippingAddress { get; private set; }
+
+    public string? ShippingCity { get; private set; }
+
+    public string? ShippingState { get; private set; }
+
+    public string? ShippingZipCode { get; private set; }
+
+    public string? ShippingCountry { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public decimal CurrentBalance { get; internal set; }
@@ -92,7 +132,17 @@ public class Customer : AuditableAggregateRoot
         string? currencyCode,
         Guid? salesRepId,
         Guid? taxCodeId,
-        Guid? taxExemptionCertificateId)
+        Guid? taxExemptionCertificateId,
+        string? billingAddress = null,
+        string? billingCity = null,
+        string? billingState = null,
+        string? billingZipCode = null,
+        string? billingCountry = null,
+        string? shippingAddress = null,
+        string? shippingCity = null,
+        string? shippingState = null,
+        string? shippingZipCode = null,
+        string? shippingCountry = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Customer name is required.", nameof(name));
@@ -109,6 +159,16 @@ public class Customer : AuditableAggregateRoot
         SalesRepId = salesRepId;
         TaxCodeId = taxCodeId;
         TaxExemptionCertificateId = taxExemptionCertificateId;
+        BillingAddress = billingAddress;
+        BillingCity = billingCity;
+        BillingState = billingState;
+        BillingZipCode = billingZipCode;
+        BillingCountry = billingCountry ?? BillingCountry;
+        ShippingAddress = shippingAddress;
+        ShippingCity = shippingCity;
+        ShippingState = shippingState;
+        ShippingZipCode = shippingZipCode;
+        ShippingCountry = shippingCountry ?? ShippingCountry;
     }
 
     public void Activate() => IsActive = true;

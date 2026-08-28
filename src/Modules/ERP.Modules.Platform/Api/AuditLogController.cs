@@ -21,6 +21,13 @@ public class AuditLogController : ControllerBase
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
     }
 
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<AuditLogDto>>> GetRecent([FromQuery] int take = 20, CancellationToken cancellationToken = default)
+    {
+        var logs = await _auditLogService.GetRecentAsync(take, cancellationToken);
+        return Ok(logs.Select(MapToDto).ToList());
+    }
+
     [HttpGet("entity/{entityType}/{entityId:guid}")]
     public async Task<ActionResult<IReadOnlyList<AuditLogDto>>> GetByEntity(string entityType, Guid entityId, CancellationToken cancellationToken)
     {

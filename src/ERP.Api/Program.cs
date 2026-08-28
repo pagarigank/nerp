@@ -5,10 +5,13 @@
 #pragma warning disable SA1200, SA1600, SA1309, SA1203, SA1009, SA1028, SA1101, SA1413
 #pragma warning disable CA1052, CA1062, CA1031, CA1848, CA2007, CA1861, CA1305, S1118
 
+using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using ERP.Api.Filters;
+using ERP.Api.Performance;
 using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsPayable;
 using ERP.Modules.AccountsReceivable;
@@ -30,6 +33,7 @@ using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting;
 using ERP.Modules.Purchasing;
 using ERP.Modules.Purchasing.Infrastructure;
+using ERP.Modules.Reporting;
 using ERP.Shared.Kernel.Api;
 using ERP.Shared.Kernel.Posting;
 using FluentValidation;
@@ -37,6 +41,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Context;
@@ -51,9 +56,8 @@ public class Program
 
         builder.Services.AddControllers(options =>
             {
-                // Enforces super-admin (all companies) vs company-admin (own
-                // company only) scoping on every company-targeted request.
                 options.Filters.AddService<ERP.Modules.Platform.Infrastructure.CompanyAuthorizationFilter>();
+                options.Filters.Add<FieldSelectionFilter>();
             })
             .AddJsonOptions(options =>
             {
@@ -310,6 +314,32 @@ public class Program
         builder.Services.AddProjectAccountingModule(builder.Configuration);
         builder.Services.AddPayrollModule(builder.Configuration);
         builder.Services.AddFieldServiceModule(builder.Configuration);
+        builder.Services.AddReportingModule(builder.Configuration);
+
+        // Phase 15 — Performance & Scalability
+        builder.Services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+            options.MimeTypes = ResponseCompressionDefaults.MimeTypes;
+        });
+
+        builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+        {
+            options.Level = CompressionLevel.SmallestSize;
+        });
+
+        builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+        {
+            options.Level = CompressionLevel.SmallestSize;
+        });
+
+        builder.Services.AddSingleton<IDatabaseIndexOptimizer, DatabaseIndexOptimizer>();
+        builder.Services.AddScoped<IDistributedCacheService, DistributedCacheService>();
+        builder.Services.AddScoped<IQueryOptimizationAuditService, QueryOptimizationAuditService>();
+        builder.Services.AddScoped<IDatabaseArchivalService, DatabaseArchivalService>();
+        builder.Services.AddScoped<IBatchOperationOptimizer, BatchOperationOptimizer>();
 
         var app = builder.Build();
 
@@ -491,6 +521,37 @@ public class Program
                 job => job.ExecuteAsync(CancellationToken.None),
                 Cron.Monthly(1, 1, 0), // 1st of month at 1:00 AM UTC
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            // Reporting recurring jobs
+            recurringJobManager.AddOrUpdate<ERP.Modules.Reporting.Services.ReportDeliveryJob>(
+                "reporting-scheduled-delivery",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(6, 0), // Daily at 6:00 AM UTC: process all due subscriptions
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.Reporting.Services.DeliveryRetryJob>(
+                "reporting-delivery-retry",
+                job => job.RunAsync(CancellationToken.None),
+                "*/5 * * * *", // Every 5 minutes: process retry queue with exponential backoff
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.Reporting.Services.CdcEtlSyncService>(
+                "reporting-cdc-etl-sync",
+                job => job.SyncAllAsync(CancellationToken.None),
+                "0 */2 * * *", // Every 2 hours: incremental CDC/ETL sync from operational schemas
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.Reporting.Services.SearchIndexSyncService>(
+                "reporting-search-index-sync",
+                job => job.IncrementalSyncAsync(CancellationToken.None),
+                Cron.Daily(3, 30), // Daily at 3:30 AM UTC: incremental search index rebuild
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.Reporting.Services.DataMartIntegrityService>(
+                "reporting-data-mart-integrity",
+                job => job.RunFullCheckAsync(CancellationToken.None),
+                Cron.Daily(7, 0), // Daily at 7:00 AM UTC: full data mart integrity check
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())
@@ -526,11 +587,47 @@ public class Program
             };
         });
 
+        app.UseMiddleware<PerformanceMonitoringMiddleware>();
+        app.UseMiddleware<QueryComplexityGuardMiddleware>();
+        app.UseMiddleware<DeadlockRetryMiddleware>();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseAuthentication();
         app.UseMiddleware<CurrentUserMiddleware>();
         app.UseAuthorization();
         app.UseRateLimiter();
+
+        // In Development the API is reached through the Vite dev proxy
+        // (http-proxy). Kestrel streams chunked responses over keep-alive
+        // sockets; Vite 8's http-proxy stalls the browser response for up to
+        // its timeout waiting for the upstream stream "end". Buffering the
+        // response and emitting it with a Content-Length (no chunked framing)
+        // lets the proxy flush and close the client response immediately.
+        // Registered innermost so wrapping middleware above dispose their own
+        // streams, never this buffer. Guarded to Development so production
+        // keeps streaming / keep-alive.
+        if (app.Environment.IsDevelopment())
+        {
+            app.Use(async (context, next) =>
+            {
+                var originalBody = context.Response.Body;
+                var buffer = new MemoryStream();
+                context.Response.Body = buffer;
+                try
+                {
+                    await next();
+                }
+                finally
+                {
+                    context.Response.Body = originalBody;
+                    buffer.Position = 0;
+                    context.Response.Headers.ContentLength = buffer.Length;
+                    context.Response.Headers.Connection = "close";
+                    await buffer.CopyToAsync(originalBody);
+                    await originalBody.FlushAsync();
+                    await buffer.DisposeAsync();
+                }
+            });
+        }
 
         app.MapControllers();
         app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

@@ -14,6 +14,16 @@ export interface ArCustomer {
   salesRepId?: string | null
   taxCodeId?: string | null
   taxExemptionCertificateId?: string | null
+  billingAddress?: string | null
+  billingCity?: string | null
+  billingState?: string | null
+  billingZipCode?: string | null
+  billingCountry?: string | null
+  shippingAddress?: string | null
+  shippingCity?: string | null
+  shippingState?: string | null
+  shippingZipCode?: string | null
+  shippingCountry?: string | null
 }
 
 export interface CreateArCustomerRequest {
@@ -30,6 +40,16 @@ export interface CreateArCustomerRequest {
   salesRepId?: string | null
   taxCodeId?: string | null
   taxExemptionCertificateId?: string | null
+  billingAddress?: string | null
+  billingCity?: string | null
+  billingState?: string | null
+  billingZipCode?: string | null
+  billingCountry?: string | null
+  shippingAddress?: string | null
+  shippingCity?: string | null
+  shippingState?: string | null
+  shippingZipCode?: string | null
+  shippingCountry?: string | null
 }
 
 export type UpdateArCustomerRequest = Omit<CreateArCustomerRequest, 'customerId'>

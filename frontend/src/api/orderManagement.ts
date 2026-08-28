@@ -67,6 +67,14 @@ export function createShipment(data: CreateShipmentRequest): Promise<string> {
   return post('/om/shipments', data)
 }
 
+export function updateShipment(id: string, data: Partial<CreateShipmentRequest>): Promise<string> {
+  return put(`/om/shipments/${id}`, data)
+}
+
+export function deleteShipment(id: string): Promise<string> {
+  return del(`/om/shipments/${id}`)
+}
+
 export function confirmShipment(id: string): Promise<string> {
   return post(`/om/shipments/${id}/confirm`)
 }

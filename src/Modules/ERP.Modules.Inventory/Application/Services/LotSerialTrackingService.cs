@@ -23,6 +23,7 @@ public class LotSerialTrackingService
         decimal quantity,
         string? lotNumber,
         TransactionType transactionType,
+        bool allowExpiredLotOverride = false,
         CancellationToken cancellationToken = default)
     {
         var item = await _context.Items.FindAsync(new object[] { itemId }, cancellationToken);
@@ -70,10 +71,10 @@ public class LotSerialTrackingService
                 throw new InvalidOperationException($"Insufficient quantity in lot {lotNumber}. Available: {availableInLot}, Requested: {quantity}");
             }
 
-            // Check if lot is expired
-            if (lot.IsExpired())
+            // Check if lot is expired (Phase 7 gap: allow override for scrap/write-off)
+            if (lot.IsExpired() && !allowExpiredLotOverride)
             {
-                throw new InvalidOperationException($"Lot {lotNumber} is expired and cannot be issued.");
+                throw new InvalidOperationException($"Lot {lotNumber} is expired and cannot be issued. Use allowExpiredLotOverride=true for scrap/write-off.");
             }
 
             // Check if lot is quarantined

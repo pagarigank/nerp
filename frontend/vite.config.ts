@@ -33,6 +33,10 @@ export default defineConfig({
     target: 'es2022',
     minify: 'esbuild',
     sourcemap: true,
+    cssCodeSplit: true,
+    reportCompressedSize: true,
+    chunkSizeWarningLimit: 500,
+    assetsInlineLimit: 4096,
     rollupOptions: {
       output: {
         manualChunks: (id) => {

@@ -156,6 +156,9 @@ export function SalesOrderDetailPage() {
           >
             {pickLoading ? 'Loading…' : 'Pick List'}
           </Button>
+          <Button variant="primary" onClick={() => navigate(`/om/shipments?salesOrderId=${id}`)}>
+            Create Shipment
+          </Button>
         </div>
       </div>
 

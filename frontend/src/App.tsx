@@ -201,6 +201,18 @@ import { PmPage } from '@pages/field-service/PmPage'
 import { VanStockPage } from '@pages/field-service/VanStockPage'
 import { WarrantyPage } from '@pages/field-service/WarrantyPage'
 import { ReportsPage as FieldServiceReportsPage } from '@pages/field-service/ReportsPage'
+import { ReportsLayout } from '@pages/reporting/ReportsLayout'
+import { ReportsCatalogPage } from '@pages/reporting/ReportsCatalogPage'
+import { ExecutiveDashboardPage } from '@pages/reporting/ExecutiveDashboardPage'
+import { ReportViewerPage } from '@pages/reporting/ReportViewerPage'
+import StatementDesignerPage from '@pages/reporting/StatementDesignerPage'
+import QuickQueryPage from '@pages/reporting/QuickQueryPage'
+import DrillBackPage from '@pages/reporting/DrillBackPage'
+import ReportSchedulerPage from '@pages/reporting/ReportSchedulerPage'
+import { ReportCategoriesPage } from '@pages/reporting/ReportCategoriesPage'
+import { ReportParameterSetsPage } from '@pages/reporting/ReportParameterSetsPage'
+import { ReportUsagePage } from '@pages/reporting/ReportUsagePage'
+import { DataMartStatusPage } from '@pages/reporting/DataMartStatusPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -452,7 +464,20 @@ function App() {
           <Route path="warranty" element={<WarrantyPage />} />
           <Route path="reports" element={<FieldServiceReportsPage />} />
         </Route>
-        <Route path="reporting/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Reporting</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
+        <Route path="reporting" element={<ReportsLayout />}>
+          <Route index element={<Navigate to="catalog" replace />} />
+          <Route path="catalog" element={<ReportsCatalogPage />} />
+          <Route path="executive" element={<ExecutiveDashboardPage />} />
+          <Route path="viewer" element={<ReportViewerPage />} />
+          <Route path="designer" element={<StatementDesignerPage />} />
+          <Route path="quick-query" element={<QuickQueryPage />} />
+          <Route path="drill-back" element={<DrillBackPage />} />
+          <Route path="scheduler" element={<ReportSchedulerPage />} />
+          <Route path="categories" element={<ReportCategoriesPage />} />
+          <Route path="parameter-sets" element={<ReportParameterSetsPage />} />
+          <Route path="usage" element={<ReportUsagePage />} />
+          <Route path="sync-status" element={<DataMartStatusPage />} />
+        </Route>
         <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

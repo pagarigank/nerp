@@ -2,11 +2,13 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using Asp.Versioning;
 using ERP.Core.Common;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Domain.Services;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
@@ -20,15 +22,18 @@ namespace ERP.Modules.OrderManagement.Api;
 public class SalesOrderController : ControllerBase
 {
     private readonly OmDbContext _context;
+    private readonly PlatformDbContext _platformContext;
     private readonly ICreditLimitCheck _creditLimitCheck;
     private readonly IInventoryAvailability _inventoryAvailability;
 
     public SalesOrderController(
         OmDbContext context,
+        PlatformDbContext platformContext,
         ICreditLimitCheck creditLimitCheck,
         IInventoryAvailability inventoryAvailability)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _platformContext = platformContext ?? throw new ArgumentNullException(nameof(platformContext));
         _creditLimitCheck = creditLimitCheck ?? throw new ArgumentNullException(nameof(creditLimitCheck));
         _inventoryAvailability = inventoryAvailability ?? throw new ArgumentNullException(nameof(inventoryAvailability));
     }
@@ -122,6 +127,25 @@ public class SalesOrderController : ControllerBase
         [FromBody] CreateSalesOrderRequest request,
         CancellationToken cancellationToken)
     {
+        var orderNumber = request.OrderNumber;
+        if (string.IsNullOrWhiteSpace(orderNumber))
+        {
+            var sequence = await _platformContext.NumberSequences
+                .FirstOrDefaultAsync(s => s.CompanyId == request.CompanyId && s.Name == "Sales Order" && s.IsActive, cancellationToken)
+                ?? await _platformContext.NumberSequences
+                    .FirstOrDefaultAsync(s => s.CompanyId == request.CompanyId && s.Name == "SO" && s.IsActive, cancellationToken);
+
+            if (sequence != null)
+            {
+                orderNumber = sequence.GetNextNumber();
+                await _platformContext.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                orderNumber = $"SO-{DateTime.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString()[..4].ToUpper(CultureInfo.InvariantCulture)}";
+            }
+        }
+
         // Sales person, tax code and tax-exemption are maintained on the Customer
         // master; inherit them onto the order unless explicitly overridden here.
         // Pricing is applied per-line automatically from the pricing-rule master,
@@ -155,7 +179,7 @@ public class SalesOrderController : ControllerBase
         }
 
         var order = new SalesOrder(
-            request.OrderNumber,
+            orderNumber!,
             request.CompanyId,
             request.CustomerId,
             request.OrderDate,
@@ -390,7 +414,7 @@ public class SalesOrderController : ControllerBase
 }
 
 public record CreateSalesOrderRequest(
-    string OrderNumber,
+    string? OrderNumber,
     Guid CompanyId,
     Guid CustomerId,
     DateTime OrderDate,

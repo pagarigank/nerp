@@ -2,10 +2,14 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+#pragma warning disable CA3003
+#pragma warning disable SA1501
+
 using ERP.Modules.Platform.Infrastructure;
 using ERP.Modules.ProjectAccounting.Domain.Entities;
 using ERP.Modules.ProjectAccounting.Infrastructure;
 using ERP.Shared.Kernel.Api;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,6 +91,39 @@ public class ProjectDocumentsController : ControllerBase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Ok(ApiResponse<Guid>.Success(document.Id));
+    }
+
+    [HttpPost("upload")]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<ActionResult<ApiResponse<Guid>>> UploadDocument(
+        Guid projectId,
+        IFormFile file,
+        [FromQuery] string documentType = "General",
+        CancellationToken cancellationToken = default)
+    {
+        var project = await _context.Projects.ApplyCompanyScope(HttpContext, p => p.CompanyId).FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null) return NotFound(ApiResponse.Failure(new[] { "Project not found." }, 404));
+        if (file is null || file.Length == 0) return BadRequest(ApiResponse.Failure(new[] { "File is required." }));
+        var uploadsRoot = Path.Combine(Path.GetTempPath(), "erp-project-docs", projectId.ToString());
+        Directory.CreateDirectory(uploadsRoot);
+        var safeName = Path.GetFileName(file.FileName);
+        var storedName = $"{Guid.NewGuid()}_{safeName}";
+        var fullPath = Path.Combine(uploadsRoot, storedName);
+        await using (var stream = new FileStream(fullPath, FileMode.Create)) await file.CopyToAsync(stream, cancellationToken);
+        var document = new ProjectDocument(project.CompanyId, project.Id, safeName, documentType, fullPath, file.ContentType, file.Length, _currentUser.UserId ?? "system");
+        _context.ProjectDocuments.Add(document);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(document.Id));
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> DownloadDocument(Guid projectId, Guid id, CancellationToken cancellationToken)
+    {
+        var doc = await _context.ProjectDocuments.ApplyCompanyScope(HttpContext, d => d.CompanyId).FirstOrDefaultAsync(d => d.Id == id && d.ProjectId == projectId && d.DeletedOn == null, cancellationToken);
+        if (doc is null) return NotFound();
+        if (!System.IO.File.Exists(doc.FileReference)) return NotFound();
+        var bytes = await System.IO.File.ReadAllBytesAsync(doc.FileReference, cancellationToken);
+        return File(bytes, doc.ContentType ?? "application/octet-stream", doc.Name);
     }
 
     [HttpDelete("{id:guid}")]

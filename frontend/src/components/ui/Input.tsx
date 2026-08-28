@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
+import { forwardRef, useId, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { cn } from '@utils/helpers'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -13,7 +13,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, leftIcon, rightIcon, leftAddon, rightAddon, id, ...props }, ref) => {
-    const inputId = id || `input-${generateId()}`
+    const autoId = useId()
+    const inputId = id || `input-${autoId}`
 
     return (
       <div className="w-full">
@@ -91,7 +92,8 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
-    const textareaId = id || `textarea-${generateId()}`
+    const autoId = useId()
+    const textareaId = id || `textarea-${autoId}`
 
     return (
       <div className="w-full">
@@ -149,7 +151,8 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, hint, options, placeholder, id, ...props }, ref) => {
-    const selectId = id || `select-${generateId()}`
+    const autoId = useId()
+    const selectId = id || `select-${autoId}`
 
     return (
       <div className="w-full">
@@ -207,10 +210,6 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
 Select.displayName = 'Select'
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9)
-}
-
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string
   description?: string
@@ -218,7 +217,8 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
   ({ className, label, description, id, ...props }, ref) => {
-    const checkboxId = id || `checkbox-${generateId()}`
+    const autoId = useId()
+    const checkboxId = id || `checkbox-${autoId}`
 
     return (
       <div className="flex items-start gap-3">

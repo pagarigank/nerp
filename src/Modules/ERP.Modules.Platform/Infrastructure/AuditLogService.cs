@@ -12,6 +12,7 @@ public interface IAuditLogService
     Task LogAsync(string action, string entityType, Guid entityId, string performedBy, object? oldValues = null, object? newValues = null, string? ipAddress = null, string? userAgent = null, string? correlationId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditLog>> GetByEntityAsync(string entityType, Guid entityId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditLog>> GetByUserAsync(string performedBy, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AuditLog>> GetRecentAsync(int take = 20, CancellationToken cancellationToken = default);
 }
 
 public class AuditLogService : IAuditLogService
@@ -62,5 +63,11 @@ public class AuditLogService : IAuditLogService
         return await _auditLogRepository.FindAsync(
             x => x.PerformedBy == performedBy && x.PerformedOn >= from && x.PerformedOn <= to,
             cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AuditLog>> GetRecentAsync(int take = 20, CancellationToken cancellationToken = default)
+    {
+        var all = await _auditLogRepository.FindAsync(_ => true, cancellationToken);
+        return all.OrderByDescending(x => x.PerformedOn).Take(take).ToList();
     }
 }

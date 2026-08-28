@@ -197,6 +197,32 @@ public class CycleCountController : ControllerBase
         return Ok(ApiResponse<CycleCountDto>.Success(MapToDto(cycleCount)));
     }
 
+    [HttpPost("{id:guid}/approve")]
+    public async Task<ActionResult<ApiResponse<CycleCountDto>>> ApproveCycleCount(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var cycleCount = await _context.CycleCounts
+            .Include(c => c.Lines)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (cycleCount == null)
+        {
+            return NotFound(ApiResponse<CycleCountDto>.Failure(["Cycle count not found."]));
+        }
+
+        if (cycleCount.Status != CycleCountStatus.Completed)
+        {
+            return BadRequest(ApiResponse<CycleCountDto>.Failure(["Only completed cycle counts can be approved."]));
+        }
+
+        cycleCount.UpdateStatus(CycleCountStatus.Approved);
+        _context.CycleCounts.Update(cycleCount);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResponse<CycleCountDto>.Success(MapToDto(cycleCount)));
+    }
+
     [HttpPost("{id:guid}/post")]
     public async Task<ActionResult<ApiResponse<CycleCountPostResultDto>>> PostCycleCount(
         Guid id,
@@ -214,6 +240,24 @@ public class CycleCountController : ControllerBase
         if (cycleCount.Status != CycleCountStatus.Completed)
         {
             return BadRequest(ApiResponse<CycleCountPostResultDto>.Failure(["Only completed cycle counts can be posted."]));
+        }
+
+        // Phase 7 gap: Cycle count >$1,000 requires approval before posting
+        decimal totalVarianceValue = 0m;
+        foreach (var preLine in cycleCount.Lines)
+        {
+            var preVariance = preLine.Variance ?? 0;
+            if (Math.Abs(preVariance) > 0.0001m)
+            {
+                var preItem = await _context.Items.FindAsync(new object[] { preLine.ItemId }, cancellationToken);
+                var preAvgCost = await GetAverageCostAsync(preLine.ItemId, cycleCount.WarehouseId, cancellationToken);
+                totalVarianceValue += Math.Abs(preVariance) * (preAvgCost ?? preItem?.StandardCost ?? 0m);
+            }
+        }
+
+        if (totalVarianceValue > 1000m && cycleCount.Status != CycleCountStatus.Approved)
+        {
+            return BadRequest(ApiResponse<CycleCountPostResultDto>.Failure([$"Cycle count variance value (${totalVarianceValue:N2}) exceeds $1,000 threshold and requires approval before posting. Use POST /inventory/cycle-counts/{id}/approve to approve."]));
         }
 
         var variances = new List<CycleCountVarianceDto>();

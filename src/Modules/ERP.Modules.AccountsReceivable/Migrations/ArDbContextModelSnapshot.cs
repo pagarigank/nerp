@@ -297,6 +297,21 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("BillingAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillingCity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillingCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillingState")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillingZipCode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -353,6 +368,21 @@ namespace ERP.Modules.AccountsReceivable.Migrations
                     b.Property<Guid?>("SalesRepId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("SalesRepId");
+
+                    b.Property<string>("ShippingAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShippingCity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShippingCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShippingState")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShippingZipCode")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("TaxCodeId")
                         .HasColumnType("uniqueidentifier")

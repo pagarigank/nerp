@@ -128,6 +128,60 @@ public class ShipmentController : ControllerBase
         return Ok(ApiResponse<Guid>.Success(shipment.Id));
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> UpdateAsync(Guid id, [FromBody] UpdateShipmentRequest request, CancellationToken cancellationToken)
+    {
+        var shipment = await _context.Shipments
+            .Include(s => s.Lines)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (shipment is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Shipment {id} not found." }));
+
+        if (shipment.Status != ShipmentStatus.Draft)
+            return BadRequest(ApiResponse<string>.Failure(new[] { "Only Draft shipments can be edited." }));
+
+        shipment.Update(request.Carrier, request.TrackingNumber, request.FreightCost, request.Notes);
+        shipment.ClearLines();
+        foreach (var line in request.Lines)
+        {
+            shipment.AddLine(new ShipmentLine(
+                shipment.Id,
+                line.LineNumber,
+                line.ItemId,
+                line.Description,
+                line.Quantity,
+                line.UnitPrice,
+                line.UnitOfMeasure,
+                line.WarehouseId,
+                line.SalesOrderLineId,
+                line.ProjectId,
+                line.AccountId,
+                line.DiscountPercent,
+                line.TaxPercent));
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<string>.Success("Updated"));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<string>>> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var shipment = await _context.Shipments
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (shipment is null)
+            return NotFound(ApiResponse<string>.Failure(new[] { $"Shipment {id} not found." }));
+
+        if (shipment.Status != ShipmentStatus.Draft)
+            return BadRequest(ApiResponse<string>.Failure(new[] { "Only Draft shipments can be deleted." }));
+
+        _context.Shipments.Remove(shipment);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<string>.Success("Deleted"));
+    }
+
     [HttpPost("{id:guid}/confirm")]
     public async Task<ActionResult<ApiResponse<string>>> ConfirmAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -163,6 +217,13 @@ public record CreateShipmentRequest(
     string? Carrier,
     string? TrackingNumber,
     decimal FreightCost,
+    List<CreateShipmentLineRequest> Lines);
+
+public record UpdateShipmentRequest(
+    string? Carrier,
+    string? TrackingNumber,
+    decimal FreightCost,
+    string? Notes,
     List<CreateShipmentLineRequest> Lines);
 
 public record CreateShipmentLineRequest(

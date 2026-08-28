@@ -35,6 +35,7 @@ public class Item : AuditableEntity
         CompanyId = companyId;
         ItemType = itemType;
         BaseUnitOfMeasure = baseUnitOfMeasure;
+        DefaultUnitOfMeasure = baseUnitOfMeasure;
         CostingMethod = costingMethod;
         ItemCategoryId = itemCategoryId;
         Status = status;
@@ -49,6 +50,8 @@ public class Item : AuditableEntity
     public Guid CompanyId { get; private set; }
     public ItemType ItemType { get; private set; }
     public string BaseUnitOfMeasure { get; private set; } = string.Empty;
+    public string DefaultUnitOfMeasure { get; private set; } = string.Empty;
+    public Guid? DefaultWarehouseId { get; private set; }
     public CostingMethod CostingMethod { get; private set; }
     public Guid ItemCategoryId { get; private set; }
     public ItemStatus Status { get; private set; }
@@ -156,6 +159,17 @@ public class Item : AuditableEntity
     public void UpdateABCClass(string abcClass)
     {
         ABCClass = abcClass;
+    }
+
+    public void SetDefaultWarehouse(Guid? warehouseId)
+    {
+        DefaultWarehouseId = warehouseId;
+    }
+
+    public void SetDefaultUnitOfMeasure(string uom)
+    {
+        if (!string.IsNullOrWhiteSpace(uom))
+            DefaultUnitOfMeasure = uom;
     }
 
     public void Activate()

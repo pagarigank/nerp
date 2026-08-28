@@ -1,0 +1,36 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: false });
+const page = await browser.newPage();
+page.on('console', msg => console.log('BROWSER', msg.text()));
+await page.goto('http://localhost:3000/login', { waitUntil: 'domcontentloaded' });
+await page.fill('#email', 'demo@erp.com');
+await page.fill('#password', 'password123');
+await page.click('button[type="submit"]');
+await page.waitForURL('**/dashboard', { timeout: 10000 });
+await page.goto('http://localhost:3000/om/sales-orders/new', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(2000);
+let customerInput = page.locator('input[placeholder="Search customer..."]');
+await customerInput.click();
+await customerInput.fill('C-');
+await page.waitForTimeout(1000);
+await page.locator('button:has-text("C-")').first().click();
+await page.waitForTimeout(500);
+await page.click('button:has-text("Add Line")');
+await page.waitForTimeout(500);
+let html = await page.content();
+let snippet = html.slice(html.indexOf('Order Lines')-500, html.indexOf('Order Lines')+2000).replace(/\n/g, ' ');
+console.log('Order Lines snippet:', snippet.slice(0, 1500));
+let inputs = await page.locator('input').all();
+console.log('Total inputs:', inputs.length);
+for (let i=0; i<Math.min(inputs.length, 10); i++) {
+  let ph = await inputs[i].getAttribute('placeholder');
+  let val = await inputs[i].inputValue();
+  console.log(`Input ${i}: placeholder="${ph}" value="${val}"`);
+}
+await page.click('button:has-text("Create Sales Order")');
+await page.waitForTimeout(2000);
+let afterHtml = await page.content();
+console.log('After click has error:', afterHtml.includes('error') ? 'YES' : 'NO');
+let errorText = await page.locator('[role="alert"]').textContent().catch(() => 'no alert');
+console.log('Alert text:', errorText);
+await browser.close();

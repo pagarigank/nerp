@@ -11,7 +11,7 @@ import { Input, Select, Textarea } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getReservations, createReservation, releaseReservation, cancelReservation, companyId, getItems, getWarehouses } from '@api/inventory'
+import { getReservations, createReservation, releaseReservation, cancelReservation, companyId, getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
 import type { ReservationSummary, ItemSummary, WarehouseSummary, UomConversionDto } from '@/types/inventory'
 
 const schema = z.object({

@@ -2,6 +2,9 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+#pragma warning disable CA1848
+#pragma warning disable SA1601
+
 using ERP.Core.Common;
 using ERP.Modules.BillOfMaterials.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -18,11 +21,7 @@ public interface ICostRollupJob
     Task<CostRollupReport> RunAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Recomputes EstimatedMaterialCost bottom-up across multi-level active BOMs,
-/// persisting only changed costs, and reports the largest deltas.
-/// </summary>
-public partial class CostRollupJob : ICostRollupJob
+public class CostRollupJob : ICostRollupJob
 {
     private const int MaxReportedDeltas = 5;
 
@@ -58,7 +57,16 @@ public partial class CostRollupJob : ICostRollupJob
             .GroupBy(h => h.ParentItemId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(h => h.CreatedOn).First());
 
+        var workCenters = await _context.WorkCenters
+            .Where(w => w.IsActive)
+            .ToDictionaryAsync(w => w.Id, cancellationToken);
+
+        var routingOps = await _context.RoutingOperations
+            .Where(r => r.IsActive)
+            .ToListAsync(cancellationToken);
+
         var memoizedCosts = new Dictionary<Guid, decimal>();
+        var memoizedLabor = new Dictionary<Guid, decimal>();
         var inProgress = new HashSet<Guid>();
 
         decimal CostOf(Guid itemId)
@@ -74,6 +82,7 @@ public partial class CostRollupJob : ICostRollupJob
             }
 
             decimal cost;
+
             if (bomByParentItem.TryGetValue(itemId, out var bom))
             {
                 var total = bom.Components.Sum(line => line.EffectiveQuantity * CostOf(line.ComponentItemId));
@@ -92,7 +101,53 @@ public partial class CostRollupJob : ICostRollupJob
 
             inProgress.Remove(itemId);
             memoizedCosts[itemId] = cost;
+
             return cost;
+        }
+
+        decimal LaborOf(Guid itemId, Guid companyId)
+        {
+            if (memoizedLabor.TryGetValue(itemId, out var cached))
+            {
+                return cached;
+            }
+
+            decimal labor = 0;
+
+            if (bomByParentItem.TryGetValue(itemId, out var bom))
+            {
+                var bomOps = routingOps.Where(o => o.CompanyId == companyId).ToList();
+
+                foreach (var op in bomOps)
+                {
+                    if (!op.WorkCenterId.HasValue)
+                    {
+                        continue;
+                    }
+
+                    if (!workCenters.TryGetValue(op.WorkCenterId.Value, out var wc))
+                    {
+                        continue;
+                    }
+
+                    var hours = (op.StandardSetupTimeMinutes + op.StandardRunTimeMinutesPerUnit) / 60m;
+                    labor += hours * wc.CostRatePerHour;
+                }
+
+                foreach (var comp in bom.Components)
+                {
+                    labor += LaborOf(comp.ComponentItemId, companyId) * comp.EffectiveQuantity;
+                }
+
+                if (bom.YieldPercentage > 0 && bom.YieldPercentage != 100)
+                {
+                    labor /= bom.YieldPercentage / 100m;
+                }
+            }
+
+            memoizedLabor[itemId] = labor;
+
+            return labor;
         }
 
         var deltas = new List<CostRollupDelta>();
@@ -102,15 +157,17 @@ public partial class CostRollupJob : ICostRollupJob
         foreach (var header in headers)
         {
             var newCost = Math.Round(CostOf(header.ParentItemId), 4);
+            var newLabor = Math.Round(LaborOf(header.ParentItemId, header.CompanyId), 4);
+            var newOverhead = Math.Round(newLabor * 0.25m, 4);
 
-            if (header.EstimatedMaterialCost == newCost)
+            if (header.EstimatedMaterialCost == newCost && header.EstimatedLaborCost == newLabor && header.EstimatedOverheadCost == newOverhead)
             {
                 unchangedCount++;
                 continue;
             }
 
             var previousCost = header.EstimatedMaterialCost ?? 0m;
-            header.UpdateEstimatedCosts(newCost, header.EstimatedLaborCost ?? 0m, header.EstimatedOverheadCost ?? 0m);
+            header.UpdateEstimatedCosts(newCost, newLabor, newOverhead);
             updatedCount++;
             deltas.Add(new CostRollupDelta(header.Id, Label(items, header), previousCost, newCost, newCost - previousCost));
         }
@@ -136,9 +193,7 @@ public partial class CostRollupJob : ICostRollupJob
     private static string Label(Dictionary<Guid, InventoryItemInfo> items, BomHeader header) =>
         items.TryGetValue(header.ParentItemId, out var parent) ? parent.ItemCode : header.ParentItemId.ToString();
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Starting weekly BOM standard-cost roll-up")]
-    private partial void LogStarting();
+    private void LogStarting() => _logger.LogInformation("Starting weekly BOM standard-cost roll-up");
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "BOM cost roll-up completed: {Total} checked, {Updated} updated, {Unchanged} unchanged")]
-    private partial void LogCompleted(int total, int updated, int unchanged);
+    private void LogCompleted(int total, int updated, int unchanged) => _logger.LogInformation("BOM cost roll-up completed: {Total} checked, {Updated} updated, {Unchanged} unchanged", total, updated, unchanged);
 }

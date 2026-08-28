@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, AlertCircle, Trash2, Eye } from 'lucide-react'
+import { Plus, Search, AlertCircle, Trash2, Eye, Pencil } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { UomSelect } from '@components/ui/UomSelect'
@@ -14,7 +14,7 @@ import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
 import {
   getShipments, getSalesOrders, getSalesOrder,
-  createShipment, confirmShipment, companyId,
+  createShipment, updateShipment, deleteShipment, confirmShipment, companyId,
 } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems, getItemUomConversions } from '@api/inventory'
@@ -102,6 +102,21 @@ export function ShipmentsPage() {
     return salesOrders.filter((o: SalesOrderSummary) => o.orderNumber.toLowerCase().includes(q)).slice(0, 10)
   }, [salesOrders, soSearch])
 
+  // Auto-open from Sales Order → Create Shipment wiring
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const soId = params.get('salesOrderId')
+    if (soId && salesOrders.length > 0) {
+      const so = salesOrders.find(o => o.id === soId)
+      if (so) {
+        setValue('salesOrderId', soId)
+        setSoSearch(so.orderNumber)
+        loadSO(soId)
+        setShowCreate(true)
+      }
+    }
+  }, [salesOrders])
+
   const itemOptions = useMemo(() => items.map((i: ItemSummary) => ({ value: i.id, label: `${i.itemCode} - ${i.description}` })), [items])
 
   const totals = useMemo(() => {
@@ -186,6 +201,20 @@ export function ShipmentsPage() {
     onError: e => setErr(getErrorMessage(e)),
   })
 
+  const [editingShipment, setEditingShipment] = useState<ShipmentSummary | null>(null)
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateShipment(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['om', 'shipments'] }); setEditingShipment(null); setShowCreate(false); reset(); },
+    onError: e => setErr(getErrorMessage(e)),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteShipment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['om', 'shipments'] }),
+    onError: e => setErr(getErrorMessage(e)),
+  })
+
   const confirmMut = useMutation({
     mutationFn: (id: string) => confirmShipment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['om', 'shipments'] }),
@@ -203,9 +232,9 @@ export function ShipmentsPage() {
       {err && <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"><AlertCircle className="h-5 w-5" /> {err}</div>}
 
       {/* Create Shipment Modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="New Shipment" size="xl"
-        footer={<><Button variant="secondary" onClick={() => setShowCreate(false)} disabled={createMut.isPending}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit(d => createMut.mutate(d))} isLoading={createMut.isPending}>Create Shipment</Button></>}>
+      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setEditingShipment(null); reset() }} title={editingShipment ? `Edit Shipment ${editingShipment.shipmentNumber}` : 'New Shipment'} size="xl"
+        footer={<><Button variant="secondary" onClick={() => { setShowCreate(false); setEditingShipment(null); reset() }} disabled={createMut.isPending || updateMut.isPending}>Cancel</Button>
+          <Button variant="primary" onClick={handleSubmit(d => editingShipment ? updateMut.mutate({ id: editingShipment.id, data: { carrier: d.carrier || null, trackingNumber: d.trackingNumber || null, freightCost: Number(d.freightCost) || 0, notes: d.notes || null, lines: d.lines.map((l, i) => ({ lineNumber: i+1, itemId: l.itemId, description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, unitOfMeasure: l.unitOfMeasure, warehouseId: l.warehouseId || null, salesOrderLineId: l.salesOrderLineId || null, projectId: l.projectId || null, accountId: l.accountId || null, discountPercent: l.discountPercent || 0, taxPercent: l.taxPercent || 0 })) }}) : createMut.mutate(d))} isLoading={createMut.isPending || updateMut.isPending}>{editingShipment ? 'Update Shipment' : 'Create Shipment'}</Button></>}>
         <form className="space-y-5" noValidate>
           {/* Header */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -312,7 +341,7 @@ export function ShipmentsPage() {
       {/* List */}
       <Card>
         <CardHeader title="Shipments" description={`${shipments.length} shipment(s)`}
-          action={<Button variant="primary" size="sm" onClick={() => { setErr(null); setCustomerSearch(''); setSoSearch(''); reset(); setShowCreate(true) }} leftIcon={<Plus className="h-4 w-4" />}>New Shipment</Button>} />
+          action={<Button variant="primary" size="sm" onClick={() => { setErr(null); setCustomerSearch(''); setSoSearch(''); setEditingShipment(null); reset({ shipmentNumber: `SHP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`, customerId: '', salesOrderId: '', shipmentDate: new Date().toISOString().slice(0, 10), carrier: '', trackingNumber: '', freightCost: 0, notes: '', lines: [{ lineNumber: 1, itemId: '', description: '', quantity: 1, unitPrice: 0, unitOfMeasure: 'EA', discountPercent: 0, taxPercent: 0 }] }); setShowCreate(true) }} leftIcon={<Plus className="h-4 w-4" />}>New Shipment</Button>} />
         <CardContent>
           <div className="mb-4 max-w-md"><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by shipment #..." leftIcon={<Search className="h-4 w-4" />} /></div>
           {isLoading ? <p className="text-sm text-gray-500 py-8 text-center">Loading...</p> :
@@ -340,7 +369,45 @@ export function ShipmentsPage() {
                         <td className="px-3 py-3 text-right">
                           <div className="flex justify-end gap-1">
                             <Button size="sm" variant="ghost" onClick={() => navigate(`/om/shipments/${s.id}`)}><Eye className="h-4 w-4" /></Button>
-                            {s.status === 'Draft' && <Button size="sm" variant="primary" disabled={confirmMut.isPending} onClick={() => confirmMut.mutate(s.id)}>Confirm</Button>}
+                            {s.status === 'Draft' && (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={async () => {
+                                  try {
+                                    const detail = await getShipment(s.id)
+                                    setEditingShipment(s)
+                                    reset({
+                                      shipmentNumber: detail.shipmentNumber,
+                                      customerId: detail.customerId,
+                                      salesOrderId: detail.salesOrderId ?? '',
+                                      shipmentDate: detail.shipmentDate.slice(0, 10),
+                                      carrier: detail.carrier ?? '',
+                                      trackingNumber: detail.trackingNumber ?? '',
+                                      freightCost: detail.freightCost,
+                                      notes: (detail as any).notes ?? '',
+                                      lines: detail.lines.map(l => ({
+                                        lineNumber: l.lineNumber,
+                                        itemId: l.itemId,
+                                        description: l.description,
+                                        quantity: l.quantity,
+                                        unitPrice: l.unitPrice,
+                                        unitOfMeasure: l.unitOfMeasure,
+                                        warehouseId: l.warehouseId ?? undefined,
+                                        salesOrderLineId: l.salesOrderLineId ?? undefined,
+                                        projectId: l.projectId ?? undefined,
+                                        accountId: l.accountId ?? undefined,
+                                        discountPercent: l.discountPercent,
+                                        taxPercent: l.taxPercent,
+                                      })),
+                                    })
+                                    setCustomerSearch(customers.find(c => c.id === detail.customerId)?.name ?? '')
+                                    setSoSearch(detail.salesOrderId ? salesOrders.find(o => o.id === detail.salesOrderId)?.orderNumber ?? '' : '')
+                                    setShowCreate(true)
+                                  } catch (e) { setErr(getErrorMessage(e)) }
+                                }}><Pencil className="h-4 w-4" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => { if (confirm(`Delete shipment ${s.shipmentNumber}?`)) deleteMut.mutate(s.id) }}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                                <Button size="sm" variant="primary" disabled={confirmMut.isPending} onClick={() => confirmMut.mutate(s.id)}>Confirm</Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

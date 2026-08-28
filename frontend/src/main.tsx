@@ -5,6 +5,7 @@ import { StrictMode, Component, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
+import { registerServiceWorker } from './utils/serviceWorker'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error?: Error }
     return this.props.children
   }
 }
+
+// Register service worker for offline-first caching
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

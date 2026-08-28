@@ -99,6 +99,9 @@ const MONEY = (v: number) => `$${Number(v).toFixed(2)}`
 const ORDER_TYPE_OPTIONS = (['Quote', 'Order', 'Return', 'CreditOnly'] as SalesOrderTypeCodeValue[]).map((v) => ({ value: v, label: v }))
 const PRICING_SCOPE_OPTIONS = (['Standard', 'CustomerSpecific', 'QuantityBreak', 'Promotional'] as PricingRuleScopeValue[]).map((v) => ({ value: v, label: v }))
 
+const DEMO_COMPANY = '11111111-1111-1111-1111-111111111111'
+const resolveCompanyId = () => currentCompanyId() || DEMO_COMPANY
+
 const MASTERS: MasterConfig<any>[] = [
   {
     key: 'shipping',
@@ -107,7 +110,7 @@ const MASTERS: MasterConfig<any>[] = [
     create: (d) => createShippingMethod(d as CreateShippingMethodRequest),
     update: (id, d) => updateShippingMethod(id, d as UpdateShippingMethodRequest),
     remove: (id) => deleteShippingMethod(id),
-    toCreate: (f) => ({ companyId: currentCompanyId(), code: f.code, description: f.description, carrier: f.carrier || null, baseCost: Number(f.baseCost), trackingUrlTemplate: (f.trackingUrlTemplate as string) || null }),
+    toCreate: (f) => ({ companyId: resolveCompanyId(), code: f.code, description: f.description, carrier: f.carrier || null, baseCost: Number(f.baseCost), trackingUrlTemplate: (f.trackingUrlTemplate as string) || null }),
     toUpdate: (f) => ({ description: f.description, carrier: f.carrier || null, baseCost: Number(f.baseCost), isActive: Boolean(f.isActive), trackingUrlTemplate: (f.trackingUrlTemplate as string) || null }),
     columns: [
       { key: 'code', header: 'Code', sortable: true },
@@ -133,7 +136,7 @@ const MASTERS: MasterConfig<any>[] = [
     create: (d) => createSalesRep(d as CreateSalesRepRequest),
     update: (id, d) => updateSalesRep(id, d as UpdateSalesRepRequest),
     remove: (id) => deleteSalesRep(id),
-    toCreate: (f) => ({ companyId: currentCompanyId(), code: f.code, name: f.name, commissionRate: Number(f.commissionRate), territoryId: (f.territoryId as string) || null, email: (f.email as string) || null }),
+    toCreate: (f) => ({ companyId: resolveCompanyId(), code: f.code, name: f.name, commissionRate: Number(f.commissionRate), territoryId: (f.territoryId as string) || null, email: (f.email as string) || null }),
     toUpdate: (f) => ({ name: f.name, commissionRate: Number(f.commissionRate), territoryId: (f.territoryId as string) || null, isActive: Boolean(f.isActive), email: (f.email as string) || null }),
     columns: [
       { key: 'code', header: 'Code', sortable: true },
@@ -159,7 +162,7 @@ const MASTERS: MasterConfig<any>[] = [
     create: (d) => createSalesTerritory(d as CreateSalesTerritoryRequest),
     update: (id, d) => updateSalesTerritory(id, d as UpdateSalesTerritoryRequest),
     remove: (id) => deleteSalesTerritory(id),
-    toCreate: (f) => ({ companyId: currentCompanyId(), code: f.code, name: f.name, region: (f.region as string) || null, defaultCommissionRate: Number(f.defaultCommissionRate) }),
+    toCreate: (f) => ({ companyId: resolveCompanyId(), code: f.code, name: f.name, region: (f.region as string) || null, defaultCommissionRate: Number(f.defaultCommissionRate) }),
     toUpdate: (f) => ({ name: f.name, region: (f.region as string) || null, defaultCommissionRate: Number(f.defaultCommissionRate), isActive: Boolean(f.isActive) }),
     columns: [
       { key: 'code', header: 'Code', sortable: true },
@@ -184,7 +187,7 @@ const MASTERS: MasterConfig<any>[] = [
     create: (d) => createSalesOrderType(d as CreateSalesOrderTypeRequest),
     update: (id, d) => updateSalesOrderType(id, d as UpdateSalesOrderTypeRequest),
     remove: (id) => deleteSalesOrderType(id),
-    toCreate: (f) => ({ companyId: currentCompanyId(), code: f.code, description: f.description, typeCode: f.typeCode as SalesOrderTypeCodeValue, revenueAccountId: (f.revenueAccountId as string) || null }),
+    toCreate: (f) => ({ companyId: resolveCompanyId(), code: f.code, description: f.description, typeCode: f.typeCode as SalesOrderTypeCodeValue, revenueAccountId: (f.revenueAccountId as string) || null }),
     toUpdate: (f) => ({ description: f.description, typeCode: f.typeCode as SalesOrderTypeCodeValue, revenueAccountId: (f.revenueAccountId as string) || null, isActive: Boolean(f.isActive) }),
     columns: [
       { key: 'code', header: 'Code', sortable: true },
@@ -209,7 +212,7 @@ const MASTERS: MasterConfig<any>[] = [
     update: (id, d) => updatePricingRule(id, d as UpdatePricingRuleRequest),
     remove: (id) => deletePricingRule(id),
     toCreate: (f) => ({
-      companyId: currentCompanyId(), code: f.code, description: f.description, scope: f.scope as PricingRuleScopeValue,
+      companyId: resolveCompanyId(), code: f.code, description: f.description, scope: f.scope as PricingRuleScopeValue,
       prioritySequence: Number(f.prioritySequence), discountPercent: Number(f.discountPercent),
       unitPriceOverride: f.unitPriceOverride ? Number(f.unitPriceOverride) : null,
       customerId: (f.customerId as string) || null, itemId: (f.itemId as string) || null,
@@ -228,9 +231,9 @@ const MASTERS: MasterConfig<any>[] = [
       { key: 'code', header: 'Code', sortable: true },
       { key: 'scope', header: 'Scope' },
       { key: 'prioritySequence', header: 'Priority', align: 'right' as const },
-      { key: 'discountPercent', header: 'Discount %', align: 'right' as const, render: (r: PricingRuleSummary) => `${r.discountPercent}%` },
-      { key: 'unitPriceOverride', header: 'Override', align: 'right' as const, render: (r: PricingRuleSummary) => (r.unitPriceOverride != null ? MONEY(r.unitPriceOverride) : '—') },
-      { key: 'isActive', header: 'Active', render: (r: PricingRuleSummary) => YESNO(r.isActive) },
+      { key: 'discountPercent', header: 'Discount %', align: 'right' as const, render: (r: PricingRuleSummary) => `${r?.discountPercent ?? 0}%` },
+      { key: 'unitPriceOverride', header: 'Override', align: 'right' as const, render: (r: PricingRuleSummary) => (r?.unitPriceOverride != null ? MONEY(r.unitPriceOverride) : '—') },
+      { key: 'isActive', header: 'Active', render: (r: PricingRuleSummary) => YESNO(r?.isActive) },
     ],
     fields: [
       { name: 'code', label: 'Code', type: 'text', required: true, excludeFromUpdate: true },
@@ -256,7 +259,7 @@ const MASTERS: MasterConfig<any>[] = [
     create: (d) => createTaxCode(d as CreateTaxCodeRequest),
     update: (id, d) => updateTaxCode(id, d as UpdateTaxCodeRequest),
     remove: (id) => deleteTaxCode(id),
-    toCreate: (f) => ({ companyId: currentCompanyId(), code: f.code, description: f.description, jurisdiction: f.jurisdiction, rate: Number(f.rate), isTaxable: Boolean(f.isTaxable), effectiveFrom: (f.effectiveFrom as string) || null, effectiveTo: (f.effectiveTo as string) || null }),
+    toCreate: (f) => ({ companyId: resolveCompanyId(), code: f.code, description: f.description, jurisdiction: f.jurisdiction, rate: Number(f.rate), isTaxable: Boolean(f.isTaxable), effectiveFrom: (f.effectiveFrom as string) || null, effectiveTo: (f.effectiveTo as string) || null }),
     toUpdate: (f) => ({ description: f.description, rate: Number(f.rate), isTaxable: Boolean(f.isTaxable), effectiveFrom: (f.effectiveFrom as string) || null, effectiveTo: (f.effectiveTo as string) || null, isActive: Boolean(f.isActive) }),
     columns: [
       { key: 'code', header: 'Code', sortable: true },
@@ -314,7 +317,7 @@ export function MastersPage() {
     try {
       const entries = await Promise.all(MASTERS.map(async (m) => [m.key, await m.load()] as const))
       const map: Record<string, any[]> = {}
-      for (const [k, v] of entries) map[k] = v
+      for (const [k, v] of entries) map[k] = (v as any[])?.filter(Boolean) ?? []
       setRowsByKey(map)
     } catch (e) {
       setError(getErrorMessage(e))
@@ -539,7 +542,7 @@ function TaxExemptionsPanel({
     setFormError(null)
     try {
       await onCreate({
-        companyId: currentCompanyId(),
+        companyId: resolveCompanyId(),
         certificateNumber: cert,
         customerId: customerId || null,
         jurisdiction,

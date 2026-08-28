@@ -2,6 +2,10 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+#pragma warning disable SA1501
+#pragma warning disable SA1513
+#pragma warning disable CA1002
+
 using ERP.Modules.FieldService.Application;
 using ERP.Modules.FieldService.Domain.Entities;
 using ERP.Modules.FieldService.Infrastructure;
@@ -186,6 +190,64 @@ public class WorkOrderController : ControllerBase
         return Ok(ApiResponse<bool>.Success(true));
     }
 
+    [HttpGet("dispatch/suggestions")]
+    public async Task<ActionResult<ApiResponse<List<DispatchSuggestionDto>>>> DispatchSuggestions(
+        [FromQuery] Guid companyId, [FromQuery] Guid workOrderId, CancellationToken cancellationToken)
+    {
+        var wo = await _context.WorkOrders.FirstOrDefaultAsync(w => w.Id == workOrderId && w.CompanyId == companyId, cancellationToken);
+        if (wo is null) return NotFound(ApiResponse<List<DispatchSuggestionDto>>.Failure(new[] { "Work order not found." }));
+        var techs = await _context.Technicians.Where(t => t.CompanyId == companyId && t.Status == TechnicianStatus.Active).ToListAsync(cancellationToken);
+        var skills = await _context.TechnicianSkills.Where(s => s.CompanyId == companyId && (s.ExpirationDate == null || s.ExpirationDate > DateTime.UtcNow)).ToListAsync(cancellationToken);
+        var busyIds = await _context.WorkOrders.Where(w => w.CompanyId == companyId && w.TechnicianId.HasValue && w.Status != WorkOrderStatus.Closed && w.Status != WorkOrderStatus.Cancelled && w.Status != WorkOrderStatus.Completed && w.ScheduledStart.HasValue && w.ScheduledEnd.HasValue && wo.ScheduledStart.HasValue && wo.ScheduledEnd.HasValue && w.ScheduledStart < wo.ScheduledEnd && w.ScheduledEnd > wo.ScheduledStart).Select(w => w.TechnicianId!.Value).ToListAsync(cancellationToken);
+        var list = techs.Select(t =>
+        {
+            var techSkills = skills.Where(s => s.TechnicianId == t.Id).ToList();
+            var score = 0;
+            if (t.DefaultTerritoryId.HasValue && wo.TerritoryId.HasValue && t.DefaultTerritoryId == wo.TerritoryId) score += 10;
+            score += techSkills.Count * 2;
+            score += techSkills.Sum(s => s.Proficiency);
+            var available = !busyIds.Contains(t.Id);
+            if (!available) score -= 50;
+            return new DispatchSuggestionDto { TechnicianId = t.Id, Code = t.Code, Name = $"{t.FirstName} {t.LastName}", TerritoryId = t.DefaultTerritoryId, SkillCount = techSkills.Count, TotalProficiency = techSkills.Sum(s => s.Proficiency), Available = available, Score = score };
+        }).OrderByDescending(x => x.Score).ToList();
+        return Ok(ApiResponse<List<DispatchSuggestionDto>>.Success(list));
+    }
+
+    [HttpGet("technicians/{technicianId:guid}/availability")]
+    public async Task<ActionResult<ApiResponse<TechnicianAvailabilityDto>>> TechnicianAvailability(Guid technicianId, [FromQuery] Guid companyId, [FromQuery] DateTime start, [FromQuery] DateTime end, CancellationToken cancellationToken)
+    {
+        var conflicts = await _context.WorkOrders.Where(w => w.CompanyId == companyId && w.TechnicianId == technicianId && w.Status != WorkOrderStatus.Closed && w.Status != WorkOrderStatus.Cancelled && w.ScheduledStart.HasValue && w.ScheduledEnd.HasValue && w.ScheduledStart < end && w.ScheduledEnd > start).Select(w => new AvailabilityConflictDto { WorkOrderId = w.Id, WorkOrderNumber = w.WorkOrderNumber, ScheduledStart = w.ScheduledStart!.Value, ScheduledEnd = w.ScheduledEnd!.Value, Status = w.Status.ToString() }).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<TechnicianAvailabilityDto>.Success(new TechnicianAvailabilityDto { TechnicianId = technicianId, Available = conflicts.Count == 0, Conflicts = conflicts }));
+    }
+
+    [HttpPost("work-orders/{id:guid}/follow-up")]
+    public async Task<ActionResult<ApiResponse<Guid>>> CreateFollowUp(Guid id, [FromBody] CreateFollowUpRequest request, CancellationToken cancellationToken)
+    {
+        var source = await _context.WorkOrders.FirstOrDefaultAsync(w => w.Id == id && w.CompanyId == request.CompanyId, cancellationToken);
+        if (source is null) return NotFound(ApiResponse<Guid>.Failure(new[] { "Work order not found." }));
+        var entity = new WorkOrder(request.CompanyId, request.WorkOrderNumber ?? $"{source.WorkOrderNumber}-FU", null, null, source.ServiceContractId, source.EquipmentAssetId, source.CustomerId, null, source.Type, source.Priority, request.TechnicianId ?? source.TechnicianId, source.TerritoryId, request.ScheduledStart, request.ScheduledEnd, null, null, false, request.Notes ?? $"Follow-up for {source.WorkOrderNumber}");
+        _context.WorkOrders.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ApiResponse<Guid>.Success(entity.Id));
+    }
+
+    [HttpPost("work-orders/{id:guid}/expenses")]
+    public async Task<ActionResult<ApiResponse<Guid>>> AddExpense(Guid id, [FromBody] AddExpenseRequest request, CancellationToken cancellationToken)
+    {
+        var wo = await _context.WorkOrders.FirstOrDefaultAsync(w => w.Id == id && w.CompanyId == request.CompanyId, cancellationToken);
+        if (wo is null) return NotFound(ApiResponse<Guid>.Failure(new[] { "Work order not found." }));
+        var line = new WorkOrderLine(id, WorkOrderLineType.Expense, request.Description, request.Quantity, request.UnitRate, request.Billable, null, request.TechnicianId);
+        wo.AddLine(line);
+        await _context.SaveChangesAsync(cancellationToken);
+        if (request.TechnicianId.HasValue)
+        {
+            var tech = await _context.Technicians.FirstOrDefaultAsync(t => t.Id == request.TechnicianId.Value, cancellationToken);
+            if (tech is not null)
+                await _integration.RecordTechnicianTimeAsync(request.CompanyId, tech.EmployeeId, 0, 0, DateTime.UtcNow, cancellationToken);
+        }
+        return Ok(ApiResponse<Guid>.Success(line.Id));
+    }
+
     [HttpPost("work-orders/{id:guid}/schedule")]
     public async Task<ActionResult<ApiResponse<bool>>> Schedule(
         Guid id, [FromBody] ScheduleRequest request, CancellationToken cancellationToken)
@@ -195,6 +257,12 @@ public class WorkOrderController : ControllerBase
         if (wo is null)
         {
             return NotFound(ApiResponse<bool>.Failure(new[] { "Work order not found." }));
+        }
+
+        if (request.TechnicianId.HasValue)
+        {
+            var conflict = await _context.WorkOrders.AnyAsync(w => w.Id != id && w.CompanyId == request.CompanyId && w.TechnicianId == request.TechnicianId.Value && w.Status != WorkOrderStatus.Closed && w.Status != WorkOrderStatus.Cancelled && w.ScheduledStart.HasValue && w.ScheduledEnd.HasValue && w.ScheduledStart < request.End && w.ScheduledEnd > request.Start, cancellationToken);
+            if (conflict) return BadRequest(ApiResponse<bool>.Failure(new[] { "Technician has a conflicting work order in that window." }));
         }
 
         wo.Schedule(request.Start, request.End, request.TechnicianId);
@@ -284,6 +352,25 @@ public class WorkOrderController : ControllerBase
         if (wo is null)
         {
             return NotFound(ApiResponse<bool>.Failure(new[] { "Work order not found." }));
+        }
+
+        if (wo.WarrantyCovered)
+        {
+            var equipment = wo.EquipmentAssetId.HasValue ? await _context.EquipmentAssets.FirstOrDefaultAsync(e => e.Id == wo.EquipmentAssetId.Value, cancellationToken) : null;
+            var underWarranty = equipment?.UnderWarranty == true && (equipment.WarrantyEnd == null || equipment.WarrantyEnd >= DateTime.UtcNow);
+            var hasContract = wo.ServiceContractId.HasValue && await _context.ServiceContracts.AnyAsync(c => c.Id == wo.ServiceContractId.Value && c.Status.ToString() == "Active", cancellationToken);
+            if (!underWarranty && !hasContract)
+                return BadRequest(ApiResponse<bool>.Failure(new[] { "Warranty flag is set but no active warranty or contract coverage found; clear the flag or attach coverage." }));
+            var hasClaim = await _context.WarrantyClaims.AnyAsync(w => w.WorkOrderId == wo.Id, cancellationToken);
+            if (!hasClaim)
+            {
+                var claim = new WarrantyClaim(request.CompanyId, $"WC-{wo.WorkOrderNumber}", wo.EquipmentAssetId ?? Guid.Empty, wo.Id, request.Resolution ?? "Warranty work", wo.BillableTotal);
+                _context.WarrantyClaims.Add(claim);
+            }
+            wo.RecalculateBillable(0, 0);
+            wo.Complete(request.Resolution);
+            await _context.SaveChangesAsync(cancellationToken);
+            return Ok(ApiResponse<bool>.Success(true));
         }
 
         wo.ClockOutTech(request.LaborHours, request.LaborCost);
@@ -534,6 +621,11 @@ public record AddWorkOrderLineRequest(
     bool Billable, Guid? ItemId, Guid? TechnicianId);
 public record CompleteWorkOrderRequest(
     Guid CompanyId, decimal LaborHours, decimal LaborCost, decimal PartsMarkupPercent, decimal TripCharge, string? Resolution);
+public record DispatchSuggestionDto { public Guid TechnicianId { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public Guid? TerritoryId { get; init; } public int SkillCount { get; init; } public int TotalProficiency { get; init; } public bool Available { get; init; } public int Score { get; init; } }
+public record TechnicianAvailabilityDto { public Guid TechnicianId { get; init; } public bool Available { get; init; } public List<AvailabilityConflictDto> Conflicts { get; init; } = new(); }
+public record AvailabilityConflictDto { public Guid WorkOrderId { get; init; } public string WorkOrderNumber { get; init; } = string.Empty; public DateTime ScheduledStart { get; init; } public DateTime ScheduledEnd { get; init; } public string Status { get; init; } = string.Empty; }
+public record CreateFollowUpRequest(Guid CompanyId, string? WorkOrderNumber, Guid? TechnicianId, DateTime? ScheduledStart, DateTime? ScheduledEnd, string? Notes);
+public record AddExpenseRequest(Guid CompanyId, string Description, decimal Quantity, decimal UnitRate, bool Billable, Guid? TechnicianId);
 public record CreateEstimateRequest(
     Guid CompanyId, string EstimateNumber, Guid? CustomerId, Guid? ServiceContractId, Guid? EquipmentAssetId,
     BillingType BillingType, decimal LaborEstimate, decimal PartsEstimate, decimal TravelEstimate,

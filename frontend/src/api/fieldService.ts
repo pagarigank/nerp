@@ -156,6 +156,19 @@ export function createWarrantyClaim(data: any) {
   return post(`${MOD}/warranty-claims`, data)
 }
 
+export function getDispatchSuggestions(workOrderId: string, companyIdParam?: string) {
+  return get<any[]>(`${MOD}/dispatch/suggestions`, { companyId: companyIdParam ?? defaultCompanyId(), workOrderId })
+}
+export function getTechnicianAvailability(technicianId: string, start: string, end: string, companyIdParam?: string) {
+  return get<any>(`${MOD}/technicians/${technicianId}/availability`, { companyId: companyIdParam ?? defaultCompanyId(), start, end })
+}
+export function createFollowUp(workOrderId: string, data: any) {
+  return post(`${MOD}/work-orders/${workOrderId}/follow-up`, data)
+}
+export function addWorkOrderExpense(workOrderId: string, data: any) {
+  return post(`${MOD}/work-orders/${workOrderId}/expenses`, data)
+}
+
 // --- Reports ---
 export function getSlaCompliance(companyIdParam?: string) {
   return get<any[]>(`${MOD}/reports/sla-compliance`, { companyId: companyIdParam ?? defaultCompanyId() })
@@ -171,4 +184,22 @@ export function getContractStatus(companyIdParam?: string) {
 }
 export function getPmDue(companyIdParam?: string) {
   return get<any[]>(`${MOD}/reports/pm-due`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getFirstTimeFix(companyIdParam?: string) {
+  return get<any>(`${MOD}/reports/first-time-fix`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getRevenueProfitability(companyIdParam?: string) {
+  return get<any[]>(`${MOD}/reports/revenue-profitability`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWarrantyExpiration(companyIdParam?: string) {
+  return get<any[]>(`${MOD}/reports/warranty-expiration`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getPartsUsage(companyIdParam?: string) {
+  return get<any[]>(`${MOD}/reports/parts-usage`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getTravelExpense(companyIdParam?: string) {
+  return get<any[]>(`${MOD}/reports/travel-expense`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWorkOrderStatusReport(companyIdParam?: string) {
+  return get<any[]>(`${MOD}/reports/work-order-status`, { companyId: companyIdParam ?? defaultCompanyId() })
 }

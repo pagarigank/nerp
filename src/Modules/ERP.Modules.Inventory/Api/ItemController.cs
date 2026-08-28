@@ -55,6 +55,8 @@ public class ItemController : ControllerBase
             LongDescription = i.LongDescription,
             ItemType = i.ItemType.ToString(),
             BaseUnitOfMeasure = i.BaseUnitOfMeasure,
+            DefaultUnitOfMeasure = i.DefaultUnitOfMeasure,
+            DefaultWarehouseId = i.DefaultWarehouseId,
             CostingMethod = i.CostingMethod.ToString(),
             Status = i.Status.ToString(),
             StandardCost = i.StandardCost,
@@ -88,6 +90,8 @@ public class ItemController : ControllerBase
             LongDescription = item.LongDescription,
             ItemType = item.ItemType.ToString(),
             BaseUnitOfMeasure = item.BaseUnitOfMeasure,
+            DefaultUnitOfMeasure = item.DefaultUnitOfMeasure,
+            DefaultWarehouseId = item.DefaultWarehouseId,
             CostingMethod = item.CostingMethod.ToString(),
             Status = item.Status.ToString(),
             StandardCost = item.StandardCost,
@@ -158,6 +162,11 @@ public class ItemController : ControllerBase
             item.SetKit(true);
         }
 
+        if (!string.IsNullOrWhiteSpace(request.DefaultUnitOfMeasure))
+            item.SetDefaultUnitOfMeasure(request.DefaultUnitOfMeasure);
+        if (request.DefaultWarehouseId.HasValue)
+            item.SetDefaultWarehouse(request.DefaultWarehouseId);
+
         await _repository.AddAsync(item, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -168,6 +177,8 @@ public class ItemController : ControllerBase
             Description = item.Description,
             ItemType = item.ItemType.ToString(),
             BaseUnitOfMeasure = item.BaseUnitOfMeasure,
+            DefaultUnitOfMeasure = item.DefaultUnitOfMeasure,
+            DefaultWarehouseId = item.DefaultWarehouseId,
             Status = item.Status.ToString(),
             StandardCost = item.StandardCost,
         };
@@ -226,6 +237,11 @@ public class ItemController : ControllerBase
             item.SetSerialControlled(request.IsSerialControlled.Value);
         }
 
+        if (request.DefaultUnitOfMeasure is not null)
+            item.SetDefaultUnitOfMeasure(request.DefaultUnitOfMeasure);
+        if (request.DefaultWarehouseId.HasValue)
+            item.SetDefaultWarehouse(request.DefaultWarehouseId);
+
         if (request.Status.HasValue)
         {
             switch (request.Status.Value)
@@ -270,6 +286,8 @@ public class ItemController : ControllerBase
             HsCode = item.HsCode,
             StorageCondition = item.StorageCondition,
             IsKit = item.IsKit,
+            DefaultUnitOfMeasure = item.DefaultUnitOfMeasure,
+            DefaultWarehouseId = item.DefaultWarehouseId,
         };
 
         return Ok(ApiResponse<ItemDto>.Success(dto));
@@ -298,6 +316,8 @@ public class ItemDto
     public string? LongDescription { get; set; }
     public string ItemType { get; set; } = string.Empty;
     public string BaseUnitOfMeasure { get; set; } = string.Empty;
+    public string DefaultUnitOfMeasure { get; set; } = string.Empty;
+    public Guid? DefaultWarehouseId { get; set; }
     public string? CostingMethod { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal? StandardCost { get; set; }
@@ -344,6 +364,8 @@ public class UpdateItemRequest
     public bool? IsLotControlled { get; set; }
     public bool? IsSerialControlled { get; set; }
     public ItemStatus? Status { get; set; }
+    public string? DefaultUnitOfMeasure { get; set; }
+    public Guid? DefaultWarehouseId { get; set; }
 }
 
 public class CreateItemRequest
@@ -354,6 +376,8 @@ public class CreateItemRequest
     public Guid CompanyId { get; set; }
     public ItemType ItemType { get; set; }
     public string BaseUnitOfMeasure { get; set; } = string.Empty;
+    public string? DefaultUnitOfMeasure { get; set; }
+    public Guid? DefaultWarehouseId { get; set; }
     public CostingMethod CostingMethod { get; set; }
     public Guid ItemCategoryId { get; set; }
     public decimal? StandardCost { get; set; }
