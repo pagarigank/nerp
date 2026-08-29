@@ -677,6 +677,10 @@ public class Program
             typeof(ERP.Modules.Inventory.Infrastructure.InventoryDbContext),
             typeof(ERP.Modules.OrderManagement.Infrastructure.OmDbContext),
             typeof(ERP.Modules.FieldService.Infrastructure.FieldServiceDbContext),
+            typeof(ERP.Modules.Reporting.Infrastructure.ReportingDbContext),
+            typeof(ERP.Modules.BillOfMaterials.Infrastructure.BomDbContext),
+            typeof(ERP.Modules.Payroll.Infrastructure.PayrollDbContext),
+            typeof(ERP.Modules.ProjectAccounting.Infrastructure.ProjDbContext),
         })
         {
             using (var migrateScope = app.Services.CreateScope())
