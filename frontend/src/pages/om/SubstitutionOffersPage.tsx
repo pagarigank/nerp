@@ -76,12 +76,12 @@ export function SubstitutionOffersPage() {
   }
 
   const columns = [
-    { key: 'salesOrderId', header: 'SO #', render: (v: string) => v.slice(0, 8) },
-    { key: 'originalItemId', header: 'Original Item', render: (v: string) => items.find((i: ItemSummary) => i.id === v)?.itemCode ?? v.slice(0, 8) },
-    { key: 'substituteItemId', header: 'Substitute', render: (v: string) => items.find((i: ItemSummary) => i.id === v)?.itemCode ?? v.slice(0, 8) },
+    { key: 'salesOrderId', header: 'SO #', render: (row: any) => String(row.salesOrderId).slice(0, 8) },
+    { key: 'originalItemId', header: 'Original Item', render: (row: any) => items.find((i: ItemSummary) => i.id === row.originalItemId)?.itemCode ?? String(row.originalItemId).slice(0, 8) },
+    { key: 'substituteItemId', header: 'Substitute', render: (row: any) => items.find((i: ItemSummary) => i.id === row.substituteItemId)?.itemCode ?? String(row.substituteItemId).slice(0, 8) },
     { key: 'quantity', header: 'Qty' },
-    { key: 'approvedUnitPrice', header: 'Price', render: (v: number) => `$${v.toFixed(2)}` },
-    { key: 'status', header: 'Status', render: (v: string) => <Badge variant={v === 'Accepted' ? 'success' : v === 'Rejected' ? 'error' : 'warning'}>{v}</Badge> },
+    { key: 'approvedUnitPrice', header: 'Price', render: (row: any) => `$${Number(row.approvedUnitPrice).toFixed(2)}` },
+    { key: 'status', header: 'Status', render: (row: any) => <Badge variant={row.status === 'Accepted' ? 'success' : row.status === 'Rejected' ? 'error' : 'warning'}>{row.status}</Badge> },
     {
       key: 'actions', header: 'Actions',
       render: (_: unknown, row: SubstitutionOfferSummary) => (

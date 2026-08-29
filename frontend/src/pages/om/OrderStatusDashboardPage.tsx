@@ -27,7 +27,7 @@ export function OrderStatusDashboardPage() {
   }, [])
 
   const columns = [
-    { key: 'status', header: 'Status', render: (v: string) => <Badge variant={v === 'Shipped' ? 'success' : v === 'Cancelled' ? 'error' : 'info'}>{v}</Badge> },
+    { key: 'status', header: 'Status', render: (row: any) => <Badge variant={row.status === 'Shipped' ? 'success' : row.status === 'Cancelled' ? 'error' : 'info'}>{row.status}</Badge> },
     { key: 'orderCount', header: 'Orders' },
     { key: 'remainingToShip', header: 'Units Remaining to Ship' },
   ]
@@ -35,7 +35,7 @@ export function OrderStatusDashboardPage() {
   const holdColumns = [
     { key: 'orderNumber', header: 'Order #' },
     { key: 'reason', header: 'Hold Reason' },
-    { key: 'orderDate', header: 'Order Date', render: (v: string) => formatDate(v) },
+    { key: 'orderDate', header: 'Order Date', render: (row: any) => formatDate(row.orderDate) },
     { key: 'status', header: 'Status' },
   ]
 

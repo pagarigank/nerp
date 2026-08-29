@@ -79,7 +79,7 @@ export function BlanketOrdersPage() {
 
   const columns = [
     { key: 'orderNumber', header: 'Order #' },
-    { key: 'status', header: 'Status', render: (v: string) => <Badge variant={v === 'Open' ? 'success' : v === 'Expired' ? 'error' : 'neutral'}>{v}</Badge> },
+    { key: 'status', header: 'Status', render: (row: any) => <Badge variant={row.status === 'Open' ? 'success' : row.status === 'Expired' ? 'error' : 'neutral'}>{row.status}</Badge> },
     { key: 'totalQuantity', header: 'Total Qty' },
     { key: 'releasedQuantity', header: 'Released' },
     { key: 'remainingQuantity', header: 'Remaining' },

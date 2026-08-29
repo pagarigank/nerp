@@ -82,15 +82,15 @@ export function OrderNotesPage() {
   const noteCols = [
     { key: 'text', header: 'Note' },
     { key: 'noteType', header: 'Type' },
-    { key: 'isCustomerFacing', header: 'Customer Facing', render: (v: boolean) => (v ? 'Yes' : 'No') },
-    { key: 'createdBy', header: 'By', render: (v: string) => v ?? '-' },
+    { key: 'isCustomerFacing', header: 'Customer Facing', render: (row: any) => (row.isCustomerFacing ? 'Yes' : 'No') },
+    { key: 'createdBy', header: 'By', render: (row: any) => row.createdBy ?? '-' },
   ]
   const histCols = [
     { key: 'changeType', header: 'Change' },
-    { key: 'fieldName', header: 'Field', render: (v: string) => v ?? '-' },
-    { key: 'oldValue', header: 'Old', render: (v: string) => v ?? '-' },
-    { key: 'newValue', header: 'New', render: (v: string) => v ?? '-' },
-    { key: 'changedBy', header: 'By', render: (v: string) => v ?? '-' },
+    { key: 'fieldName', header: 'Field', render: (row: any) => row.fieldName ?? '-' },
+    { key: 'oldValue', header: 'Old', render: (row: any) => row.oldValue ?? '-' },
+    { key: 'newValue', header: 'New', render: (row: any) => row.newValue ?? '-' },
+    { key: 'changedBy', header: 'By', render: (row: any) => row.changedBy ?? '-' },
     { key: 'changeDate', header: 'When' },
   ]
 

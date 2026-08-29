@@ -140,11 +140,11 @@ export function EmployeesTab({ qc }: { qc: any }) {
             { key: 'routingNumber', header: 'Routing' },
             { key: 'maskedAccount', header: 'Account' },
             { key: 'accountType', header: 'Type' },
-            { key: 'allocationPercentage', header: '%', align: 'right', render: (v: any) => v != null ? `${v}%` : '' },
-            { key: 'fixedAmount', header: 'Fixed', align: 'right', render: (v: any) => v != null ? MONEY(v) : '' },
-            { key: 'isRemainder', header: 'Remainder', render: (v: boolean) => (v ? 'Yes' : '') },
-            { key: 'prenoteSentOn', header: 'Prenote Sent', render: (v: any) => v ? String(v).slice(0, 10) : '—' },
-            { key: 'verifiedOn', header: 'Verified', render: (v: any) => v ? String(v).slice(0, 10) : '—' },
+            { key: 'allocationPercentage', header: '%', align: 'right', render: (row: any) => row.allocationPercentage != null ? `${row.allocationPercentage}%` : '' },
+            { key: 'fixedAmount', header: 'Fixed', align: 'right', render: (row: any) => row.fixedAmount != null ? MONEY(row.fixedAmount) : '' },
+            { key: 'isRemainder', header: 'Remainder', render: (row: any) => (row.isRemainder ? 'Yes' : '') },
+            { key: 'prenoteSentOn', header: 'Prenote Sent', render: (row: any) => row.prenoteSentOn ? String(row.prenoteSentOn).slice(0, 10) : '—' },
+            { key: 'verifiedOn', header: 'Verified', render: (row: any) => row.verifiedOn ? String(row.verifiedOn).slice(0, 10) : '—' },
             { key: 'id', header: '', render: (_: unknown, r: any) => (
               <div className="flex gap-1">
                 {!r.verifiedOn && <Button size="sm" variant="outline" onClick={() => prenoteMut.mutate({ employeeId: selId, id: r.id })}>Send Prenote</Button>}
@@ -459,9 +459,9 @@ export function RunsTab({ qc }: { qc: any }) {
           { key: 'taxType', header: 'Type' },
           { key: 'agency', header: 'Agency' },
           { key: 'depositDate', header: 'Due', render: (r: any) => r.depositDate?.slice(0, 10) },
-          { key: 'estimatedAmount', header: 'Est.', align: 'right', render: (v: any) => MONEY(v) },
+          { key: 'estimatedAmount', header: 'Est.', align: 'right', render: (row: any) => MONEY(row.estimatedAmount) },
           { key: 'formType', header: 'Form' },
-          { key: 'deposited', header: 'Status', render: (v: boolean) => (v ? 'Deposited' : 'Open') },
+          { key: 'deposited', header: 'Status', render: (row: any) => (row.deposited ? 'Deposited' : 'Open') },
           { key: 'id', header: '', render: (_: unknown, r: any) => !r.deposited ? <Button size="sm" onClick={() => depMut.mutate(r.id)}>Mark Dep.</Button> : null },
         ]} data={(depositsQ.data as any)?.data || []} emptyMessage="No tax deposits scheduled. Post a run and click Generate Tax Deposits." />
       </div>
@@ -491,9 +491,9 @@ function LiabilityPaymentsSection() {
         { key: 'vendorCode', header: 'Vendor' },
         { key: 'agencyName', header: 'Agency' },
         { key: 'kind', header: 'Kind' },
-        { key: 'amount', header: 'Amount', align: 'right', render: (v: any) => MONEY(v) },
+        { key: 'amount', header: 'Amount', align: 'right', render: (row: any) => MONEY(row.amount) },
         { key: 'depositCount', header: 'Items' },
-        { key: 'uncoveredPostedRunCount', header: 'Unsched. Runs', render: (v: number) => v || '' },
+        { key: 'uncoveredPostedRunCount', header: 'Unsched. Runs', render: (row: any) => row.uncoveredPostedRunCount || '' },
       ]} data={groups} loading={pendingQ.isLoading} emptyMessage="No unpaid liabilities due." />
       <div className="flex gap-2">
         <Button variant="secondary" disabled={groups.length === 0 || payMut.isPending} onClick={() => payMut.mutate()}>Pay Liabilities (create AP vouchers)</Button>
@@ -593,7 +593,7 @@ export function TaxTab({ qc }: { qc: any }) {
               { key: 'code', header: 'Code' },
               { key: 'name', header: 'Name' },
               { key: 'level', header: 'Level' },
-              { key: 'hasReciprocalAgreement', header: 'Reciprocal', render: (v: boolean) => (v ? 'Yes' : 'No') },
+              { key: 'hasReciprocalAgreement', header: 'Reciprocal', render: (row: any) => (row.hasReciprocalAgreement ? 'Yes' : 'No') },
             ]} emptyMessage="No jurisdictions." />
           )}
         </div>
@@ -661,7 +661,7 @@ export function DeductionsTab({ qc }: { qc: any }) {
       <DataTable columns={[
         { key: 'description', header: 'Description' },
         { key: 'type', header: 'Type' },
-        { key: 'isPreTax', header: 'Pre-Tax?', render: (v: any) => (v ? 'Yes' : 'No') },
+        { key: 'isPreTax', header: 'Pre-Tax?', render: (row: any) => (row.isPreTax ? 'Yes' : 'No') },
         { key: 'defaultRate', header: 'Rate' },
         { key: 'glAccountNumber', header: 'GL' },
       ]} data={items as any[]} />
@@ -1152,7 +1152,7 @@ export function SetupTab({ qc }: { qc: any }) {
           { key: 'accrualRate', header: 'Rate', align: 'right' },
           { key: 'maxAccrual', header: 'Max', align: 'right' },
           { key: 'carryoverLimit', header: 'Carryover', align: 'right' },
-          { key: 'cashOutAllowed', header: 'Cash-out', render: (v: boolean) => (v ? 'Yes' : 'No') },
+          { key: 'cashOutAllowed', header: 'Cash-out', render: (row: any) => (row.cashOutAllowed ? 'Yes' : 'No') },
         ]} data={ptos as any[]} emptyMessage="No PTO policies." />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end border-t pt-2">
           <Input label="Name" value={pto.name} onChange={(v: any) => setPto({ ...pto, name: v })} />
@@ -1188,9 +1188,9 @@ export function SetupTab({ qc }: { qc: any }) {
         <DataTable columns={[
           { key: 'returnCode', header: 'Code' },
           { key: 'description', header: 'Description' },
-          { key: 'amount', header: 'Amount', align: 'right', render: (v: any) => MONEY(v) },
+          { key: 'amount', header: 'Amount', align: 'right', render: (row: any) => MONEY(row.amount) },
           { key: 'returnAction', header: 'Action' },
-          { key: 'processed', header: 'Processed', render: (v: boolean) => (v ? 'Yes' : 'No') },
+          { key: 'processed', header: 'Processed', render: (row: any) => (row.processed ? 'Yes' : 'No') },
           { key: 'id', header: '', render: (_: unknown, r: any) => !r.processed ? <Button size="sm" onClick={() => procMut.mutate(r.id)}>Process</Button> : null },
         ]} data={returns as any[]} emptyMessage="No ACH returns." />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end border-t pt-2">

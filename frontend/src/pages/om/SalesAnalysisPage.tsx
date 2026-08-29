@@ -149,14 +149,14 @@ export function SalesAnalysisPage() {
     {
       key: 'key',
       header: groupBy === 'item' ? 'Item' : 'Customer',
-      render: (v: string, row: { key: string; customerId: string | null }) => (
+      render: (row: { key: string; customerId: string | null }) => (
         <button
           type="button"
           className="text-indigo-600 hover:underline dark:text-indigo-400"
           title="Show contributing sales orders"
           onClick={() => void openDrill(row)}
         >
-          {v.slice(0, 8)}
+          {row.key.slice(0, 8)}
         </button>
       ),
     },

@@ -100,7 +100,7 @@ export function PickPackShipPage() {
 
   const pickCols = [
     { key: 'lineNumber', header: '#' },
-    { key: 'itemId', header: 'Item', render: (v: string) => v.slice(0, 8) },
+    { key: 'itemId', header: 'Item', render: (row: any) => String(row.itemId).slice(0, 8) },
     { key: 'description', header: 'Desc' },
     { key: 'quantity', header: 'Qty' },
     { key: 'unitOfMeasure', header: 'UoM' },
@@ -145,7 +145,7 @@ export function PickPackShipPage() {
           <h2 className="font-semibold">Packing Slip — {packing.shipmentNumber}</h2>
           <DataTable
             columns={[
-              { key: 'itemId', header: 'Item', render: (v: string) => v.slice(0, 8) },
+              { key: 'itemId', header: 'Item', render: (row: any) => String(row.itemId).slice(0, 8) },
               { key: 'description', header: 'Desc' },
               { key: 'quantity', header: 'Qty' },
               { key: 'unitOfMeasure', header: 'UoM' },

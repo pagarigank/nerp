@@ -20,11 +20,11 @@ export function CommissionRunsPage() {
 
   const columns = [
     { key: 'runNumber', header: 'Run #' },
-    { key: 'periodStart', header: 'Period Start', render: (v: string) => formatDate(v) },
-    { key: 'periodEnd', header: 'Period End', render: (v: string) => formatDate(v) },
+    { key: 'periodStart', header: 'Period Start', render: (row: any) => formatDate(row.periodStart) },
+    { key: 'periodEnd', header: 'Period End', render: (row: any) => formatDate(row.periodEnd) },
     { key: 'repCount', header: 'Reps' },
-    { key: 'totalRevenue', header: 'Revenue Base', align: 'right' as const, render: (v: number) => formatCurrency(v) },
-    { key: 'totalCommission', header: 'Commission', align: 'right' as const, render: (v: number) => formatCurrency(v) },
+    { key: 'totalRevenue', header: 'Revenue Base', align: 'right' as const, render: (row: any) => formatCurrency(row.totalRevenue) },
+    { key: 'totalCommission', header: 'Commission', align: 'right' as const, render: (row: any) => formatCurrency(row.totalCommission) },
   ]
 
   return (
