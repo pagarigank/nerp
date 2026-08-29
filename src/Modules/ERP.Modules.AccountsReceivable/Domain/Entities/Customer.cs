@@ -11,6 +11,7 @@ public class Customer : AuditableAggregateRoot
     protected Customer() { }
 
     public Customer(
+        Guid companyId,
         string customerId,
         string name,
         string? legalName,
@@ -41,6 +42,7 @@ public class Customer : AuditableAggregateRoot
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Customer name is required.", nameof(name));
 
+        CompanyId = companyId;
         CustomerId = customerId;
         Name = name;
         LegalName = legalName ?? name;
@@ -66,6 +68,8 @@ public class Customer : AuditableAggregateRoot
         ShippingCountry = shippingCountry ?? "US";
         IsActive = true;
     }
+
+    public Guid CompanyId { get; private set; }
 
     public string CustomerId { get; private set; } = string.Empty;
 
@@ -121,6 +125,7 @@ public class Customer : AuditableAggregateRoot
     public decimal CurrentBalance { get; internal set; }
 
     public void Update(
+        Guid companyId,
         string name,
         string? legalName,
         string? taxId,
@@ -147,6 +152,7 @@ public class Customer : AuditableAggregateRoot
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Customer name is required.", nameof(name));
 
+        CompanyId = companyId;
         Name = name;
         LegalName = legalName ?? name;
         TaxId = taxId;

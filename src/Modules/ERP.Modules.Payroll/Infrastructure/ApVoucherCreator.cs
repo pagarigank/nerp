@@ -51,6 +51,7 @@ public sealed class ApVoucherCreator
         if (vendor is null)
         {
             vendor = new Vendor(
+                report.CompanyId,
                 vendorCode,
                 $"{employee.FirstName} {employee.LastName}",
                 $"{employee.FirstName} {employee.LastName}",
@@ -142,7 +143,7 @@ public sealed class ApVoucherCreator
             .FirstOrDefaultAsync(v => v.VendorId == vendorCode, cancellationToken);
         if (vendor is null)
         {
-            vendor = new Vendor(vendorCode, vendorName, vendorName, null, null, null, true);
+            vendor = new Vendor(companyId, vendorCode, vendorName, vendorName, null, null, null, true);
             _apContext.Vendors.Add(vendor);
             await _apContext.SaveChangesAsync(cancellationToken);
         }

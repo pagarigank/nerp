@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,20 +17,34 @@ namespace ERP.Modules.AccountsReceivable.Api;
 public class CustomersController : ControllerBase
 {
     private readonly ArDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public CustomersController(ArDbContext context)
+    public CustomersController(ArDbContext context, ICurrentUserService currentUser)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+    }
+
+    private IQueryable<Customer> ScopedCustomers()
+    {
+        var query = _context.Customers.Where(c => !c.DeletedOn.HasValue);
+        if (!_currentUser.IsSuperAdmin)
+        {
+            var ids = _currentUser.CompanyIds;
+            query = query.Where(c => ids.Contains(c.CompanyId));
+        }
+
+        return query;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<CustomerResponse>>> GetListAsync(CancellationToken cancellationToken)
     {
-        var customers = await _context.Customers
-            .Where(c => !c.DeletedOn.HasValue)
+        var customers = await ScopedCustomers()
             .OrderBy(c => c.Name)
             .Select(c => new CustomerResponse(
                 c.Id,
+                c.CompanyId,
                 c.CustomerId,
                 c.Name,
                 c.LegalName,
@@ -62,14 +77,15 @@ public class CustomersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CustomerResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == id && !c.DeletedOn.HasValue, cancellationToken);
+        var customer = await ScopedCustomers()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         if (customer == null)
             return NotFound();
 
         return Ok(new CustomerResponse(
             customer.Id,
+            customer.CompanyId,
             customer.CustomerId,
             customer.Name,
             customer.LegalName,
@@ -102,6 +118,7 @@ public class CustomersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var customer = new Customer(
+            request.CompanyId,
             request.CustomerId,
             request.Name,
             request.LegalName,
@@ -131,6 +148,7 @@ public class CustomersController : ControllerBase
 
         return CreatedAtAction("GetById", new { id = customer.Id }, new CustomerResponse(
             customer.Id,
+            customer.CompanyId,
             customer.CustomerId,
             customer.Name,
             customer.LegalName,
@@ -163,13 +181,14 @@ public class CustomersController : ControllerBase
         UpdateCustomerRequest request,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == id && !c.DeletedOn.HasValue, cancellationToken);
+        var customer = await ScopedCustomers()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         if (customer == null)
             return NotFound();
 
         customer.Update(
+            request.CompanyId,
             request.Name,
             request.LegalName,
             request.TaxId,
@@ -197,6 +216,7 @@ public class CustomersController : ControllerBase
 
         return Ok(new CustomerResponse(
             customer.Id,
+            customer.CompanyId,
             customer.CustomerId,
             customer.Name,
             customer.LegalName,

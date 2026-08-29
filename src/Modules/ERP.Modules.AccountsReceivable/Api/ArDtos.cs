@@ -5,6 +5,7 @@
 namespace ERP.Modules.AccountsReceivable.Api;
 
 public record CreateCustomerRequest(
+    Guid CompanyId,
     string CustomerId,
     string Name,
     string? LegalName,
@@ -30,6 +31,7 @@ public record CreateCustomerRequest(
     string? ShippingCountry);
 
 public record UpdateCustomerRequest(
+    Guid CompanyId,
     string Name,
     string? LegalName,
     string? TaxId,
@@ -55,6 +57,7 @@ public record UpdateCustomerRequest(
 
 public record CustomerResponse(
     Guid Id,
+    Guid CompanyId,
     string CustomerId,
     string Name,
     string? LegalName,

@@ -13,6 +13,7 @@ public class Vendor : AuditableAggregateRoot
     protected Vendor() { }
 
     public Vendor(
+        Guid companyId,
         string vendorId,
         string name,
         string? legalName,
@@ -31,6 +32,7 @@ public class Vendor : AuditableAggregateRoot
 
         VendorId = vendorId;
         Name = name;
+        CompanyId = companyId;
         LegalName = legalName ?? name;
         TaxId = taxId;
         Form1099Category = form1099Category;
@@ -39,6 +41,8 @@ public class Vendor : AuditableAggregateRoot
         BackupWithholdingFlag = backupWithholdingFlag;
         BackupWithholdingRate = backupWithholdingRate;
     }
+
+    public Guid CompanyId { get; private set; }
 
     public string VendorId { get; private set; } = string.Empty;
 
@@ -98,11 +102,12 @@ public class Vendor : AuditableAggregateRoot
         DiversityClassification = diversityClassification;
     }
 
-    public void Update(string name, string? legalName, string? taxId, Vendor1099Category? form1099Category, Guid? defaultPaymentTermId, bool backupWithholdingFlag = false, decimal backupWithholdingRate = 0.24m)
+    public void Update(Guid companyId, string name, string? legalName, string? taxId, Vendor1099Category? form1099Category, Guid? defaultPaymentTermId, bool backupWithholdingFlag = false, decimal backupWithholdingRate = 0.24m)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Vendor name is required.", nameof(name));
 
+        CompanyId = companyId;
         Name = name;
         LegalName = legalName ?? name;
         TaxId = taxId;

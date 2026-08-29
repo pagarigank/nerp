@@ -72,7 +72,8 @@ public class ApDbContext : DispatchableDbContext
             e.Property(x => x.ModifiedBy).HasMaxLength(256);
             e.Property(x => x.DeletedBy).HasMaxLength(256);
             e.HasMany(x => x.BankAccounts).WithOne().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(x => x.VendorId).IsUnique();
+            e.HasIndex(x => new { x.CompanyId, x.VendorId }).IsUnique();
+            e.HasIndex(x => x.CompanyId);
             e.HasIndex(x => x.Name);
             e.HasQueryFilter(x => !x.DeletedOn.HasValue);
         });

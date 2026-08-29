@@ -50,7 +50,8 @@ public class ArDbContext : DispatchableDbContext
             e.Property(x => x.ModifiedBy).HasMaxLength(256);
             e.Property(x => x.DeletedBy).HasMaxLength(256);
             e.Ignore(x => x.CurrentBalance);
-            e.HasIndex(x => x.CustomerId).IsUnique();
+            e.HasIndex(x => new { x.CompanyId, x.CustomerId }).IsUnique();
+            e.HasIndex(x => x.CompanyId);
             e.HasIndex(x => x.Name);
             e.Property(x => x.SalesRepId).HasColumnName("SalesRepId");
             e.Property(x => x.TaxCodeId).HasColumnName("TaxCodeId");

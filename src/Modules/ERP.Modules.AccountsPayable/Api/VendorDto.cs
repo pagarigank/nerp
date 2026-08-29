@@ -8,6 +8,7 @@ namespace ERP.Modules.AccountsPayable.Api;
 
 public record VendorDto(
     Guid Id,
+    Guid CompanyId,
     string VendorId,
     string Name,
     string? LegalName,
@@ -34,6 +35,7 @@ public record VendorBankAccountDto(
     bool IsDefault);
 
 public record CreateVendorRequest(
+    Guid CompanyId,
     string VendorId,
     string Name,
     string? LegalName,
@@ -56,6 +58,7 @@ public record CreateVendorBankAccountRequest(
     bool IsDefault);
 
 public record UpdateVendorRequest(
+    Guid CompanyId,
     string Name,
     string? LegalName,
     string? TaxId,
