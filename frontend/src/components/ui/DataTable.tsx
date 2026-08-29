@@ -6,7 +6,7 @@ export interface DataTableColumn<T = any> {
   header: string
   sortable?: boolean
   align?: 'left' | 'center' | 'right'
-  render?: (value: any, row: T) => React.ReactNode
+  render?: (row: T, value?: any) => React.ReactNode
 }
 
 export interface DataTableProps<T = any> {
@@ -77,7 +77,7 @@ export function DataTable<T = any>({
                   )}
                 >
                   {column.render
-                    ? column.render(row[column.key], row)
+                    ? column.render(row, row[column.key])
                     : row[column.key] ?? '-'}
                 </td>
               ))}
