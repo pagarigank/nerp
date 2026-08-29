@@ -87,6 +87,28 @@ BEGIN
     (@acctOtherExp,  @co, '7000', 'Other Expense',            4, 0, 1, 'seed', SYSDATETIMEOFFSET());
 END
 
+-- Inventory/GL posting handlers hardcode account numbers 1400 (Inventory Asset),
+-- 2010 (GRNI), 5900 (Variance) and 6900 (Scrap). Ensure these exist for the
+-- company. 1400 is added alongside the legacy 1300 so posting resolves correctly.
+DECLARE @acctGrni     UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000020';
+DECLARE @acctVariance UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000021';
+DECLARE @acctScrap    UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000022';
+DECLARE @acctInv1400  UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000023';
+
+IF NOT EXISTS (SELECT 1 FROM platform.Accounts WHERE CompanyId = @co AND AccountNumber = '1400')
+    INSERT INTO platform.Accounts (Id, CompanyId, AccountNumber, Description, AccountType, NormalBalance, IsActive, CreatedBy, CreatedOn) VALUES
+    (@acctInv1400,  @co, '1400', 'Inventory Asset',            0, 0, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctGrni,     @co, '2010', 'Goods Received Not Invoiced', 1, 1, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctVariance, @co, '5900', 'Inventory Variance',         4, 0, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctScrap,    @co, '6900', 'Scrap & Obsolescence Loss',  4, 0, 1, 'seed', SYSDATETIMEOFFSET());
+
+IF NOT EXISTS (SELECT 1 FROM gl.Account WHERE CompanyId = @co AND AccountNumber = '1400')
+    INSERT INTO gl.Account (Id, CompanyId, AccountNumber, Description, AccountType, NormalBalance, IsActive, CreatedBy, CreatedOn) VALUES
+    (@acctInv1400,  @co, '1400', 'Inventory Asset',            0, 0, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctGrni,     @co, '2010', 'Goods Received Not Invoiced', 1, 1, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctVariance, @co, '5900', 'Inventory Variance',         4, 0, 1, 'seed', SYSDATETIMEOFFSET()),
+    (@acctScrap,    @co, '6900', 'Scrap & Obsolescence Loss',  4, 0, 1, 'seed', SYSDATETIMEOFFSET());
+
 -- ---------------------------------------------------------------------
 -- 2. PLATFORM: Fiscal Years + Periods + Currencies + Exchange Rates
 -- ---------------------------------------------------------------------
