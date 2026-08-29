@@ -43,6 +43,20 @@ public class PerformanceMonitoringMiddleware
         var path = context.Request.Path.Value ?? "/";
         var method = context.Request.Method;
 
+        // Register header writes BEFORE invoking the downstream pipeline so they are
+        // always set while the response headers are still mutable. The callback reads
+        // the (by then populated) duration via the closure. Registering after _next()
+        // is unreliable: a synchronously-flushed response starts before the callback
+        // is attached, causing headers to be silently dropped (or, with a direct
+        // assignment, "Headers are read-only, response has already started").
+        double durationMs = 0;
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers["X-Response-Time-Ms"] = durationMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            context.Response.Headers["X-Request-Id"] = context.Items["CorrelationId"]?.ToString() ?? string.Empty;
+            return Task.CompletedTask;
+        });
+
         try
         {
             await _next(context);
@@ -50,20 +64,10 @@ public class PerformanceMonitoringMiddleware
         finally
         {
             sw.Stop();
-            var durationMs = sw.Elapsed.TotalMilliseconds;
+            durationMs = sw.Elapsed.TotalMilliseconds;
             var statusCode = context.Response.StatusCode;
 
             RecordMetrics(path, method, statusCode, durationMs);
-
-            // Add performance headers only if the response has not already started.
-            // On error paths (4xx/5xx) the downstream pipeline may have begun writing
-            // the response, in which case mutating headers throws "Headers are read-only,
-            // response has already started" and masks the real error with a 500.
-            if (!context.Response.HasStarted)
-            {
-                context.Response.Headers["X-Response-Time-Ms"] = durationMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                context.Response.Headers["X-Request-Id"] = context.Items["CorrelationId"]?.ToString() ?? string.Empty;
-            }
         }
     }
 

@@ -9,7 +9,7 @@ import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { getErrorMessage } from '@api/client'
-import { getItemCategories, createItemCategory, updateItemCategory } from '@api/inventory'
+import { getItemCategories, createItemCategory, updateItemCategory, companyId } from '@api/inventory'
 import { getAccounts } from '@api/platform'
 import type { ItemCategorySummary, CreateItemCategoryRequest, UpdateItemCategoryRequest } from '@/types/inventory'
 
@@ -80,7 +80,7 @@ export function ItemCategoriesPage() {
       createMutation.mutate({
         categoryCode: d.categoryCode,
         description: d.description,
-        companyId: '',
+        companyId: companyId(),
         inventoryAccountId: d.inventoryAccountId || null,
         cogsAccountId: d.cogsAccountId || null,
         varianceAccountId: d.varianceAccountId || null,

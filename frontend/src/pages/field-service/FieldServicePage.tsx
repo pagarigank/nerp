@@ -7,9 +7,12 @@ import { Plus, Truck, BarChart3 } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
+import { Combobox } from '@components/ui/Combobox'
 import { Modal } from '@components/ui/Modal'
 import { getErrorMessage } from '@api/client'
 import { companyId as currentCompanyId } from '@api/inventory'
+import { getCustomers } from '@api/ar'
+import { getEmployees } from '@api/payroll'
 import {
   getWorkOrders, getWorkOrder, createWorkOrder, dispatchWorkOrder, clockInWorkOrder,
   clockOutWorkOrder, addWorkOrderLine, completeWorkOrder, closeWorkOrder, cancelWorkOrder,
@@ -74,7 +77,10 @@ export function WorkOrdersTab() {
     scheduledStart: '', warrantyCovered: false, notes: '',
   })
   const { data = [], isLoading } = useQuery({ queryKey: ['fs', 'work-orders'], queryFn: () => getWorkOrders() })
-  const detail = useQuery({ queryKey: ['fs', 'wo', selId], queryFn: () => getWorkOrder(selId), enabled: !!selId })
+  const { data: customerOpts = [] } = useQuery({ queryKey: ['ar', 'customers-for-wo'], queryFn: () => getCustomers() })
+  const { data: employeeOpts = [] } = useQuery({ queryKey: ['payroll', 'employees-for-wo'], queryFn: () => getEmployees() })
+  const customerOptions = customerOpts.map((c: any) => ({ value: c.id, label: `${c.customerCode ?? ''} - ${c.name ?? c.customerName ?? c.id}` }))
+  const employeeOptions = employeeOpts.map((e: any) => ({ value: e.id, label: `${e.employeeCode ?? ''} - ${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || e.id }))
   const createMut = useMutation({
     mutationFn: () => createWorkOrder({ companyId: currentCompanyId(), workOrderNumber: form.workOrderNumber, customerId: form.customerId || null, technicianId: form.technicianId || null, type: Number(form.type), priority: Number(form.priority), scheduledStart: form.scheduledStart || null, warrantyCovered: form.warrantyCovered, notes: form.notes }),
     onSuccess: () => { setShow(false); setForm({ workOrderNumber: '', customerId: '', technicianId: '', type: '0', priority: '1', scheduledStart: '', warrantyCovered: false, notes: '' }); qc.invalidateQueries({ queryKey: ['fs', 'work-orders'] }) },
@@ -95,8 +101,8 @@ export function WorkOrdersTab() {
       <Modal isOpen={show} onClose={() => setShow(false)} title="New Work Order">
         <div className="space-y-3">
           <Input label="Work Order #" value={form.workOrderNumber} onChange={(e: any) => setForm({ ...form, workOrderNumber: e.target.value })} />
-          <Input label="Customer ID (GUID)" value={form.customerId} onChange={(e: any) => setForm({ ...form, customerId: e.target.value })} placeholder="00000000-0000-0000-0000-000000000001" />
-          <Input label="Technician ID (GUID, optional)" value={form.technicianId} onChange={(e: any) => setForm({ ...form, technicianId: e.target.value })} />
+          <Combobox label="Customer" placeholder="Select customer..." options={customerOptions} value={form.customerId} onChange={(v) => setForm({ ...form, customerId: v })} required />
+          <Combobox label="Technician (optional)" placeholder="Select technician..." options={employeeOptions} value={form.technicianId} onChange={(v) => setForm({ ...form, technicianId: v })} />
           <Select label="Type" value={form.type} onChange={(e: any) => setForm({ ...form, type: e.target.value })} options={TYPE_OPTS} />
           <Select label="Priority" value={form.priority} onChange={(e: any) => setForm({ ...form, priority: e.target.value })} options={PRIORITY_OPTS} />
           <Input label="Scheduled Start" type="datetime-local" value={form.scheduledStart} onChange={(e: any) => setForm({ ...form, scheduledStart: e.target.value })} />
@@ -208,6 +214,8 @@ export function TechniciansTab() {
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ employeeId: '', code: '', firstName: '', lastName: '', status: '0', hourlyRate: '', email: '', phone: '' })
   const { data = [], isLoading } = useQuery({ queryKey: ['fs', 'technicians'], queryFn: () => getTechnicians() })
+  const { data: employeeOpts = [] } = useQuery({ queryKey: ['payroll', 'employees-for-tech'], queryFn: () => getEmployees() })
+  const employeeOptions = employeeOpts.map((e: any) => ({ value: e.id, label: `${e.employeeCode ?? ''} - ${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || e.id }))
   const createMut = useMutation({
     mutationFn: () => createTechnician({ companyId: currentCompanyId(), employeeId: form.employeeId || '00000000-0000-0000-0000-000000000000', code: form.code, firstName: form.firstName, lastName: form.lastName, status: Number(form.status), hourlyRate: Number(form.hourlyRate || 0), email: form.email || null, phone: form.phone || null }),
     onSuccess: () => { setShow(false); qc.invalidateQueries({ queryKey: ['fs', 'technicians'] }) },
@@ -226,7 +234,7 @@ export function TechniciansTab() {
           <Input label="Code" value={form.code} onChange={(e: any) => setForm({ ...form, code: e.target.value })} />
           <Input label="First Name" value={form.firstName} onChange={(e: any) => setForm({ ...form, firstName: e.target.value })} />
           <Input label="Last Name" value={form.lastName} onChange={(e: any) => setForm({ ...form, lastName: e.target.value })} />
-          <Input label="Employee ID (GUID)" value={form.employeeId} onChange={(e: any) => setForm({ ...form, employeeId: e.target.value })} />
+          <Combobox label="Employee" placeholder="Select employee..." options={employeeOptions} value={form.employeeId} onChange={(v) => setForm({ ...form, employeeId: v })} required />
           <Input label="Hourly Rate" type="number" value={form.hourlyRate} onChange={(e: any) => setForm({ ...form, hourlyRate: e.target.value })} />
           <Input label="Email" value={form.email} onChange={(e: any) => setForm({ ...form, email: e.target.value })} />
           <Input label="Phone" value={form.phone} onChange={(e: any) => setForm({ ...form, phone: e.target.value })} />

@@ -148,6 +148,7 @@ import { ReturnDetailPage } from '@pages/om/ReturnDetailPage'
 import { MastersPage } from '@pages/om/MastersPage'
 import { ReportsPage } from '@pages/om/ReportsPage'
 import { QuotesPage } from '@pages/om/QuotesPage'
+import { QuoteFormPage } from '@pages/om/QuoteFormPage'
 import { BlanketOrdersPage } from '@pages/om/BlanketOrdersPage'
 import { SubstitutionOffersPage } from '@pages/om/SubstitutionOffersPage'
 import { RtvPage } from '@pages/om/RtvPage'
@@ -401,6 +402,7 @@ function App() {
           <Route path="returns/new" element={<ReturnsPage />} />
           <Route path="returns/:id" element={<ReturnDetailPage />} />
           <Route path="quotes" element={<QuotesPage />} />
+          <Route path="quotes/new" element={<QuoteFormPage />} />
           <Route path="blanket-orders" element={<BlanketOrdersPage />} />
           <Route path="substitution-offers" element={<SubstitutionOffersPage />} />
           <Route path="rtv" element={<RtvPage />} />

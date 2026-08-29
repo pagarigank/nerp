@@ -10,7 +10,7 @@ import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getWarehouses, createWarehouse, updateWarehouse, toggleWarehouseStatus } from '@api/inventory'
+import { getWarehouses, createWarehouse, updateWarehouse, toggleWarehouseStatus, companyId } from '@api/inventory'
 import type { CreateWarehouseRequest, UpdateWarehouseRequest, WarehouseSummary } from '@/types/inventory'
 
 const warehouseTypeOptions = [
@@ -85,7 +85,7 @@ export function WarehousesPage() {
     if (editWh) {
       updateMutation.mutate({ id: editWh.id, data: { warehouseName: d.warehouseName, address: d.address } })
     } else {
-      createMutation.mutate({ ...d, companyId: '' })
+      createMutation.mutate({ ...d, companyId: companyId() })
     }
   }
 

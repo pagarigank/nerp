@@ -10,7 +10,7 @@ import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getItems, createItem, updateItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts, getItemUomConversions, createItemUomConversion, deleteItemUomConversion, getUnitOfMeasures } from '@api/inventory'
+import { getItems, createItem, updateItem, getItemCategories, getItemVendors, createItemVendor, getItemGlAccounts, upsertItemGlAccounts, getItemUomConversions, createItemUomConversion, deleteItemUomConversion, getUnitOfMeasures, companyId } from '@api/inventory'
 import { getVendors } from '@api/ap'
 import { getAccounts } from '@api/platform'
 import type { ItemSummary, CreateItemRequest, UpdateItemRequest, ItemCategorySummary, ItemVendorAssignmentDto, ItemGlAccountDefaultsDto, UomConversionDto } from '@/types/inventory'
@@ -332,7 +332,7 @@ export function ItemsPage() {
         itemCode: data.itemCode,
         description: data.description,
         longDescription: data.longDescription || null,
-        companyId: '',
+        companyId: companyId(),
         itemType: Number(data.itemType),
         baseUnitOfMeasure: data.baseUnitOfMeasure,
         costingMethod: Number(data.costingMethod),

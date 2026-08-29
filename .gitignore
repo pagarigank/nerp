@@ -4,6 +4,17 @@ obj/
 out/
 dist/
 
+# Playwright e2e runtime artifacts
+.playwright-mcp/
+.playwright/
+test-results/
+playwright-report/
+frontend/.auth/
+frontend/e2e-report.json
+frontend/e2e-results.jsonl
+e2e-results.jsonl
+e2e-report.json
+
 # IDE
 .vs/
 .idea/

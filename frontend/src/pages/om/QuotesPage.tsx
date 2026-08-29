@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@components/ui/Button'
 import { Card } from '@components/ui/Card'
 import { Input } from '@components/ui/Input'
@@ -13,6 +14,8 @@ export function QuotesPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [exp, setExp] = useState('')
+
+  const navigate = useNavigate()
 
   async function load() {
     setLoading(true)
@@ -66,7 +69,10 @@ export function QuotesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Quotes &amp; Quote-to-Order (582)</h1>
-        <Input type="date" value={exp} onChange={(e) => setExp(e.target.value)} className="w-44" placeholder="Expiry (optional)" />
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="primary" disabled={busy !== null} onClick={() => navigate('/om/quotes/new')} leftIcon={<Plus className="h-4 w-4" />}>New Quote</Button>
+          <Input type="date" value={exp} onChange={(e) => setExp(e.target.value)} className="w-44" placeholder="Expiry (optional)" />
+        </div>
       </div>
       <Card>
         <DataTable columns={columns} data={data} loading={loading} emptyMessage="No sales orders" />

@@ -388,6 +388,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Shipments', to: '/om/shipments' },
       { label: 'Returns', to: '/om/returns' },
       { label: 'Quotes', to: '/om/quotes' },
+      { label: 'New Quote', to: '/om/quotes/new' },
       { label: 'Blanket Orders', to: '/om/blanket-orders' },
       { label: 'Substitution Offers', to: '/om/substitution-offers' },
       { label: 'Return-to-Vendor', to: '/om/rtv' },
