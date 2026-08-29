@@ -98,6 +98,7 @@ public class OmDbContext : DispatchableDbContext
             e.Property(x => x.Status).HasConversion<int>().IsRequired();
             e.Property(x => x.Carrier).HasMaxLength(100);
             e.Property(x => x.TrackingNumber).HasMaxLength(100);
+            e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.FreightCost).HasColumnType("decimal(18,2)").IsRequired();
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.ShipmentId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.CompanyId, x.ShipmentNumber }).IsUnique();
