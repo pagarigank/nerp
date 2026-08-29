@@ -32,7 +32,7 @@ const lineSchema = z.object({
   warehouseId: z.string().optional(),
   projectId: z.string().optional(),
   accountId: z.string().optional(),
-  itemCategoryId: z.string().optional(),
+  itemCategoryId: z.string().nullable().optional(),
   isDropShip: z.boolean().optional(),
 })
 
@@ -383,7 +383,7 @@ export function SalesOrderFormPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+      <form onSubmit={handleSubmit(onSubmit, () => setFormError('Please correct the highlighted fields and try again.'))} className="space-y-6" noValidate>
         {/* Header Section */}
         <Card>
           <CardHeader title="Order Information" description="Basic order details" />
