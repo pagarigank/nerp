@@ -55,9 +55,15 @@ public class PerformanceMonitoringMiddleware
 
             RecordMetrics(path, method, statusCode, durationMs);
 
-            // Add performance headers
-            context.Response.Headers["X-Response-Time-Ms"] = durationMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-            context.Response.Headers["X-Request-Id"] = context.Items["CorrelationId"]?.ToString() ?? string.Empty;
+            // Add performance headers only if the response has not already started.
+            // On error paths (4xx/5xx) the downstream pipeline may have begun writing
+            // the response, in which case mutating headers throws "Headers are read-only,
+            // response has already started" and masks the real error with a 500.
+            if (!context.Response.HasStarted)
+            {
+                context.Response.Headers["X-Response-Time-Ms"] = durationMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                context.Response.Headers["X-Request-Id"] = context.Items["CorrelationId"]?.ToString() ?? string.Empty;
+            }
         }
     }
 
