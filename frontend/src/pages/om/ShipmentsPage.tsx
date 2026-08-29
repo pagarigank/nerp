@@ -405,7 +405,7 @@ export function ShipmentsPage() {
                                   } catch (e) { setErr(getErrorMessage(e)) }
                                 }}><Pencil className="h-4 w-4" /></Button>
                                 <Button size="sm" variant="ghost" onClick={() => { if (confirm(`Delete shipment ${s.shipmentNumber}?`)) deleteMut.mutate(s.id) }}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                                <Button size="sm" variant="primary" disabled={confirmMut.isPending} onClick={() => confirmMut.mutate(s.id)}>Confirm</Button>
+                                <Button size="sm" variant="primary" disabled={confirmMut.isPending || s.status !== 'Draft'} onClick={() => confirmMut.mutate(s.id)}>Confirm</Button>
                               </>
                             )}
                           </div>
