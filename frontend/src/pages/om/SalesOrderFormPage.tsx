@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Plus, Trash2, AlertCircle, Calculator } from 'lucide-react'
@@ -20,15 +20,19 @@ import type { ItemSummary, UomConversionDto } from '@/types/inventory'
 import type { PaymentTerm } from '@/types/ap'
 import type { PricingResult, SalesRepSummary, TaxCodeSummary, TaxExemptionCertificateSummary } from '@/types/orderManagement'
 
+// Lines are validated leniently here; requiredness (item/description/qty/uom) is
+// enforced only for NON-blank lines in the orderSchema superRefine below. A blank
+// line (no itemId) is allowed and pruned on submit, so an accidental empty line
+// added via "Add Line" never blocks saving the order.
 const lineSchema = z.object({
-  lineNumber: z.number(),
-  itemId: z.string().min(1, 'Item is required'),
-  description: z.string().min(1, 'Description is required'),
-  quantity: z.coerce.number().positive('Qty must be > 0'),
-  unitPrice: z.coerce.number().min(0, 'Price cannot be negative'),
-  unitOfMeasure: z.string().min(1, 'UOM is required'),
-  discountPercent: z.coerce.number().min(0).max(100),
-  taxPercent: z.coerce.number().min(0).max(100),
+  lineNumber: z.number().optional(),
+  itemId: z.string().optional(),
+  description: z.string().optional(),
+  quantity: z.coerce.number().min(0).optional(),
+  unitPrice: z.coerce.number().min(0).optional(),
+  unitOfMeasure: z.string().optional(),
+  discountPercent: z.coerce.number().min(0).max(100).optional(),
+  taxPercent: z.coerce.number().min(0).max(100).optional(),
   warehouseId: z.string().optional(),
   projectId: z.string().optional(),
   accountId: z.string().optional(),
@@ -49,7 +53,24 @@ const orderSchema = z.object({
   salesOrderTypeId: z.string().optional(),
   taxCodeId: z.string().optional(),
   taxExemptionCertificateId: z.string().optional(),
-  lines: z.array(lineSchema).min(1, 'At least one line is required'),
+  lines: z.array(lineSchema),
+}).superRefine((data, ctx) => {
+  const realLines = (data.lines ?? []).filter((l) => l.itemId && l.itemId.trim() !== '')
+  if (realLines.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lines'], message: 'At least one line item with an item is required' })
+  }
+  data.lines?.forEach((line, i) => {
+    if (!line.itemId || !line.itemId.trim()) return // blank line — pruned on submit
+    if (!line.description || !line.description.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lines', i, 'description'], message: 'Description is required' })
+    }
+    if (!line.quantity || line.quantity <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lines', i, 'quantity'], message: 'Quantity must be greater than 0' })
+    }
+    if (!line.unitOfMeasure || !line.unitOfMeasure.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lines', i, 'unitOfMeasure'], message: 'UOM is required' })
+    }
+  })
 })
 
 type OrderForm = z.infer<typeof orderSchema>
@@ -108,7 +129,8 @@ export function SalesOrderFormPage() {
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
-  const watchedLines = watch('lines')
+  // useWatch (not watch) so deep setValue updates to array items re-render totals.
+  const watchedLines = useWatch({ control, name: 'lines' })
 
   // Lookups
   const { data: customers = [] } = useQuery({
@@ -350,16 +372,22 @@ export function SalesOrderFormPage() {
         salesOrderTypeId: data.salesOrderTypeId || null,
         taxCodeId: data.taxCodeId || null,
         taxExemptionCertificateId: data.taxExemptionCertificateId || null,
-        lines: data.lines.map((l, i) => ({
-          ...l,
-          lineNumber: i + 1,
-          warehouseId: l.warehouseId || null,
-          projectId: l.projectId || null,
-          accountId: l.accountId || null,
-          itemCategoryId: l.itemCategoryId || null,
-          isDropShip: l.isDropShip ?? false,
-          dropShipVendorId: null,
-        })),
+        lines: data.lines
+          .filter((l) => l.itemId && l.itemId.trim() !== '')
+          .map((l, i) => ({
+            ...l,
+            lineNumber: i + 1,
+            quantity: l.quantity ?? 0,
+            unitPrice: l.unitPrice ?? 0,
+            discountPercent: l.discountPercent ?? 0,
+            taxPercent: l.taxPercent ?? 0,
+            warehouseId: l.warehouseId || null,
+            projectId: l.projectId || null,
+            accountId: l.accountId || null,
+            itemCategoryId: l.itemCategoryId || null,
+            isDropShip: l.isDropShip ?? false,
+            dropShipVendorId: null,
+          })),
       }
       const id = await createSalesOrder(payload)
       navigate(`/om/sales-orders/${id}`)
