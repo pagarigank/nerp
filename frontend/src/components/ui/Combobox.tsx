@@ -139,6 +139,7 @@ export const Combobox = forwardRef<HTMLDivElement, ComboboxProps>(
     }, [isOpen, filteredOptions, highlightedIndex, onChange])
 
     const handleClickOutside = useCallback((e: MouseEvent) => {
+      if (!ref) return
       const refObj = ref as React.RefObject<HTMLDivElement | null>
       if (refObj.current && !refObj.current.contains(e.target as Node)) {
         setIsOpen(false)

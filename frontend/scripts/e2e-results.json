@@ -1,0 +1,1790 @@
+[
+  {
+    "route": "/dashboard",
+    "console": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "403 GET /api/v1/ap/vendors?companyId=00000000-0000-0000-0000-000000000001 :: ",
+      "403 GET /api/v1/gl/journal-batches?companyId=00000000-0000-0000-0000-000000000001 :: ",
+      "403 GET /api/v1/ar/customers?companyId=00000000-0000-0000-0000-000000000001 :: ",
+      "403 GET /api/v1/inventory/items?companyId=00000000-0000-0000-0000-000000000001 :: "
+    ],
+    "title": "Dashboard",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/companies",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Companies",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/fiscal-periods",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Fiscal Periods",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/accounts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Chart of Accounts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/segment-types",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Segment Types",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/segment-values",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Segment Values",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/currencies",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Currencies",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/exchange-rates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Exchange Rates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/number-sequences",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Number Sequences",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/approval-workflows",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Approval Workflows",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/period-close",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Period Close",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/api-keys",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · API Keys",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/approval-delegations",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Approval Delegations",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/holiday-calendar",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Holiday Calendar",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/sod",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Segregation of Duties",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/users",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Users",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/roles",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Roles",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/audit-logs",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Audit Log",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/platform/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Platform · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/journal-batches",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Journal Batches",
+    "create": {
+      "attempted": true,
+      "status": "no-submit-found"
+    },
+    "pass": true
+  },
+  {
+    "route": "/gl/recurring-templates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Recurring Templates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/allocation-rules",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Allocation Rules",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/budgets",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Budgets",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/budget-rollforward",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Budget Roll-Forward",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/revaluation",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Revaluation",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/consolidation",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Consolidation",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/account-inquiry",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Account Inquiry",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/pre-posting",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Pre-Posting Review",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/period-end-checklist",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Period-End Checklist",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/year-end-close",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Year-End Close",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/gl/posting-suspense",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "General Ledger · Posting Suspense",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/vendors",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Vendors",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/ap/payment-terms",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Payment Terms",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/voucher-batches",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Voucher Batches",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/payments",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Payments",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/three-way-match",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Three-Way Match",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/match-exceptions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Match Exceptions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/backup-withholding",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Backup Withholding",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/1099",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · 1099",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/1099-processing",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · 1099 Processing",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/duplicate-invoice",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Duplicate Invoice",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/vendor-w9",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Vendor W-9 / TIN",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/bank-verification",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Bank Verify",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/cash-discount",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Cash Discount",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/escheatment",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Escheatment",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/grir-accrual",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · GR/IR Accrual",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/vendor-statements",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Vendor Statements",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ap/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Payable · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/customers",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Customers",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/ar/invoice-batches",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Invoice Batches",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/cash-receipts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Cash Receipts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/memos",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Credit / Debit Memos",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/credit-limit",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Credit Limit",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/statements",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Statements",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/finance-charges",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Finance Charges",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/collections",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Collections",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/dunning",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Dunning",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/allowance",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Allowance (Doubtful)",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/resale-certificates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Resale Certificates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/credit-memo-apply",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Apply Credit Memo",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/aging-by-basis",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Aging by Basis",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/cash-receipt-match",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Receipt Match",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/ar/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Accounts Receivable · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/bank-accounts",
+    "console": [
+      "Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "409 POST /api/v1/cash/bank-accounts :: ",
+      "409 /api/v1/cash/bank-accounts :: "
+    ],
+    "title": "Cash Management · Bank Accounts",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/cash/deposits",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Deposits",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/bank-statements",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Bank Statements",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/reconciliations",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Reconciliations",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/transfers",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Transfers",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/bank-fees",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Bank Fees",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/nsf",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · NSF",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/gl-mapping",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · GL Mapping",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/lockbox",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Lockbox",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/stale-checks",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Stale Checks",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/positive-pay",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Positive Pay",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/fee-analysis",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Fee Analysis",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/forecast-horizon",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Forecast Horizon",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/cash/outstanding-deposits",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Cash Management · Outstanding Deposits",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/requisitions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Requisitions",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/purchasing/purchase-orders",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Purchase Orders",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/vendor-quotes",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Vendor Quotes",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/approval-queue",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Approval Queue",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/receipts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Receipts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/po-templates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · PO Templates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/requisition-templates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Requisition Templates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/vendor-items",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Vendor Items",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/vendors",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Vendors",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/buyer-agents",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Buyer Agents",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/shipping-methods",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Shipping Methods",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/fob-terms",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · FOB Terms",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/purchasing/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Purchasing · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/items",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Items",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/inventory/categories",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Categories",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/warehouses",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Warehouses",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/bins",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Bins",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/stock",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Stock",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/transactions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Transactions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/reservations",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Reservations",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/quarantine",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Quarantine",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/expiration",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Expiration",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/revaluation",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Revaluation",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/landed-cost",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Landed Cost",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/landed-cost-allocations",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Landed Cost Allocations",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/cycle-counts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Cycle Counts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/physical-counts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Physical Counts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/negative-overrides",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Negative Overrides",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/movements",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Movements",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/reorder",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Reorder",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/substitutions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Substitutions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/kits",
+    "console": [
+      "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "405 GET /api/v1/inventory/kit-components?companyId=11111111-1111-1111-1111-111111111111 :: "
+    ],
+    "title": "Inventory · Kits",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/consignment",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Consignment",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/put-away-picking",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Put-away / Picking",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/stock-by-location",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Stock by Location",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/cycle-count-schedule",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Cycle Count Schedule",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/scrap",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Scrap / Disposal",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/gl-tie-out",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · GL Tie-Out",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/stock-card",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Stock Card",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/uom-conversions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · UOM Conversions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/uoms",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · UOM",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/inventory/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Inventory · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/sales-orders",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Sales Orders",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/om/shipments",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Shipments",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/returns",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Returns",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/quotes",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Quotes",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/blanket-orders",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Blanket Orders",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/substitution-offers",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Substitution Offers",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/rtv",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Return-to-Vendor",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/order-notes",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Notes & History",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/order-dashboard",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Order Dashboard",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/sales-analysis",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Sales Analysis",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/commissions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Commissions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/atp",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · ATP",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/freight",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Freight",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/pick-pack-ship",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Pick/Pack/Ship",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/om/masters",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Order Management · Masters",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/bom",
+    "console": [
+      "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "400 POST /api/v1/bom/bom-headers :: ",
+      "400 /api/v1/bom/bom-headers :: "
+    ],
+    "title": "Bill of Materials · BOMs",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/bom/work-centers",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Bill of Materials · Work Centers",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/bom/routing-operations",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Bill of Materials · Routing Operations",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/bom/build-orders",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Bill of Materials · Build Orders",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/bom/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Bill of Materials · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects",
+    "console": [
+      "Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "409 POST /api/v1/projects :: ",
+      "409 /api/v1/projects :: "
+    ],
+    "title": "Project Accounting · Projects",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/projects/overview",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Overview",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/tasks",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Tasks",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/budget",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Budgets",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/costs",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Costs",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/billing",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Billing",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/change-orders",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Change Orders",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/analysis",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · WIP / Analysis",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/projects/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Project Accounting · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/employees",
+    "console": [
+      "Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "409 POST /api/v1/payroll/employees :: ",
+      "409 /api/v1/payroll/employees :: "
+    ],
+    "title": "Payroll · Employees",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/payroll/paycodes",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Pay Codes",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/union",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Union / Certified",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/timesheets",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Timesheets",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/runs",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Runs & Checks",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/expenses",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Expenses",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/tax",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Tax / W-4",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/deductions",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Deductions",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/pto",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · PTO",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/manual",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Manual Checks",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/garnishments",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Garnishments",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/payroll/setup",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Payroll · Setup & Config",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/work-orders",
+    "console": [
+      "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "400 POST /api/v1/field-service/work-orders :: ",
+      "400 /api/v1/field-service/work-orders :: "
+    ],
+    "title": "Field Service · Work Orders",
+    "create": {
+      "attempted": true,
+      "status": "submitted"
+    },
+    "pass": true
+  },
+  {
+    "route": "/field-service/dispatch",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Dispatch Board",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/technicians",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Technicians",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/contracts",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Contracts",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/equipment",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Equipment",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/slas",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · SLAs",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/territories",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Territories",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/rate-cards",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Rate Cards",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/estimates",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Estimates",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/pm",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · PM Schedules",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/van-stock",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Van Stock",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/warranty",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Warranty",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/field-service/reports",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Field Service · Reports",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/catalog",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Report Catalog",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/executive",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Executive Dashboard",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/viewer",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Report Viewer",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/designer",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Statement Designer",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/quick-query",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Quick Query",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/drill-back",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Drill-Back Viewer",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/scheduler",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Report Scheduler",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/categories",
+    "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch categories: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at http://localhost:3000/src/pages/reporting/ReportCategoriesPage.tsx:24:32",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch categories: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at http://localhost:3000/src/pages/reporting/ReportCategoriesPage.tsx:24:32"
+    ],
+    "pageErrors": [],
+    "net": [
+      "401 GET /api/v1/reporting/categories?companyId=00000000-0000-0000-0000-000000000001 :: ",
+      "401 GET /api/v1/reporting/categories?companyId=00000000-0000-0000-0000-000000000001 :: "
+    ],
+    "title": "Reporting · Categories",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/parameter-sets",
+    "console": [],
+    "pageErrors": [],
+    "net": [],
+    "title": "Reporting · Parameter Sets",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/usage",
+    "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch usage report: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fetchUsage (http://localhost:3000/src/pages/reporting/ReportUsagePage.tsx:20:33)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch usage report: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fetchUsage (http://localhost:3000/src/pages/reporting/ReportUsagePage.tsx:20:33)"
+    ],
+    "pageErrors": [],
+    "net": [
+      "401 GET /api/v1/reporting/catalog/usage-report?companyId=00000000-0000-0000-0000-000000000001 :: ",
+      "401 GET /api/v1/reporting/catalog/usage-report?companyId=00000000-0000-0000-0000-000000000001 :: "
+    ],
+    "title": "Reporting · Usage Analytics",
+    "create": null,
+    "pass": true
+  },
+  {
+    "route": "/reporting/sync-status",
+    "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch sync status: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fetchStatus (http://localhost:3000/src/pages/reporting/DataMartStatusPage.tsx:18:3",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to fetch sync status: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fetchStatus (http://localhost:3000/src/pages/reporting/DataMartStatusPage.tsx:18:3"
+    ],
+    "pageErrors": [],
+    "net": [
+      "401 GET /api/v1/reporting/catalog/sync-status :: ",
+      "401 GET /api/v1/reporting/catalog/sync-status :: "
+    ],
+    "title": "Reporting · Sync Status",
+    "create": null,
+    "pass": true
+  }
+]

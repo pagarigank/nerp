@@ -27,6 +27,11 @@ public class PayrollController : ControllerBase
     public async Task<ActionResult<ApiResponse<Guid>>> CreateEmployee(
         [FromBody] CreateEmployeeRequest request, CancellationToken cancellationToken)
     {
+        var duplicate = await _context.Employees
+            .AnyAsync(e => e.CompanyId == request.CompanyId && e.EmployeeCode == request.EmployeeCode && !e.DeletedOn.HasValue, cancellationToken);
+        if (duplicate)
+            return Conflict(ApiResponse<Guid>.Failure(new[] { $"An employee with code '{request.EmployeeCode}' already exists." }, 409));
+
         var employee = new Employee(
             request.CompanyId, request.EmployeeCode, request.FirstName, request.LastName,
             request.EmploymentType, request.HireDate);

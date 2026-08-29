@@ -73,7 +73,7 @@ export function RequisitionsPage() {
 
   const defaults = useMemo(() => newRequisitionDefaults(), [open])
 
-  const { register, handleSubmit, reset, watch, control, formState: { errors } } = useForm<Form>({
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(reqSchema),
     defaultValues: {
       ...defaults,

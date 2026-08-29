@@ -78,9 +78,21 @@ public class ProjectController : ControllerBase
     {
         var projectType = Enum.TryParse<ProjectType>(request.ProjectType, true, out var pt) ? pt : ProjectType.TimeAndMaterials;
 
+        // Auto-generate a project code when the client leaves it blank so the create
+        // form works end-to-end (the domain requires a non-empty code).
+        var projectCode = string.IsNullOrWhiteSpace(request.ProjectCode)
+            ? $"PRJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}"
+            : request.ProjectCode;
+
+        // Return a clean conflict (not a 500) when the project code already exists for the company.
+        var duplicate = await _context.Projects
+            .AnyAsync(p => p.CompanyId == request.CompanyId && p.ProjectCode == projectCode && !p.DeletedOn.HasValue, cancellationToken);
+        if (duplicate)
+            return Conflict(ApiResponse<Guid>.Failure(new[] { $"A project with code '{projectCode}' already exists." }, 409));
+
         var project = new Project(
             request.CompanyId,
-            request.ProjectCode,
+            projectCode,
             request.Name,
             projectType,
             request.CustomerId,

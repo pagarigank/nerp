@@ -459,7 +459,8 @@ public class Phase5Controller : ControllerBase
         {
             var outstanding = await _context.Deposits
                 .Where(d => d.BankAccountId == account.Id && d.Status == DepositStatus.Draft && !d.DeletedOn.HasValue)
-                .SumAsync(d => d.TotalAmount, cancellationToken);
+                .SelectMany(d => d.Lines)
+                .SumAsync(l => l.Amount, cancellationToken);
 
             var count = await _context.Deposits
                 .CountAsync(d => d.BankAccountId == account.Id && d.Status == DepositStatus.Draft && !d.DeletedOn.HasValue, cancellationToken);

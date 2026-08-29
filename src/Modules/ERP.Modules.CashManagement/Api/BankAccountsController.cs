@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Shared.Kernel.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,6 +61,11 @@ public class BankAccountsController : ControllerBase
         CreateBankAccountRequest request,
         CancellationToken cancellationToken)
     {
+        var duplicate = await _context.BankAccounts
+            .AnyAsync(b => b.CompanyId == request.CompanyId && b.AccountCode == request.AccountCode && !b.DeletedOn.HasValue, cancellationToken);
+        if (duplicate)
+            return Conflict(ApiResponse<BankAccountResponse>.Failure(new[] { $"A bank account with code '{request.AccountCode}' already exists." }, 409));
+
         var account = new BankAccount(
             request.CompanyId,
             request.AccountCode,
