@@ -38,12 +38,17 @@ public class FieldServiceBackgroundJob : BackgroundService
             {
                 await RunPendingWorkAsync(stoppingToken);
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Host is shutting down; exit the loop cleanly.
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Field Service background job failed.");
             }
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     private async Task RunPendingWorkAsync(CancellationToken cancellationToken)

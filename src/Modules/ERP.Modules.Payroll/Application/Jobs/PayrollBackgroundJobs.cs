@@ -35,7 +35,16 @@ public abstract class PayRecurringJob : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(_period);
-        await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Host is shutting down during the initial warm-up delay.
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
         {
             try

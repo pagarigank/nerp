@@ -43,6 +43,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Context;
 
@@ -53,6 +54,14 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        // Background jobs (Payroll, Field Service) must never take down the API host.
+        // The .NET default (StopHost) stops the entire process on any BackgroundService
+        // fault — even a benign shutdown cancellation — which previously crashed the API
+        // (e.g. the Reporting DeliveryRetryJob on a missing rpt table). Ignore keeps the
+        // host alive; each job already logs its own faults.
+        builder.Services.Configure<HostOptions>(o =>
+            o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
         builder.Services.AddControllers(options =>
             {
