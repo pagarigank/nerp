@@ -78,26 +78,31 @@ public class CdcEtlSyncService : ICdcEtlSyncService
     /// Maps each source schema.table to its staging table in the rpt schema.
     /// The key is "schema.table", the value is the staging table name.
     /// </summary>
+    // Source table names must match the real operational tables in the live DB.
+    // The timestamp column is used for incremental extraction; several source
+    // tables (e.g. gl.JournalEntryLines, ap.VoucherDistributions, ar.InvoiceLines)
+    // have no ModifiedOn/CreatedOn column, so the mapping leaves it null and the
+    // sync falls back to a full COUNT(*) without a watermark filter.
     private static readonly Dictionary<string, SourceTableMapping> SourceMappings = new(StringComparer.OrdinalIgnoreCase)
     {
-        // General Ledger
-        ["gl.Accounts"] = new("rpt.DimAccounts", "ModifiedOn"),
-        ["gl.JournalEntryLines"] = new("rpt.FactJournalEntries", "ModifiedOn"),
-        ["gl.Periods"] = new("rpt.DimPeriods", "ModifiedOn"),
+        // General Ledger (real table is gl.Account, periods live in platform.FiscalPeriods)
+        ["gl.Account"] = new("rpt.DimAccounts", "ModifiedOn"),
+        ["gl.JournalEntryLines"] = new("rpt.FactJournalEntries", null),
+        ["platform.FiscalPeriods"] = new("rpt.DimPeriods", "ModifiedOn"),
 
-        // Accounts Payable
+        // Accounts Payable (voucher lines are VoucherDistributions; several tables lack ModifiedOn)
         ["ap.Vendors"] = new("rpt.DimVendors", "ModifiedOn"),
-        ["ap.VoucherLines"] = new("rpt.FactApVouchers", "ModifiedOn"),
-        ["ap.PaymentLines"] = new("rpt.FactApPayments", "ModifiedOn"),
+        ["ap.VoucherDistributions"] = new("rpt.FactApVouchers", null),
+        ["ap.PaymentLines"] = new("rpt.FactApPayments", null),
 
-        // Accounts Receivable
+        // Accounts Receivable (cash receipt lines are CashReceiptApplications; several lack ModifiedOn)
         ["ar.Customers"] = new("rpt.DimCustomers", "ModifiedOn"),
-        ["ar.InvoiceLines"] = new("rpt.FactArInvoices", "ModifiedOn"),
-        ["ar.CashReceiptLines"] = new("rpt.FactArReceipts", "ModifiedOn"),
+        ["ar.InvoiceLines"] = new("rpt.FactArInvoices", null),
+        ["ar.CashReceiptApplications"] = new("rpt.FactArReceipts", null),
 
         // Cash Management
         ["cash.BankAccounts"] = new("rpt.DimBankAccounts", "ModifiedOn"),
-        ["cash.BankStatementLines"] = new("rpt.FactBankTransactions", "ModifiedOn"),
+        ["cash.BankStatementLines"] = new("rpt.FactBankTransactions", null),
 
         // Purchasing
         ["pur.PurchaseOrderLines"] = new("rpt.FactPurchaseOrders", "ModifiedOn"),
@@ -112,14 +117,14 @@ public class CdcEtlSyncService : ICdcEtlSyncService
         ["om.SalesOrderLines"] = new("rpt.FactSalesOrders", "ModifiedOn"),
         ["om.ShipmentLines"] = new("rpt.FactShipments", "ModifiedOn"),
 
-        // Bill of Materials
-        ["bom.BillOfMaterials"] = new("rpt.DimBoms", "ModifiedOn"),
+        // Bill of Materials (real table is bom.BomHeaders)
+        ["bom.BomHeaders"] = new("rpt.DimBoms", "ModifiedOn"),
         ["bom.BuildOrderLines"] = new("rpt.FactBuildOrders", "ModifiedOn"),
 
-        // Project Accounting
+        // Project Accounting (billing lines are BillingSchedules)
         ["proj.Projects"] = new("rpt.DimProjects", "ModifiedOn"),
         ["proj.CostTransactions"] = new("rpt.FactProjectCosts", "ModifiedOn"),
-        ["proj.BillingLines"] = new("rpt.FactProjectBillings", "ModifiedOn"),
+        ["proj.BillingSchedules"] = new("rpt.FactProjectBillings", "ModifiedOn"),
 
         // Payroll
         ["pay.Employees"] = new("rpt.DimEmployees", "ModifiedOn"),
@@ -316,7 +321,12 @@ public class CdcEtlSyncService : ICdcEtlSyncService
             long rowCount;
             using (var cmd = connection.CreateCommand())
             {
-                var whereClause = lastSyncOn.HasValue
+                // Only apply the incremental watermark filter when the source table
+                // actually exposes a timestamp column. Tables without one (e.g.
+                // gl.JournalEntryLines, ar.InvoiceLines) cannot be filtered by
+                // change time, so we count the full table each run.
+                var hasTimestamp = !string.IsNullOrEmpty(mapping.TimestampColumn);
+                var whereClause = (lastSyncOn.HasValue && hasTimestamp)
                     ? $"WHERE [{mapping.TimestampColumn}] > @LastSyncOn"
                     : string.Empty;
 
