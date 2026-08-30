@@ -7,6 +7,7 @@ using Asp.Versioning;
 using ERP.Modules.AccountsPayable.Api;
 using ERP.Modules.AccountsPayable.Domain.Entities;
 using ERP.Modules.AccountsPayable.Infrastructure;
+using ERP.Modules.Platform.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERP.Modules.AccountsPayable.Api;
@@ -31,6 +32,7 @@ public class VendorController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission("ap.vendors.view")]
     public async Task<ActionResult<IReadOnlyList<VendorDto>>> GetAll([FromQuery] bool? activeOnly, CancellationToken cancellationToken)
     {
         Expression<Func<Vendor, bool>> predicate = ScopePredicate(activeOnly.GetValueOrDefault());

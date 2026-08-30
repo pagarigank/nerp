@@ -92,10 +92,22 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [x] Verified: limited demo user `rbacviewer@erp.com` / `password123` (role "AP Viewer")
       sees exactly 2 of 188 nav items (`/platform/roles`, `/ap/vendors`); company admin sees all.
 
-### Phase 3 — API enforcement (NEXT)
-- [ ] `RequirePermission("{module}.{page}.{action}")` policy/attribute on controllers
-- [ ] Map existing `[Authorize(Roles=...)]` endpoints to permission checks (or keep role gate as coarse, permission as fine)
-- [ ] Segregation-of-duties rules (e.g. create ≠ approve same voucher)
+### Phase 3 — API enforcement (DONE)
+- [x] `RequirePermission` primitive in `Platform/Api/Authorization/`:
+  - `PermissionRequirement` (IAuthorizationRequirement, canonical `module.page.action`)
+  - `RequirePermissionAttribute` (`: AuthorizeAttribute`, policy `perm:<code>`) — usage:
+    `[RequirePermission("gl.journal-batches.view")]` or `[RequirePermission("gl","journal-batches","view")]`
+  - `PermissionAuthorizationHandler` — matches held `permission` claims with the SAME
+    semantics as the frontend (exact / legacy `module.action`→`module.*.action` / wildcard).
+  - `PermissionPolicyProvider` (IAuthorizationPolicyProvider) resolves `perm:<code>` policies.
+- [x] Registered `IAuthorizationHandler` + `IAuthorizationPolicyProvider` in `Program.cs`.
+- [x] Applied to representative endpoints:
+  - `GET /gl/journal-batches` → `[RequirePermission("gl.journal-batches.view")]`
+  - `GET /ap/vendors` → `[RequirePermission("ap.vendors.view")]`
+- [x] Verified (live): companyadmin 200 on both; limited `rbacviewer` 200 on /ap/vendors
+      but **403** on /gl/journal-batches (correctly denied — no GL permission).
+- [ ] Remaining: roll `[RequirePermission]` across all module endpoints (coarse role
+      gates stay; permissions add fine-grained enforcement). Segregation-of-duties rules.
 
 ### Phase 4 — Polish
 - [ ] Clone-role action

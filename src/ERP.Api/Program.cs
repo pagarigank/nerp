@@ -199,6 +199,8 @@ public class Program
             });
 
         builder.Services.AddSingleton<ERP.Modules.Platform.Infrastructure.JwtTokenService>();
+        builder.Services.AddSingleton<IAuthorizationHandler, ERP.Modules.Platform.Api.Authorization.PermissionAuthorizationHandler>();
+        builder.Services.AddSingleton<IAuthorizationPolicyProvider, ERP.Modules.Platform.Api.Authorization.PermissionPolicyProvider>();
 
         // Require an authenticated principal for every endpoint by default.
         // Controllers may opt out with [AllowAnonymous]. This enforces the

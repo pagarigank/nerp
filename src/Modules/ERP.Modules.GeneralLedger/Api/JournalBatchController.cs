@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.GeneralLedger.Domain.Entities;
 using ERP.Modules.GeneralLedger.Infrastructure;
+using ERP.Modules.Platform.Api.Authorization;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public class JournalBatchController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission("gl.journal-batches.view")]
     public async Task<ActionResult<IReadOnlyList<JournalBatchDto>>> GetAll([FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
         var query = _context.JournalBatches.AsNoTracking();
