@@ -97,9 +97,24 @@ public sealed class JwtTokenService
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        foreach (var permission in permissions)
+        // Token size guard: super-admin and company-admin archetypes effectively
+        // hold every permission. Emitting hundreds of individual `permission`
+        // claims produces a multi-KB JWT that can exceed the server's request-header
+        // size limit (HTTP 431). A single "*" wildcard claim is sufficient — both
+        // the frontend hasPermission matcher and the backend PermissionAuthorizationHandler
+        // treat "*" as universal. Company scoping is enforced separately via the
+        // `company_scope` claim, so collapsing perms here does not widen data access.
+        var emitWildcard = isSuperAdmin || companyAdmin || permissions.Contains("*") || permissions.Contains("*.*.*");
+        if (emitWildcard)
         {
-            claims.Add(new Claim("permission", permission));
+            claims.Add(new Claim("permission", "*"));
+        }
+        else
+        {
+            foreach (var permission in permissions)
+            {
+                claims.Add(new Claim("permission", permission));
+            }
         }
 
         var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);

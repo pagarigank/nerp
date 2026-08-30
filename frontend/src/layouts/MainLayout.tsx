@@ -104,6 +104,19 @@ export function MainLayout() {
     else setCommandQuery('')
   }, [commandOpen])
 
+  const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout, isSuperAdmin } = useAuth()
+  const hasPermission = useAuthStore(s => s.hasPermission)
+
+  // A nav sub-item is visible if the user can view that page. A module stays
+  // visible if it has at least one visible sub-page (or the user holds a
+  // module-level view grant). Roles gate (item.roles) still applies.
+  const canViewRoute = (to: string): boolean => {
+    const { module, page } = modulePageFromRoute(to)
+    return hasPermission(`${module}.${page}.view`)
+  }
+  const roleAllowed = (item: { roles: string[] }): boolean =>
+    item.roles.includes('*') || Boolean(user?.roles?.some((r: { name: string }) => item.roles.includes(r.name)))
+
   const filteredCommandItems = useMemo(() => {
     const q = commandQuery.toLowerCase().trim()
     const base = mainNavigation.flatMap(m => [{ label: m.name, to: m.href, module: m.name, isModule: true }, ...m.sub.map(s => ({ label: s.label, to: s.to, module: m.name, isModule: false }))])
@@ -149,26 +162,20 @@ export function MainLayout() {
     document.documentElement.classList.toggle('dark', newMode)
   }
 
-  const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout, isSuperAdmin } = useAuth()
-  const hasPermission = useAuthStore(s => s.hasPermission)
-
-  // A nav sub-item is visible if the user can view that page. A module stays
-  // visible if it has at least one visible sub-page (or the user holds a
-  // module-level view grant). Roles gate (item.roles) still applies.
-  const canViewRoute = (to: string): boolean => {
-    const { module, page } = modulePageFromRoute(to)
-    return hasPermission(`${module}.${page}.view`)
-  }
-  const roleAllowed = (item: { roles: string[] }): boolean =>
-    item.roles.includes('*') || Boolean(user?.roles?.some((r: { name: string }) => item.roles.includes(r.name)))
-
   const filteredNavigation = mainNavigation
-    .filter(item => roleAllowed(item))
     .map(item => ({
       ...item,
       sub: item.sub.filter(s => canViewRoute(s.to)),
     }))
-    .filter(item => item.sub.length > 0 || hasPermission(`${modulePageFromRoute(item.href).module}.*.view`))
+    // A module is visible when it has at least one RBAC-permitted sub-page, OR
+    // the user passes the (legacy) coarse role gate, OR holds a module-level
+    // view wildcard. The legacy `roles` gate must not override page-scoped RBAC:
+    // e.g. a user granted `platform.roles.view` must see the Platform → Roles
+    // sub-page even if their role name is not in the module's `roles` list.
+    .filter(item =>
+      item.sub.length > 0 ||
+      roleAllowed(item) ||
+      hasPermission(`${modulePageFromRoute(item.href).module}.*.view`))
 
   const resolved = resolveNav(location.pathname)
   const resolvedModule = resolved?.module

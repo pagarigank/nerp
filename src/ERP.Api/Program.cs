@@ -55,6 +55,17 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Allow larger request headers. Self-signed local JWTs can carry many
+        // `permission` claims (or a single "*" after the token-size guard); the
+        // default Kestrel limits (16KB/header, 32KB total) can trigger HTTP 431
+        // for full-permission accounts. Raise both so legitimate tokens validate.
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.MaxRequestHeadersTotalSize = 256 * 1024;
+            options.Limits.MaxRequestHeaderCount = 256;
+            options.Limits.MaxRequestBodySize = 50 * 1024 * 1024;
+        });
+
         // Background jobs (Payroll, Field Service) must never take down the API host.
         // The .NET default (StopHost) stops the entire process on any BackgroundService
         // fault — even a benign shutdown cancellation — which previously crashed the API
