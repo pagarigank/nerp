@@ -27,19 +27,32 @@ export const ALL_COMPANIES: Company = {
   updatedAt: '',
 }
 
+// Normalize a permission code into { module, page, action } (lowercase).
+// Supports: "module.page.action" (page-scoped), "module.action" (legacy, page="*"),
+// and "*.*" / "*.*.*" (wildcards).
+function normalizeCode(code: string): { module: string; page: string; action: string } {
+  const parts = code.toLowerCase().split('.')
+  if (parts.length === 3) return { module: parts[0], page: parts[1], action: parts[2] }
+  if (parts.length === 2) return { module: parts[0], page: '*', action: parts[1] }
+  return { module: parts[0] ?? '*', page: '*', action: '*' }
+}
+
+// Returns true if `held` permissions grant `requested` (page-scoped) permission,
+// accounting for module-level, page-level, and wildcard grants.
+function matchesPermission(held: string[], requested: string): boolean {
+  const req = normalizeCode(requested)
+  for (const h of held) {
+    const p = normalizeCode(h)
+    if (p.module === '*' || p.action === '*') return true // full wildcard
+    if (p.module !== req.module) continue
+    if (p.action !== '*' && p.action !== req.action) continue
+    // Same module + (any action or matching action). Now check page scope.
+    if (p.page === '*' || p.page === req.page) return true
+  }
+  return false
+}
+
 interface AuthState {
-  user: User | null
-  accessToken: string | null
-  refreshToken: string | null
-  companies: Company[]
-  currentCompany: Company | null
-  isSuperAdmin: boolean
-  fiscalPeriods: FiscalPeriod[]
-  currentPeriod: FiscalPeriod | null
-  roles: Role[]
-  permissions: string[]
-  isAuthenticated: boolean
-  isLoading: boolean
   error: string | null
   
   // Actions
@@ -154,7 +167,11 @@ export const useAuthStore = create<AuthState>()(
 
       setError: (error) => set({ error }),
 
-      hasPermission: (permission) => get().permissions.includes(permission),
+      hasPermission: (permission) => {
+        const held = get().permissions
+        if (held.length === 0) return false
+        return matchesPermission(held, permission)
+      },
 
       hasRole: (role) => get().roles.some(r => r.name === role),
     }),

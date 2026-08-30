@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@utils/helpers'
 import { useAuth, useAuthStore, ALL_COMPANIES } from '@stores/authStore'
+import { modulePageFromRoute } from '@hooks/usePagePermission'
 import { Button } from '@components/ui/Button'
 import { Combobox, type SelectOption } from '@components/ui/Combobox'
 import { mainNavigation, resolveNav, NAV_CHIP_STYLES, NAV_TEXT_STYLES, getSubIcon } from '@/navigation'
@@ -105,9 +106,11 @@ export function MainLayout() {
 
   const filteredCommandItems = useMemo(() => {
     const q = commandQuery.toLowerCase().trim()
-    if (!q) return mainNavigation.flatMap(m => [{ label: m.name, to: m.href, module: m.name, isModule: true }, ...m.sub.map(s => ({ label: s.label, to: s.to, module: m.name, isModule: false }))])
-    return mainNavigation.flatMap(m => [{ label: m.name, to: m.href, module: m.name, isModule: true }, ...m.sub.map(s => ({ label: s.label, to: s.to, module: m.name, isModule: false }))]).filter(i => i.label.toLowerCase().includes(q) || i.module.toLowerCase().includes(q))
-  }, [commandQuery])
+    const base = mainNavigation.flatMap(m => [{ label: m.name, to: m.href, module: m.name, isModule: true }, ...m.sub.map(s => ({ label: s.label, to: s.to, module: m.name, isModule: false }))])
+    const visible = base.filter(i => i.isModule ? true : canViewRoute(i.to))
+    if (!q) return visible
+    return visible.filter(i => i.label.toLowerCase().includes(q) || i.module.toLowerCase().includes(q))
+  }, [commandQuery, canViewRoute])
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -147,10 +150,25 @@ export function MainLayout() {
   }
 
   const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout, isSuperAdmin } = useAuth()
+  const hasPermission = useAuthStore(s => s.hasPermission)
 
-  const filteredNavigation = mainNavigation.filter(item =>
-    item.roles.includes('*') || user?.roles?.some((r: { name: string }) => item.roles.includes(r.name)),
-  )
+  // A nav sub-item is visible if the user can view that page. A module stays
+  // visible if it has at least one visible sub-page (or the user holds a
+  // module-level view grant). Roles gate (item.roles) still applies.
+  const canViewRoute = (to: string): boolean => {
+    const { module, page } = modulePageFromRoute(to)
+    return hasPermission(`${module}.${page}.view`)
+  }
+  const roleAllowed = (item: { roles: string[] }): boolean =>
+    item.roles.includes('*') || Boolean(user?.roles?.some((r: { name: string }) => item.roles.includes(r.name)))
+
+  const filteredNavigation = mainNavigation
+    .filter(item => roleAllowed(item))
+    .map(item => ({
+      ...item,
+      sub: item.sub.filter(s => canViewRoute(s.to)),
+    }))
+    .filter(item => item.sub.length > 0 || hasPermission(`${modulePageFromRoute(item.href).module}.*.view`))
 
   const resolved = resolveNav(location.pathname)
   const resolvedModule = resolved?.module

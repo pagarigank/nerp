@@ -94,7 +94,7 @@ public class AuthController : ControllerBase
             r.Description,
             r.Permissions.Select(rp => permissionEntities.FirstOrDefault(pe => pe.Id == rp.PermissionId))
                 .Where(pe => pe is not null)
-                .Select(pe => $"{pe!.Module}.{pe.Action}")
+                .Select(pe => pe!.Code)
                 .ToList())).ToList();
 
         var permissions = roleDtos.SelectMany(r => r.Permissions).Distinct().ToList();

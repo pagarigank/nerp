@@ -113,7 +113,7 @@ public class RoleController : ControllerBase
     [HttpPut("{id:guid}/permissions")]
     public async Task<IActionResult> SetPermissions(Guid id, [FromBody] SetRolePermissionsRequest request, CancellationToken cancellationToken)
     {
-        var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken);
+        var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken, r => r.Permissions);
         if (role == null)
             return NotFound();
 

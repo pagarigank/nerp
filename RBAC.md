@@ -1,32 +1,27 @@
 # RBAC Implementation Tracker
 
-Modern Project-Centric ERP — Role-Based Access Control
-Status: **In Progress** · Last updated: 2026-08-30
-
 ## Goal
 
-When creating or editing a **user role**, the admin can see every **page** in the
-system and toggle what the role can do on that page: **View, Create, Edit, Delete**.
-The role→permission grants are stored, returned on login, and (later phase) enforced
-both in the UI (menu/button visibility) and on the API (endpoint authorization).
+A working role-based access control system where, when creating or editing a role, an admin
+sees every page grouped by module and can toggle per-page actions (View / Create / Edit / Delete).
+Permissions follow the canonical code `module.page.action` (e.g. `gl.journal-batches.view`).
 
-## Design decisions (locked)
+## Design
 
-- **Action taxonomy** = `View`, `Create`, `Edit`, `Delete`.
-  - User's wording "add, edit, update, delete" maps as: `add` → Create, `edit`+`update` → Edit,
-    `delete` → Delete. `View` is implicit (you must be able to view a page to use it).
-  - To add a distinct `Update` action later, extend the `Action` enum + seed list only.
-- **Permission identity** = `Code = "{module}.{page}.{action}"` (lowercase), e.g.
-  `gl.journal-batches.view`, `om.quotes.create`, `ar.customers.delete`.
-- **Permission entity** carries both the legacy `Module`+`Action` and the new `Page`+`Code`
-  so old `Module.Action` grants still work and new page-scoped grants are first-class.
-- **Admin role** is seeded with ALL permissions (wildcard behavior preserved).
-- **Super admin** (company-less role) keeps unbounded access.
+- **Actions:** View, Create, Edit, Delete (the user's "add" maps to Create; "edit" + "update"
+  map to Edit; Delete is separate; View is implicit for opening a page).
+- **Permission `Code`** = `{module}.{page}.{action}` (lowercase). This is the stable key the UI
+  and enforcement rely on.
+- **Legacy wildcard forms** are also honored by the matcher so existing roles keep working:
+  - `module.*.action` → grants that action on every page of the module
+  - `module.page.*` → grants every action on that page
+  - `*.*` / `*.*.*` → full access
+- **Admin role** gets all page-scoped permissions.
 
-## Data model (Platform module)
+## Data model
 
-```
-Permission(Module, Page, Action, Code, Description)   -- page-scoped; Code is unique
+```text
+Permission(Id, Module, Page, Action, Code, Description)
 Role(Name, Description, IsActive)
 RolePermission(RoleId, PermissionId)                   -- join
 UserRole(UserId, RoleId, CompanyId?)                    -- scoping
@@ -41,9 +36,10 @@ UserRole(UserId, RoleId, CompanyId?)                    -- scoping
 | Method | Route | Purpose |
 |---|---|---|
 | GET | `/api/v1/platform/permissions/catalog` | Full page×action catalog (modules → pages → actions) for building the editor UI |
+| GET | `/api/v1/platform/permissions` | All permissions (id + code) for the client-side id resolver |
 | GET | `/api/v1/platform/roles` | List roles |
 | GET | `/api/v1/platform/roles/{id}` | Role (incl. permissions) |
-| POST | `/api/v1/platform/roles` | Create role (super admin only) |
+| POST | `/api/v1/platform/roles` | Create role (company admin or super admin) |
 | PUT | `/api/v1/platform/roles/{id}` | Update role |
 | GET | `/api/v1/platform/roles/{id}/matrix` | Catalog + which actions the role currently has (the editor payload) |
 | PUT | `/api/v1/platform/roles/{id}/permissions` | Bulk set role permissions (array of permission ids) |
@@ -57,12 +53,18 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - `RolesPage` (`/platform/roles`): list roles + create/edit modal that includes a
   **permission matrix** — pages grouped by module, each page row with 4 checkboxes
   (View / Create / Edit / Delete). Save calls `PUT .../permissions`.
+- `stores/authStore.ts` → `hasPermission(code)`: enhanced matcher supporting page-scoped,
+  legacy (`module.action` → `module.*.action`) and wildcard codes.
+- `hooks/usePagePermission.ts` → `usePagePermission(module, page)` returns
+  `{canView, canCreate, canEdit, canDelete}`; pages use it to hide action buttons.
+  `modulePageFromRoute(to)` derives module + page from a nav route.
+- `layouts/MainLayout.tsx`: left-nav and Ctrl-K command palette are gated by view permission.
 - `navigation.tsx` is the source of the page list; the backend `PermissionCatalog`
-  mirrors it and must be kept in sync (tracked item).
+  mirrors it and must be kept in sync.
 
 ## Phased plan
 
-### Phase 1 — Page-scoped permission model + role editor (IN PROGRESS)
+### Phase 1 — Page-scoped permission model + role editor (DONE)
 - [x] `Permission` entity gains `Page` + `Code`
 - [x] `PermissionCatalog` static registry (module → pages) in Platform
 - [x] `DevSeed` seeds page×action permissions; admin gets all
@@ -72,14 +74,26 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [x] Frontend `platform` api client: `getPermissionCatalog`, `getAllPermissions`, `getRoleMatrix`, `setRolePermissions`
 - [x] `RolesPage` renders the page×action matrix on create/edit
 - [x] `dotnet build` + `tsc --noEmit` green; live API matrix endpoint returns 200
+- [x] DB: 52 legacy perms + 688 page-scoped perms = 740; unique index on `Code`
 
-### Phase 2 — UI enforcement (menu + action buttons)
-- [ ] Gate left-nav items by `hasPermission("{module}.{page}.view")`
-- [ ] Hide/disable Create/Edit/Delete buttons per permission on each page
-- [ ] Wire `currentCompanyId()`-scoped visibility (already in store)
+### Phase 2 — UI enforcement (DONE)
+- [x] `hasPermission(code)` enhanced to match page-scoped (`module.page.action`) + legacy
+      (`module.action` → `module.*.action`) + wildcard (`*.*` / `module.*.action` / `module.page.*`)
+- [x] `usePagePermission(module, page)` hook returns `{canView,canCreate,canEdit,canDelete}`
+- [x] `modulePageFromRoute(to)` derives module + page from a nav `to` route
+- [x] `MainLayout` left-nav gated: a module shows only sub-pages the user can `view`; empty modules hidden
+- [x] Command-palette (Ctrl-K) search results also gated by view permission
+- [x] **Permission vocabulary unified**: login now emits canonical `Permission.Code`
+      (`module.page.action`) instead of the old `Module.Action`. Legacy rows backfilled
+      to `module.*.action`. Company admin keeps full access via `*.*.*` + module wildcards.
+- [x] **Bug fixed**: `SetPermissions` (bulk PUT) threw duplicate-key 500 because the role was
+      fetched without `.Include(Permissions)` (current set empty → re-added existing grants).
+      Added the include; now 204.
+- [x] Verified: limited demo user `rbacviewer@erp.com` / `password123` (role "AP Viewer")
+      sees exactly 2 of 188 nav items (`/platform/roles`, `/ap/vendors`); company admin sees all.
 
-### Phase 3 — API enforcement
-- [ ] `RequirePermission("{module}.{page}.{action}")` policy/attribute
+### Phase 3 — API enforcement (NEXT)
+- [ ] `RequirePermission("{module}.{page}.{action}")` policy/attribute on controllers
 - [ ] Map existing `[Authorize(Roles=...)]` endpoints to permission checks (or keep role gate as coarse, permission as fine)
 - [ ] Segregation-of-duties rules (e.g. create ≠ approve same voucher)
 
@@ -87,10 +101,4 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [ ] Clone-role action
 - [ ] Bulk "grant module" / "grant all" helpers in the editor
 - [ ] Filter the matrix by module (UI)
-- [ ] Permission diff / audit on role change (already logged via audit service)
-
-## Open questions / notes
-- The backend `PermissionCatalog` currently duplicates `navigation.tsx`. A future
-  refactor could expose nav as JSON from the API so there is one source of truth.
-- Field-level restrictions (e.g. payroll compensation) are out of scope for Phase 1;
-  the model supports adding them as additional permission `Page`/action values later.
+- [ ] Wire `usePagePermission` into individual page action buttons (e.g. New/Edit/Delete)
