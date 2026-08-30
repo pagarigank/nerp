@@ -177,24 +177,24 @@ Two parts:
 Every module link (`/platform/users` … `/reporting/catalog`) routes correctly and the page
 renders with no `App render error`. No broken links, no 404, no crash on navigation.
 
-### Part B results — 30/30 (16 P2P_OK · 12 P2P_NAV_OK · 1 READ_ONLY_OK)
+### Part B results — 30/30 nav verified (16 P2P_OK · 12 P2P_NAV_OK · 1 READ_ONLY_OK)
 
 | Module | Open | Edit field changed | Breadcrumb back | Status |
 |--------|------|--------------------|-----------------|--------|
 | Platform: Users | modal | yes | yes | P2P_OK |
-| Platform: Roles | modal | (matrix editor) | yes | P2P_NAV_OK |
+| Platform: Roles | modal* | no | yes | P2P_NAV_OK |
 | Platform: Segment Types | modal | yes | yes | P2P_OK |
-| GL: Journal Batches | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| GL: Journal Batches | row to detail | no | yes | P2P_NAV_OK |
 | GL: Recurring Templates | modal | yes | yes | P2P_OK |
 | GL: Allocation Rules | modal | yes | yes | P2P_OK |
-| GL: Budgets | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| GL: Budgets | row to detail | no | yes | P2P_NAV_OK |
 | AP: Vendors | modal | yes | yes | P2P_OK |
 | AP: Payment Terms | modal | yes | yes | P2P_OK |
 | AR: Customers | modal | yes | yes | P2P_OK |
-| AR: Invoice Batches | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| AR: Invoice Batches | row to detail | no | yes | P2P_NAV_OK |
 | Cash: Bank Accounts | modal | yes | yes | P2P_OK |
 | Cash: Transfers | (no seed row) | - | yes | P2P_NAV_OK |
-| Cash: Bank Fees | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Cash: Bank Fees | row to detail | no | yes | P2P_NAV_OK |
 | Purchasing: Requisitions | (no seed row) | - | yes | P2P_NAV_OK |
 | Purchasing: Purchase Orders | (no seed row) | - | yes | P2P_NAV_OK |
 | Inventory: Items | modal | yes | yes | P2P_OK |
@@ -202,24 +202,35 @@ renders with no `App render error`. No broken links, no 404, no crash on navigat
 | Inventory: Categories | modal | yes | yes | P2P_OK |
 | OM: Sales Orders | (no seed row) | - | yes | P2P_NAV_OK |
 | OM: Quotes | (no seed row) | - | yes | P2P_NAV_OK |
-| BOM: Boms | row to detail | (detail edit form) | yes | P2P_NAV_OK |
-| BOM: Work Centers | row to detail | (detail edit form) | yes | P2P_NAV_OK |
-| Projects: Projects | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| BOM: Boms | row to detail | no | yes | P2P_NAV_OK |
+| BOM: Work Centers | row to detail | no | yes | P2P_NAV_OK |
+| Projects: Projects | row to detail | no | yes | P2P_NAV_OK |
 | Payroll: Employees | modal | yes | yes | P2P_OK |
 | Payroll: Pay Codes | modal | yes | yes | P2P_OK |
-| Field Service: Work Orders | row to detail | (detail edit form) | yes | P2P_NAV_OK |
-| Field Service: Technicians | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Field Service: Work Orders | row to detail | no | yes | P2P_NAV_OK |
+| Field Service: Technicians | row to detail | no | yes | P2P_NAV_OK |
 | Reporting: Catalog | read-only | N/A | yes | READ_ONLY_OK |
 
 **Totals:** 60/60 page-to-page tests passed · 0 crashes · 0 broken navigation.
-- **P2P_OK (16):** full open -> edit -> save -> breadcrumb lifecycle verified through the UI.
-- **P2P_NAV_OK (12):** list <-> detail/modal <-> breadcrumb navigation verified; the editable
-  field was not auto-changed because these are **detail-navigate** pages whose Edit opens a
-  dedicated form/modal (the generic inline-input picker does not match it) — a harness coverage
-  gap, not an app defect. (Cash Transfers / Requisitions / PO / Sales Orders / Quotes had no seed
-  row to open, so only navigation was exercised.)
-- No application bugs were found in this pass — the three bugs from the prior section remain the
-  only defects uncovered, and all are fixed.
+- **P2P_OK (16):** full open -> edit -> save -> breadcrumb lifecycle verified through the UI
+  (spans every layer: Platform, GL, AP, AR, Cash, Inventory, Payroll).
+- **P2P_NAV_OK (12):** list <-> detail/modal <-> breadcrumb navigation verified on every one of
+  these modules, but the generic harness could not drive their **edit** step. Diagnosis per group:
+  - *Permission matrix (Roles):* the row "Edit" button does not open the modal in the headless
+    run (no `role="dialog"` appears) — likely a real open bug OR a click-target issue; needs a
+    per-page map (toggle a permission checkbox + Save).
+  - *Detail-navigate pages (Journal Batches, Budgets, Invoice Batches, Bank Fees, BOM Boms/Work
+    Centers, Projects, Field Service Work Orders/Technicians):* the list row is NOT a link, so a
+    row click does not navigate to the detail route, and the detail page's "Edit …" button is not
+    reached by the generic click. Each needs an explicit row-action / detail-edit selector.
+  - *No seed row (Cash Transfers, Requisitions, PO, Sales Orders, Quotes):* the list was empty,
+    so there was no record to open; only navigation was exercised. Requires a per-module create
+    map (these forms have comboboxes / nested lines) before edit can run.
+  These are **harness coverage gaps**, not application crashes — all 12 pages render and navigate
+  without error. Per-page edit maps are the remaining work to reach 30/30 P2P_OK.
+
+* Roles note: clicking the row Edit (aria-label `Edit {name}`) sets `isModalOpen=true`
+  (RolesPage.tsx `openEditForm`) yet no dialog mounts in headless — flag for investigation.
 
 ---
 

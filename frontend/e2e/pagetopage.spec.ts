@@ -59,13 +59,38 @@ async function clickSubmit(container: any) {
   if (await submit.count()) await submit.first().click({ timeout: 5000 }).catch(() => {})
 }
 async function openFirstRecord(page: Page): Promise<string> {
-  const rowByFirst = page.locator('tbody tr').first()
-  if (await rowByFirst.count()) {
-    const editBtn = rowByFirst.getByRole('button', { name: /Edit/i }).first()
-    if (await editBtn.count()) { await editBtn.click().catch(() => {}); return 'modal' }
-    await rowByFirst.click().catch(() => {}); return 'clicked'
+  await page.waitForSelector('tbody tr, [role="row"], main a[href*="/"]', { timeout: 8000 }).catch(() => {})
+  const listEdit = page.locator('main').getByRole('button', { name: /Edit/i }).first()
+  if (await listEdit.count()) {
+    await listEdit.click().catch(() => {})
+    // modal may take a moment to mount; the edit block detects it via getByRole('dialog')
+    await page.waitForTimeout(800)
+    return 'modal'
   }
+  const row = page.locator('tbody tr, [role="row"]').first()
+  if (await row.count()) { await row.click().catch(() => {}); await page.waitForTimeout(800); return 'clicked' }
   return 'none'
+}
+
+// Pick the first *real* editable text field in a container. Skip search/filter boxes,
+// selects, comboboxes, checkboxes, disabled, date and number inputs. Fall back to any
+// enabled text input/textarea if no "clean" field is found.
+async function findEditableField(container: any): Promise<any> {
+  const cands = container.locator('input:visible:not([type=hidden]), textarea:visible')
+  const n = await cands.count()
+  let fallback: any = null
+  for (let i = 0; i < n; i++) {
+    const el = cands.nth(i)
+    const type = (await el.getAttribute('type')) || 'text'
+    if (['checkbox', 'radio', 'file', 'submit', 'hidden'].includes(type)) continue
+    if ((await el.getAttribute('role')) === 'combobox') continue
+    if (await el.isDisabled()) continue
+    const label = ((await el.getAttribute('aria-label')) || (await el.getAttribute('name')) || (await el.getAttribute('placeholder')) || '').toLowerCase()
+    if (/search|filter|find/.test(label)) { if (!fallback) fallback = el; continue }
+    if (['date', 'number'].includes(type)) { if (!fallback) fallback = el; continue }
+    return el
+  }
+  return fallback
 }
 
 const MODULES: { module: string; path: string; formPath?: string; readOnly?: boolean }[] = [
@@ -152,19 +177,27 @@ for (const def of MODULES) {
       entry.noRecordToOpen = how === 'none'
       entry.navOk = navOk
 
-      // EDIT: modal already open (Pattern A) OR on detail route (Pattern B -> click Edit)
+      // EDIT: modal already open (Pattern A) OR on a detail route (Pattern B -> click Edit)
       let editContainer: any = page.locator('form, main').first()
       const onDetail = /\/[0-9a-fA-F-]{8,}$/.test(page.url()) || page.url().includes('/sales-orders/') || page.url().includes('/quotes/') || page.url().includes('/invoice-batches/') || page.url().includes('/voucher-batches/') || page.url().includes('/reconciliations/')
       if (onDetail) {
-        const editBtn = page.getByRole('button', { name: /Edit|Modify/i }).first()
-        if (await editBtn.count()) { await editBtn.first().click().catch(() => {}); await page.waitForTimeout(800); const dlg = page.getByRole('dialog'); if (await dlg.isVisible().catch(() => false)) editContainer = dlg }
-      } else {
+        // detail page: open its Edit form/modal (wait up to 5s for the button)
+        const editBtn = page.getByRole('button', { name: /^(Edit|Modify)/i }).first()
+        await editBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+        if (await editBtn.count()) {
+          await editBtn.first().click({ timeout: 3000 }).catch(() => {})
+          await page.getByRole('dialog').first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => {})
+        }
         const dlg = page.getByRole('dialog')
         if (await dlg.isVisible().catch(() => false)) editContainer = dlg
+        else editContainer = page.locator('form, main').first()
+      } else {
+        const dlg = page.getByRole('dialog').first()
+        if (await dlg.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)) editContainer = dlg
       }
-      const field = editContainer.locator('input:visible:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea:visible').first()
+      const field = await findEditableField(editContainer)
       let editOk = false
-      if (await field.count()) {
+      if (field) {
         const cur = (await field.inputValue().catch(() => '')) || ''
         await field.fill(cur + ' EDIT', { timeout: 3000 }).catch(() => {})
         await page.waitForTimeout(200)
