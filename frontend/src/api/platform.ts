@@ -282,6 +282,14 @@ export function setRolePermissions(id: string, permissionIds: string[]): Promise
   return put(`/platform/roles/${id}/permissions`, { permissionIds })
 }
 
+export function cloneRole(id: string, name?: string): Promise<Role> {
+  return post(`/platform/roles/${id}/clone`, { name: name ?? null })
+}
+
+export function grantAllRolePermissions(id: string): Promise<void> {
+  return post(`/platform/roles/${id}/permissions/all`)
+}
+
 export function getAuditLogsByEntity(entityType: string, entityId: string): Promise<AuditLog[]> {
   return get(`/platform/audit-logs/entity/${entityType}/${entityId}`)
 }

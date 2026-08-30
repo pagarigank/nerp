@@ -3,15 +3,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, Pencil, Trash2, AlertCircle, ShieldCheck } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, AlertCircle, ShieldCheck, Copy } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
-import { Input, Textarea } from '@components/ui/Input'
+import { Input, Textarea, Select } from '@components/ui/Input'
 import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getRoles, createRole, updateRole, deleteRole, getPermissionCatalog, getAllPermissions, getRoleMatrix, setRolePermissions } from '@api/platform'
+import {
+  getRoles,
+  createRole,
+  updateRole,
+  deleteRole,
+  getPermissionCatalog,
+  getAllPermissions,
+  getRoleMatrix,
+  setRolePermissions,
+  cloneRole,
+  grantAllRolePermissions,
+} from '@api/platform'
+import { usePagePermission } from '@hooks/usePagePermission'
 import type { Role, CatalogModule, PermissionRef } from '@/types/platform'
 
 const roleSchema = z.object({
@@ -44,6 +56,13 @@ export function RolesPage() {
 
   // Permission selection state for the matrix editor, keyed by code.
   const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  // Phase 4: module filter for the matrix editor.
+  const [moduleFilter, setModuleFilter] = useState<string>('all')
+
+  // Page-level RBAC for this screen (demonstrates usePagePermission in a real page).
+  const { canCreate: canCreateRole, canEdit: canEditRole, canDelete: canDeleteRole, canView: canViewRoles } =
+    usePagePermission('platform', 'roles')
 
   const {
     register,
@@ -116,6 +135,18 @@ export function RolesPage() {
     onError: err => setFormError(getErrorMessage(err)),
   })
 
+  const cloneMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name?: string }) => cloneRole(id, name),
+    onSuccess: () => invalidate(),
+    onError: err => setFormError(getErrorMessage(err)),
+  })
+
+  const grantAllMutation = useMutation({
+    mutationFn: (id: string) => grantAllRolePermissions(id),
+    onSuccess: () => invalidate(),
+    onError: err => setFormError(getErrorMessage(err)),
+  })
+
   const openCreateForm = () => {
     setEditingRole(null)
     setFormError(null)
@@ -162,6 +193,41 @@ export function RolesPage() {
     })
   }
 
+  // Phase 4 bulk helpers operate on codes in the current selection.
+  const selectModule = (module: string, value: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      for (const mod of catalog as CatalogModule[]) {
+        if (mod.module !== module) continue
+        for (const page of mod.pages) {
+          for (const a of ACTIONS) {
+            const code = codeFor(mod.module, page.page, a)
+            if (value) next.add(code)
+            else next.delete(code)
+          }
+        }
+      }
+      return next
+    })
+  }
+
+  const selectAll = (value: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      for (const mod of catalog as CatalogModule[]) {
+        for (const page of mod.pages) {
+          for (const a of ACTIONS) next.add(codeFor(mod.module, page.page, a))
+        }
+      }
+      if (!value) next.clear()
+      return next
+    })
+  }
+
+  const requestClone = (role: Role) => {
+    cloneMutation.mutate({ id: role.id })
+  }
+
   const onSubmit = (data: RoleForm) => {
     setFormError(null)
     const ids = Array.from(selected)
@@ -198,7 +264,12 @@ export function RolesPage() {
     )
   }, [roles, search])
 
-  const saving = createMutation.isPending || updateMutation.isPending || savePermsMutation.isPending
+  const saving =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    savePermsMutation.isPending ||
+    cloneMutation.isPending ||
+    grantAllMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -217,9 +288,11 @@ export function RolesPage() {
           title="Roles"
           description="Security roles controlling module and action access"
           action={
-            <Button variant="primary" size="sm" onClick={openCreateForm} leftIcon={<Plus className="h-4 w-4" />}>
-              New Role
-            </Button>
+            canCreateRole ? (
+              <Button variant="primary" size="sm" onClick={openCreateForm} leftIcon={<Plus className="h-4 w-4" />}>
+                New Role
+              </Button>
+            ) : null
           }
         />
         <CardContent>
@@ -262,23 +335,38 @@ export function RolesPage() {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <IconButton
-                            size="sm"
-                            variant="ghost"
-                            aria-label={`Edit ${role.name}`}
-                            onClick={() => openEditForm(role)}
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden="true" />
-                          </IconButton>
-                          <IconButton
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            aria-label={`Delete ${role.name}`}
-                            onClick={() => setRoleToDelete(role)}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </IconButton>
+                          {canEditRole && (
+                            <IconButton
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Edit ${role.name}`}
+                              onClick={() => openEditForm(role)}
+                            >
+                              <Pencil className="h-4 w-4" aria-hidden="true" />
+                            </IconButton>
+                          )}
+                          {canCreateRole && (
+                            <IconButton
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Clone ${role.name}`}
+                              onClick={() => requestClone(role)}
+                              isLoading={cloneMutation.isPending && cloneMutation.variables?.id === role.id}
+                            >
+                              <Copy className="h-4 w-4" aria-hidden="true" />
+                            </IconButton>
+                          )}
+                          {canDeleteRole && (
+                            <IconButton
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              aria-label={`Delete ${role.name}`}
+                              onClick={() => setRoleToDelete(role)}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </IconButton>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -335,46 +423,108 @@ export function RolesPage() {
             {catalog.length === 0 ? (
               <p className="text-sm text-gray-500">Loading pages…</p>
             ) : (
-              <div className="max-h-[50vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/60">
-                {(catalog as CatalogModule[]).map(mod => (
-                  <div key={mod.module} className="p-3">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-                      {mod.label}
-                    </div>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-400">
-                          <th className="py-1 font-medium">Page</th>
-                          {ACTIONS.map(a => (
-                            <th key={a} className="py-1 font-medium text-center w-16">{ACTION_LABELS[a]}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mod.pages.map(page => (
-                          <tr key={page.page} className="border-t border-gray-100 dark:border-gray-700/40">
-                            <td className="py-1 pr-2 text-gray-700 dark:text-gray-300">{page.label}</td>
-                            {ACTIONS.map(a => {
-                              const code = codeFor(mod.module, page.page, a)
-                              return (
-                                <td key={a} className="py-1 text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                    checked={selected.has(code)}
-                                    onChange={() => toggle(code)}
-                                    aria-label={`${page.label} - ${ACTION_LABELS[a]}`}
-                                  />
-                                </td>
-                              )
-                            })}
+              <>
+                {/* Phase 4: bulk helpers + module filter */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Select
+                    value={moduleFilter}
+                    onChange={e => setModuleFilter(e.target.value)}
+                    aria-label="Filter matrix by module"
+                    className="w-44"
+                  >
+                    <option value="all">All modules</option>
+                    {(catalog as CatalogModule[]).map(mod => (
+                      <option key={mod.module} value={mod.module}>
+                        {mod.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => selectAll(true)}
+                    disabled={saving}
+                  >
+                    Grant all
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => selectAll(false)}
+                    disabled={saving}
+                  >
+                    Clear all
+                  </Button>
+                  {moduleFilter !== 'all' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => selectModule(moduleFilter, true)}
+                      disabled={saving}
+                    >
+                      Grant module
+                    </Button>
+                  )}
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {selected.size} selected
+                  </span>
+                </div>
+
+                <div className="max-h-[50vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/60">
+                  {(catalog as CatalogModule[])
+                    .filter(mod => moduleFilter === 'all' || mod.module === moduleFilter)
+                    .map(mod => (
+                    <div key={mod.module} className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          {mod.label}
+                        </div>
+                        {moduleFilter === 'all' && (
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => selectModule(mod.module, true)} disabled={saving}>
+                              grant
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => selectModule(mod.module, false)} disabled={saving}>
+                              none
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-gray-400">
+                            <th className="py-1 font-medium">Page</th>
+                            {ACTIONS.map(a => (
+                              <th key={a} className="py-1 font-medium text-center w-16">{ACTION_LABELS[a]}</th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
+                        </thead>
+                        <tbody>
+                          {mod.pages.map(page => (
+                            <tr key={page.page} className="border-t border-gray-100 dark:border-gray-700/40">
+                              <td className="py-1 pr-2 text-gray-700 dark:text-gray-300">{page.label}</td>
+                              {ACTIONS.map(a => {
+                                const code = codeFor(mod.module, page.page, a)
+                                return (
+                                  <td key={a} className="py-1 text-center">
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                      checked={selected.has(code)}
+                                      onChange={() => toggle(code)}
+                                      aria-label={`${page.label} - ${ACTION_LABELS[a]}`}
+                                    />
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </form>

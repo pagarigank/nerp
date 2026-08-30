@@ -197,6 +197,68 @@ public class RoleController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Clone a role: copies its name (optionally overridden) and full permission
+    /// set into a new role. Useful for "tweak an existing role" admin flows.
+    /// </summary>
+    [HttpPost("{id:guid}/clone")]
+    public async Task<ActionResult<RoleDto>> Clone(Guid id, [FromBody] CloneRoleRequest request, CancellationToken cancellationToken)
+    {
+        var source = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken, r => r.Permissions);
+        if (source == null)
+            return NotFound();
+
+        var name = string.IsNullOrWhiteSpace(request.Name) ? $"{source.Name} (Copy)" : request.Name;
+        var clone = new Role(name, source.Description);
+        foreach (var rp in source.Permissions)
+            clone.AddPermission(rp.PermissionId);
+
+        await _unitOfWork.Roles.AddAsync(clone, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditLogService.LogAsync(
+            "Cloned",
+            nameof(Role),
+            clone.Id,
+            _currentUser.UserId ?? "system",
+            newValues: new { From = source.Name, name },
+            cancellationToken: cancellationToken);
+
+        return CreatedAtAction(nameof(GetById), new { id = clone.Id }, await MapToDto(clone, cancellationToken));
+    }
+
+    /// <summary>
+    /// Bulk-grant every page-scoped permission to a role in a single call (the
+    /// "grant all" editor helper). Existing grants are left untouched.
+    /// </summary>
+    [HttpPost("{id:guid}/permissions/all")]
+    public async Task<IActionResult> GrantAllPermissions(Guid id, CancellationToken cancellationToken)
+    {
+        var role = await _unitOfWork.Roles.GetByIdAsync(id, cancellationToken, r => r.Permissions);
+        if (role == null)
+            return NotFound();
+
+        var current = role.Permissions.Select(p => p.PermissionId).ToHashSet();
+        var all = (await _unitOfWork.Permissions.GetAllAsync(cancellationToken)).ToList();
+        var toAdd = all.Where(p => !current.Contains(p.Id)).Select(p => p.Id).ToList();
+        foreach (var pid in toAdd)
+            role.AddPermission(pid);
+
+        var added = toAdd.Count;
+        if (added > 0)
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditLogService.LogAsync(
+            "PermissionsGrantedAll",
+            nameof(Role),
+            role.Id,
+            _currentUser.UserId ?? "system",
+            newValues: new { added },
+            cancellationToken: cancellationToken);
+
+        return NoContent();
+    }
+
     private async Task<RoleDto> MapToDto(Role role, CancellationToken cancellationToken)
     {
         var permissionIds = role.Permissions.Select(p => p.PermissionId).ToHashSet();

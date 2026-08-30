@@ -109,8 +109,13 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [ ] Remaining: roll `[RequirePermission]` across all module endpoints (coarse role
       gates stay; permissions add fine-grained enforcement). Segregation-of-duties rules.
 
-### Phase 4 — Polish
-- [ ] Clone-role action
-- [ ] Bulk "grant module" / "grant all" helpers in the editor
-- [ ] Filter the matrix by module (UI)
-- [ ] Wire `usePagePermission` into individual page action buttons (e.g. New/Edit/Delete)
+### Phase 4 — Polish (DONE)
+- [x] **Clone-role action**: `POST /platform/roles/{id}/clone` copies name (`(Copy)` suffix unless overridden) + full permission set; frontend Clone button per role row.
+- [x] **Bulk helpers**: `POST /platform/roles/{id}/permissions/all` grants every page-scoped permission in one call; frontend "Grant all" / "Clear all" / per-module "grant" / "none" buttons in the matrix editor.
+- [x] **Module filter**: dropdown above the matrix filters the rendered modules (with per-module grant/none when "All modules").
+- [x] **usePagePermission wired into page action buttons**: `RolesPage` uses `usePagePermission('platform','roles')` to show/hide New (create), Edit, Clone (create), and Delete buttons. This is the canonical demo of button-level gating.
+- [x] Verified (live): clone returns `Tmp Clerk2 (Copy)` with copied perms; grant-all 204 (776 perms); limited `rbacviewer` 403 on clone (no CompanyAdminOrSuper). `tsc --noEmit` clean.
+
+### Phase 5 — optional follow-ups
+- [ ] Roll `[RequirePermission]` across all module endpoints (coarse role gates stay).
+- [ ] Segregation-of-duties enforcement (create ≠ approve same document).

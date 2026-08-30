@@ -23,6 +23,9 @@ public record UpdateRoleRequest(
     string Name,
     string Description);
 
+public record CloneRoleRequest(
+    string? Name);
+
 public record AssignPermissionRequest(
     Guid PermissionId);
 
