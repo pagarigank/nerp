@@ -40,7 +40,7 @@ DECLARE @acctSalesTax  UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000012'
 -- ---------------------------------------------------------------------
 -- 1. CHART OF ACCOUNTS (platform.Accounts mirrored into gl.Account)
 -- ---------------------------------------------------------------------
-IF NOT EXISTS (SELECT 1 FROM platform.Accounts WHERE Id = @acctCash)
+IF NOT EXISTS (SELECT 1 FROM platform.Accounts WHERE CompanyId = @co AND AccountNumber = '1000')
 BEGIN
     INSERT INTO platform.Accounts (Id, CompanyId, AccountNumber, Description, AccountType, NormalBalance, IsActive, CreatedBy, CreatedOn) VALUES
     (@acctCash,      @co, '1000', 'Cash',                       0, 0, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -64,7 +64,7 @@ BEGIN
 END
 
 -- Mirror into gl.Account (gl.JournalEntryLines.AccountId FK references gl.Account)
-IF NOT EXISTS (SELECT 1 FROM gl.Account WHERE Id = @acctCash)
+IF NOT EXISTS (SELECT 1 FROM gl.Account WHERE CompanyId = @co AND AccountNumber = '1000')
 BEGIN
     INSERT INTO gl.Account (Id, CompanyId, AccountNumber, Description, AccountType, NormalBalance, IsActive, CreatedBy, CreatedOn) VALUES
     (@acctCash,      @co, '1000', 'Cash',                       0, 0, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -115,18 +115,24 @@ IF NOT EXISTS (SELECT 1 FROM gl.Account WHERE CompanyId = @co AND AccountNumber 
 DECLARE @fyId UNIQUEIDENTIFIER = '20000000-0000-0000-0000-000000000002';
 DECLARE @curUsd UNIQUEIDENTIFIER = '10000000-0000-0000-0000-000000000001';
 
-IF NOT EXISTS (SELECT 1 FROM platform.FiscalYears WHERE Id = @fyId)
+IF NOT EXISTS (SELECT 1 FROM platform.FiscalYears WHERE CompanyId = @co AND [Year] = 2026)
 BEGIN
-    INSERT INTO platform.FiscalYears (Id, CompanyId, Year, Description, StartDate, EndDate, IsClosed, CreatedBy, CreatedOn)
-    VALUES (@fyId, @co, 2026, 'Fiscal Year 2026', '2026-01-01T00:00:00Z', '2026-12-31T00:00:00Z', 0, 'seed', SYSDATETIMEOFFSET());
+    SET @fyId = (SELECT Id FROM platform.FiscalYears WHERE CompanyId = @co AND [Year] = 2026);
+    IF @fyId IS NULL
+    BEGIN
+        SET @fyId = NEWID();
+        INSERT INTO platform.FiscalYears (Id, CompanyId, Year, Description, StartDate, EndDate, IsClosed, CreatedBy, CreatedOn)
+        VALUES (@fyId, @co, 2026, 'Fiscal Year 2026', '2026-01-01T00:00:00Z', '2026-12-31T00:00:00Z', 0, 'seed', SYSDATETIMEOFFSET());
+    END
 
     INSERT INTO platform.FiscalPeriods (Id, FiscalYearId, CompanyId, PeriodNumber, Description, StartDate, EndDate, Status, CreatedBy, CreatedOn)
     SELECT NEWID(), @fyId, @co, n, DATENAME(MONTH, DATEFROMPARTS(2026, n, 1)) + ' 2026',
            DATEFROMPARTS(2026, n, 1), EOMONTH(DATEFROMPARTS(2026, n, 1)), 0, 'seed', SYSDATETIMEOFFSET()
-    FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12)) AS m(n);
+    FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12)) AS m(n)
+    WHERE NOT EXISTS (SELECT 1 FROM platform.FiscalPeriods WHERE CompanyId = @co AND PeriodNumber = n);
 END
 
-IF NOT EXISTS (SELECT 1 FROM platform.Currencies WHERE Id = @curUsd)
+IF NOT EXISTS (SELECT 1 FROM platform.Currencies WHERE Code = 'USD')
 BEGIN
     INSERT INTO platform.Currencies (Id, Code, Name, Symbol, DecimalPlaces, IsActive, CreatedBy, CreatedOn) VALUES
     (@curUsd,                       'USD', 'US Dollar',       '$', 2, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -149,12 +155,14 @@ END
 DECLARE @ptNet30 UNIQUEIDENTIFIER = '50000000-0000-0000-0000-000000000001';
 DECLARE @ptNet15 UNIQUEIDENTIFIER = '50000000-0000-0000-0000-000000000002';
 
-IF NOT EXISTS (SELECT 1 FROM ap.PaymentTerms WHERE Id = @ptNet30)
+IF NOT EXISTS (SELECT 1 FROM ap.PaymentTerms WHERE Name = 'Net 30')
 BEGIN
     INSERT INTO ap.PaymentTerms (Id, Name, DueDays, DiscountDays, DiscountPercent, IsActive, CreatedBy, CreatedOn) VALUES
     (@ptNet30, 'Net 30', 30, 0, 0, 1, 'seed', SYSDATETIMEOFFSET()),
     (@ptNet15, 'Net 15', 15, 10, 2, 1, 'seed', SYSDATETIMEOFFSET());
 END
+SET @ptNet30 = ISNULL((SELECT Id FROM ap.PaymentTerms WHERE Name = 'Net 30'), @ptNet30);
+SET @ptNet15 = ISNULL((SELECT Id FROM ap.PaymentTerms WHERE Name = 'Net 15'), @ptNet15);
 
 IF NOT EXISTS (SELECT 1 FROM ap.Vendors WHERE VendorId = 'V-1001')
 BEGIN
@@ -173,16 +181,17 @@ DECLARE @taxStd UNIQUEIDENTIFIER = '60000000-0000-0000-0000-000000000001';
 DECLARE @custAcme UNIQUEIDENTIFIER = 'A0000000-0000-0000-0000-000000000001';
 DECLARE @custGlob UNIQUEIDENTIFIER = 'A0000000-0000-0000-0000-000000000002';
 
-IF NOT EXISTS (SELECT 1 FROM om.TaxCodes WHERE Id = @taxStd)
+IF NOT EXISTS (SELECT 1 FROM om.TaxCodes WHERE CompanyId = @co AND Code = 'STAX')
 BEGIN
     INSERT INTO om.TaxCodes (Id, CompanyId, Code, Description, Jurisdiction, Rate, IsTaxable, IsActive, CreatedBy, CreatedOn) VALUES
     (@taxStd, @co, 'STAX', 'Standard Sales Tax', 'US', 8.25, 1, 1, 'seed', SYSDATETIMEOFFSET()),
     ('60000000-0000-0000-0000-000000000002', @co, 'NTAX', 'No Tax', 'US', 0.00, 0, 1, 'seed', SYSDATETIMEOFFSET()),
     ('60000000-0000-0000-0000-000000000003', @co, 'RTAX', 'Reduced Tax', 'US', 5.00, 1, 1, 'seed', SYSDATETIMEOFFSET());
 END
+SET @taxStd = ISNULL((SELECT Id FROM om.TaxCodes WHERE CompanyId = @co AND Code = 'STAX'), @taxStd);
 DECLARE @terr1 UNIQUEIDENTIFIER = '62000000-0000-0000-0000-000000000001';
 DECLARE @terr2 UNIQUEIDENTIFIER = '62000000-0000-0000-0000-000000000002';
-IF NOT EXISTS (SELECT 1 FROM om.SalesTerritories WHERE Id = @terr1)
+IF NOT EXISTS (SELECT 1 FROM om.SalesTerritories WHERE CompanyId = @co AND Code = 'EAST')
 BEGIN
     INSERT INTO om.SalesTerritories (Id, CompanyId, Code, Name, Region, DefaultCommissionRate, IsActive, CreatedBy, CreatedOn) VALUES
     (@terr1, @co, 'EAST', 'East Region', 'East', 5.0, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -190,12 +199,15 @@ BEGIN
 END
 
 DECLARE @srep1 UNIQUEIDENTIFIER = '63000000-0000-0000-0000-000000000001';
-IF NOT EXISTS (SELECT 1 FROM om.SalesReps WHERE Id = @srep1)
+IF NOT EXISTS (SELECT 1 FROM om.SalesReps WHERE CompanyId = @co AND Code = 'SR01')
 BEGIN
     INSERT INTO om.SalesReps (Id, CompanyId, Code, Name, CommissionRate, TerritoryId, IsActive, Email, CreatedBy, CreatedOn) VALUES
     (@srep1, @co, 'SR01', 'Dale Cooper', 6.0, @terr1, 1, 'dale@erp.com', 'seed', SYSDATETIMEOFFSET()),
     ('63000000-0000-0000-0000-000000000002', @co, 'SR02', 'Laura Palmer', 5.5, @terr2, 1, 'laura@erp.com', 'seed', SYSDATETIMEOFFSET());
 END
+SET @srep1 = ISNULL((SELECT Id FROM om.SalesReps WHERE CompanyId = @co AND Code = 'SR01'), @srep1);
+SET @terr1 = ISNULL((SELECT Id FROM om.SalesTerritories WHERE CompanyId = @co AND Code = 'EAST'), @terr1);
+SET @terr2 = ISNULL((SELECT Id FROM om.SalesTerritories WHERE CompanyId = @co AND Code = 'WEST'), @terr2);
 
 IF NOT EXISTS (SELECT 1 FROM ar.Customers WHERE CustomerId = 'C-1001')
 BEGIN
@@ -206,6 +218,8 @@ BEGIN
     ('A0000000-0000-0000-0000-000000000004', @co, 'C-1004', 'Soylent Foods',  'Soylent Foods Inc',    '12-4444444', 75000,  0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
     ('A0000000-0000-0000-0000-000000000005', @co, 'C-1005', 'Hooli',          'Hooli Inc',            '12-5555555', 300000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET());
 END
+SET @custAcme = ISNULL((SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C-1001'), ISNULL((SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1001'), @custAcme));
+SET @custGlob = ISNULL((SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C-1002'), ISNULL((SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1002'), @custGlob));
 
 -- Repair-safe: ensure the legacy C-100x customers carry the correct CompanyId
 -- (an earlier 03 version omitted CompanyId, leaving them on the zero GUID).
@@ -244,7 +258,7 @@ DECLARE @itemB UNIQUEIDENTIFIER = '73000000-0000-0000-0007-000000000002';
 DECLARE @itemC UNIQUEIDENTIFIER = '73000000-0000-0000-0007-000000000003';
 DECLARE @itemD UNIQUEIDENTIFIER = '73000000-0000-0000-0007-000000000004';
 
-IF NOT EXISTS (SELECT 1 FROM inv.UnitOfMeasures WHERE Id = @uomEa)
+IF NOT EXISTS (SELECT 1 FROM inv.UnitOfMeasures WHERE CompanyId = @co AND Code = 'EA')
 BEGIN
     INSERT INTO inv.UnitOfMeasures (Id, CompanyId, Code, Description, BaseUOM, FactorToBase, IsActive, CreatedBy, CreatedOn) VALUES
     (@uomEa, @co, 'EA',  'Each',     'EA', 1.0, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -253,20 +267,21 @@ BEGIN
     ('70000000-0000-0000-0007-000000000004', @co, 'CS',  'Case (24 EA)','EA', 24.0, 1, 'seed', SYSDATETIMEOFFSET());
 END
 
-IF NOT EXISTS (SELECT 1 FROM inv.ItemCategories WHERE Id = @catProd)
+IF NOT EXISTS (SELECT 1 FROM inv.ItemCategories WHERE CompanyId = @co AND CategoryCode = 'PROD')
 BEGIN
     INSERT INTO inv.ItemCategories (Id, CategoryCode, CategoryName, CompanyId, InventoryAccountId, COGSAccountId, VarianceAccountId, Description, IsActive, CreatedBy, CreatedOn) VALUES
     (@catProd, 'PROD', 'Finished Goods',  @co, @acctInventory, @acctCOGS, @acctOtherExp, 'Manufactured / sold products', 1, 'seed', SYSDATETIMEOFFSET()),
     (@catComp, 'COMP', 'Components',      @co, @acctInventory, @acctCOGS, @acctOtherExp, 'Purchased components',        1, 'seed', SYSDATETIMEOFFSET());
 END
 
-IF NOT EXISTS (SELECT 1 FROM inv.Warehouses WHERE Id = @whMain)
+IF NOT EXISTS (SELECT 1 FROM inv.Warehouses WHERE CompanyId = @co AND WarehouseCode = 'WH-MAIN')
 BEGIN
     INSERT INTO inv.Warehouses (Id, WarehouseCode, WarehouseName, CompanyId, WarehouseType, Address, IsActive, CreatedBy, CreatedOn) VALUES
     (@whMain, 'WH-MAIN', 'Main Warehouse', @co, 0, '123 Logistics Way, Newark NJ', 1, 'seed', SYSDATETIMEOFFSET()),
     ('72000000-0000-0000-0007-000000000002', 'WH-WEST', 'West DC', @co, 0, '900 Market St, Los Angeles CA', 1, 'seed', SYSDATETIMEOFFSET()),
     ('72000000-0000-0000-0007-000000000003', 'WH-EAST', 'East DC', @co, 0, '5 Harbor Blvd, Boston MA', 1, 'seed', SYSDATETIMEOFFSET());
 END
+SET @whMain = ISNULL((SELECT Id FROM inv.Warehouses WHERE CompanyId = @co AND WarehouseCode = 'WH-MAIN'), @whMain);
 
 IF NOT EXISTS (SELECT 1 FROM inv.Items WHERE ItemCode = 'ITEM-1001')
 BEGIN
@@ -299,20 +314,30 @@ END
 -- 8. BOM: Work Centers + BOM Headers (parent = ITEM-1001, comps = X/Y)
 -- ---------------------------------------------------------------------
 DECLARE @wc1 UNIQUEIDENTIFIER = '80000000-0000-0000-0009-000000000001';
-IF NOT EXISTS (SELECT 1 FROM bom.WorkCenters WHERE Id = @wc1)
+IF NOT EXISTS (SELECT 1 FROM bom.WorkCenters WHERE CompanyId = @co AND Code = 'WC-ASSY')
 BEGIN
     INSERT INTO bom.WorkCenters (Id, CompanyId, Code, Name, Department, CapacityHoursPerDay, EfficiencyPercentage, CostRatePerHour, IsActive, CreatedBy, CreatedOn) VALUES
     (@wc1, @co, 'WC-ASSY', 'Assembly', 'Production', 16.0, 95.0, 45.00, 1, 'seed', SYSDATETIMEOFFSET()),
     ('80000000-0000-0000-0009-000000000002', @co, 'WC-PACK', 'Packaging', 'Production', 16.0, 98.0, 30.00, 1, 'seed', SYSDATETIMEOFFSET());
 END
+SET @itemA = ISNULL((SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1001'), @itemA);
+SET @itemB = ISNULL((SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1002'), @itemB);
+SET @itemC = ISNULL((SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1003'), @itemC);
+SET @itemD = ISNULL((SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1004'), @itemD);
+SET @uomEa = ISNULL((SELECT Id FROM inv.UnitOfMeasures WHERE CompanyId = @co AND Code = 'EA'), @uomEa);
+SET @uomLb = ISNULL((SELECT Id FROM inv.UnitOfMeasures WHERE CompanyId = @co AND Code = 'LB'), @uomLb);
+SET @catProd = ISNULL((SELECT Id FROM inv.ItemCategories WHERE CompanyId = @co AND CategoryCode = 'PROD'), @catProd);
+SET @catComp = ISNULL((SELECT Id FROM inv.ItemCategories WHERE CompanyId = @co AND CategoryCode = 'COMP'), @catComp);
+SET @wc1 = ISNULL((SELECT Id FROM bom.WorkCenters WHERE CompanyId = @co AND Code = 'WC-ASSY'), @wc1);
 
 DECLARE @bom1 UNIQUEIDENTIFIER = '81000000-0000-0000-0009-000000000001';
-IF NOT EXISTS (SELECT 1 FROM bom.BomHeaders WHERE Id = @bom1)
+IF NOT EXISTS (SELECT 1 FROM bom.BomHeaders WHERE CompanyId = @co AND Revision = 'A' AND ParentItemId = (SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1001'))
 BEGIN
     INSERT INTO bom.BomHeaders (Id, CompanyId, ParentItemId, Revision, Description, BomType, Status, YieldPercentage, EstimatedMaterialCost, EstimatedLaborCost, EstimatedOverheadCost, CreatedBy, CreatedOn) VALUES
     (@bom1, @co, @itemA, 'A', 'Widget A assembly', 0, 0, 100.0, 30.50, 12.00, 4.00, 'seed', SYSDATETIMEOFFSET()),
     ('81000000-0000-0000-0009-000000000002', @co, @itemB, 'A', 'Widget B assembly', 0, 0, 100.0, 36.00, 14.00, 5.00, 'seed', SYSDATETIMEOFFSET());
 END
+SET @bom1 = ISNULL((SELECT Id FROM bom.BomHeaders WHERE CompanyId = @co AND Revision = 'A' AND ParentItemId = (SELECT Id FROM inv.Items WHERE CompanyId = @co AND ItemCode = 'ITEM-1001')), @bom1);
 
 -- Component lines
 IF NOT EXISTS (SELECT 1 FROM bom.BomComponentLines WHERE BomHeaderId = @bom1)
@@ -359,7 +384,7 @@ DECLARE @payOT  UNIQUEIDENTIFIER = 'B0000000-0000-0000-000B-000000000002';
 DECLARE @emp1  UNIQUEIDENTIFIER = 'B1000000-0000-0000-000B-000000000001';
 DECLARE @emp2  UNIQUEIDENTIFIER = 'B1000000-0000-0000-000B-000000000002';
 
-IF NOT EXISTS (SELECT 1 FROM pay.PayCodes WHERE Id = @payReg)
+IF NOT EXISTS (SELECT 1 FROM pay.PayCodes WHERE CompanyId = @co AND Code = 'REG')
 BEGIN
     INSERT INTO pay.PayCodes (Id, CompanyId, Code, Description, Type, GlAccountNumber, IsOvertime, CountsAsHoursWorked, CreatedBy, CreatedOn) VALUES
     (@payReg, @co, 'REG', 'Regular Wages', 0, '6000', 0, 1, 'seed', SYSDATETIMEOFFSET()),
@@ -381,18 +406,20 @@ BEGIN
     (NEWID(), @emp2, @payOT,  78.00, 1, 'seed', SYSDATETIMEOFFSET()),
     (NEWID(), 'B1000000-0000-0000-000B-000000000003', @payReg, 38.00, 1, 'seed', SYSDATETIMEOFFSET());
 END
+SET @payReg = ISNULL((SELECT Id FROM pay.PayCodes WHERE CompanyId = @co AND Code = 'REG'), @payReg);
 
 -- ---------------------------------------------------------------------
 -- 11. FIELD SERVICE: Territories, SLAs, Rate Cards, Skills, Technicians,
 --     Equipment, Service Contracts
 -- ---------------------------------------------------------------------
 DECLARE @ster1 UNIQUEIDENTIFIER = 'C0000000-0000-0000-000C-000000000001';
-IF NOT EXISTS (SELECT 1 FROM fs.ServiceTerritories WHERE Id = @ster1)
+IF NOT EXISTS (SELECT 1 FROM fs.ServiceTerritories WHERE CompanyId = @co AND Code = 'ST-EAST')
 BEGIN
     INSERT INTO fs.ServiceTerritories (Id, CompanyId, Code, Name, Region, ZipCoverage, TravelCostPerMile, CreatedBy, CreatedOn) VALUES
     (@ster1, @co, 'ST-EAST', 'East Service Territory', 'East', '10001-11999', 0.65, 'seed', SYSDATETIMEOFFSET()),
     ('C0000000-0000-0000-000C-000000000002', @co, 'ST-WEST', 'West Service Territory', 'West', '90001-99999', 0.70, 'seed', SYSDATETIMEOFFSET());
 END
+SET @ster1 = ISNULL((SELECT Id FROM fs.ServiceTerritories WHERE CompanyId = @co AND Code = 'ST-EAST'), @ster1);
 
 IF NOT EXISTS (SELECT 1 FROM fs.SlaDefinitions WHERE Name = 'Standard Response')
 BEGIN
