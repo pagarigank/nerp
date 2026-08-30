@@ -67,7 +67,7 @@ public class ReportController : ControllerBase
             currencies.Select(c => new CurrencyDto(c.Id, c.Code, c.Name, c.Symbol, c.DecimalPlaces, c.IsActive, c.CreatedOn, c.ModifiedOn)).ToList(),
             numberSequences.Select(ns => new NumberSequenceDto(ns.Id, ns.CompanyId, ns.Name, ns.Prefix, ns.NextValue, ns.Increment, ns.MinValue, ns.MaxValue, ns.IsActive, ns.CreatedOn, ns.ModifiedOn)).ToList(),
             users.Select(u => new UserDto(u.Id, u.Username, u.Email, u.DisplayName, u.PhoneNumber, u.IsActive, u.LastLoginAt, u.CreatedOn, u.ModifiedOn, Array.Empty<UserRoleAssignmentDto>())).ToList(),
-            roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn)).ToList(),
+            roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn, Array.Empty<PermissionDto>())).ToList(),
             DateTimeOffset.UtcNow));
     }
 
@@ -176,7 +176,7 @@ public class ReportController : ControllerBase
                 r.IsActive,
                 permissions
                     .Where(p => rolePermissionsList.Any(rp => rp.RoleId == r.Id && rp.PermissionId == p.Id))
-                    .Select(p => new PermissionDto(p.Id, p.Module, p.Action, p.Description))
+                    .Select(p => new PermissionDto(p.Id, p.Module, p.Page, p.Action, p.Code, p.Description))
                     .ToList()))
             .ToList();
 
@@ -193,9 +193,9 @@ public class ReportController : ControllerBase
         return Ok(new SecurityMatrixReportDto(
             companyId,
             company.Name,
-            roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn)).ToList(),
+            roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn, Array.Empty<PermissionDto>())).ToList(),
             users.Select(u => new UserDto(u.Id, u.Username, u.Email, u.DisplayName, u.PhoneNumber, u.IsActive, u.LastLoginAt, u.CreatedOn, u.ModifiedOn, Array.Empty<UserRoleAssignmentDto>())).ToList(),
-            permissions.Select(p => new PermissionDto(p.Id, p.Module, p.Action, p.Description)).ToList(),
+            permissions.Select(p => new PermissionDto(p.Id, p.Module, p.Page, p.Action, p.Code, p.Description)).ToList(),
             rolePermissions,
             userRoles,
             DateTimeOffset.UtcNow));

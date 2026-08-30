@@ -273,6 +273,16 @@ export interface Role {
   isActive: boolean
   createdOn: string
   modifiedOn?: string | null
+  permissions?: PermissionRef[]
+}
+
+export interface PermissionRef {
+  id: string
+  module: string
+  page: string
+  action: string
+  code: string
+  description: string
 }
 
 export interface CreateRoleRequest {
@@ -283,6 +293,46 @@ export interface CreateRoleRequest {
 export interface UpdateRoleRequest {
   name: string
   description: string
+}
+
+// --- RBAC page×action matrix (role editor) ---
+
+export interface CatalogAction {
+  action: string
+  label: string
+}
+
+export interface CatalogPage {
+  page: string
+  label: string
+  actions: CatalogAction[]
+}
+
+export interface CatalogModule {
+  module: string
+  label: string
+  pages: CatalogPage[]
+}
+
+export interface RoleMatrixPage {
+  page: string
+  label: string
+  view: boolean
+  create: boolean
+  edit: boolean
+  delete: boolean
+}
+
+export interface RoleMatrixModule {
+  module: string
+  label: string
+  pages: RoleMatrixPage[]
+}
+
+export interface RoleMatrix {
+  roleId: string
+  roleName: string
+  modules: RoleMatrixModule[]
 }
 
 export interface AuditLog {

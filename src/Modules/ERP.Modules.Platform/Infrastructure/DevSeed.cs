@@ -2,6 +2,7 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using ERP.Modules.Platform.Domain;
 using ERP.Modules.Platform.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,34 +28,51 @@ public static class DevSeed
         // Ensure the schema exists (migrations are applied on startup in Dev).
         await db.Database.EnsureCreatedAsync(cancellationToken);
 
-        // --- Permissions: common module/action permissions + wildcard ---
-        var modules = new[] { "platform", "gl", "ap", "ar", "cash", "pur", "inv", "om" };
+        // --- Permissions: page-scoped catalog (module.page.action) + legacy module.action + wildcard ---
+        var modules = new[] { "platform", "gl", "ap", "ar", "cash", "pur", "inv", "om", "bom", "proj", "pay", "fs", "rpt", "int" };
         var actions = new[] { "view", "create", "edit", "delete", "post", "approve" };
 
         var existingPermissions = await db.Permissions
-            .Select(p => (p.Module + "." + p.Action).ToUpperInvariant())
+            .Select(p => (p.Module + "." + p.Page + "." + p.Action).ToUpperInvariant())
             .ToListAsync(cancellationToken);
 
-        var wantedPermissions = new List<(string Module, string Action, string Description)>();
+        var wantedPermissions = new List<(string Module, string Page, string Action, string Code, string Description)>();
         foreach (var m in modules)
         {
             foreach (var a in actions)
             {
-                wantedPermissions.Add((m, a, $"{m} {a}"));
+                wantedPermissions.Add((m, "*", a, $"{m}.*.{a}", $"{m} {a}"));
             }
         }
 
-        wantedPermissions.Add(("*", "*", "Full access"));
+        // Page-scoped permissions from the catalog (module.page.action).
+        foreach (var mod in PermissionCatalog.Modules)
+        {
+            foreach (var page in mod.Pages)
+            {
+                foreach (var a in PermissionCatalog.Actions)
+                {
+                    wantedPermissions.Add((
+                        mod.Module,
+                        page.Page,
+                        a,
+                        $"{mod.Module}.{page.Page}.{a}",
+                        $"{page.Label} - {a}"));
+                }
+            }
+        }
+
+        wantedPermissions.Add(("*", "*", "*", "*.*.*", "Full access"));
 
         var missing = wantedPermissions
-            .Where(w => !existingPermissions.Contains((w.Module + "." + w.Action).ToUpperInvariant()))
+            .Where(w => !existingPermissions.Contains((w.Module + "." + w.Page + "." + w.Action).ToUpperInvariant()))
             .ToList();
 
         if (missing.Count > 0)
         {
             foreach (var w in missing)
             {
-                db.Permissions.Add(new Permission(w.Module, w.Action, w.Description));
+                db.Permissions.Add(new Permission(w.Module, w.Page, w.Action, w.Code, w.Description));
             }
 
             await db.SaveChangesAsync(cancellationToken);

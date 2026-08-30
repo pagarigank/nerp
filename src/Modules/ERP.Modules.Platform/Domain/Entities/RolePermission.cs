@@ -19,4 +19,9 @@ public class RolePermission : Entity
     public Guid RoleId { get; private set; }
 
     public Guid PermissionId { get; private set; }
+
+    /// <summary>Navigation to the granted permission (populated via Include).</summary>
+#pragma warning disable S1144 // private setter used by EF Core materialization
+    public Permission? Permission { get; private set; }
+#pragma warning restore S1144
 }

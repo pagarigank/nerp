@@ -182,10 +182,10 @@ public class PlatformDbContext : DispatchableDbContext
         modelBuilder.Entity<Permission>(e =>
         {
             e.HasKey(x => x.Id);
-            e.Property(x => x.Module).HasMaxLength(50).IsRequired();
-            e.Property(x => x.Action).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Page).HasMaxLength(256).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(256).IsRequired();
             e.Property(x => x.Description).HasMaxLength(200).IsRequired();
-            e.HasIndex(x => new { x.Module, x.Action }).IsUnique();
+            e.HasIndex(x => x.Code).IsUnique();
         });
 
         modelBuilder.Entity<RolePermission>(e =>

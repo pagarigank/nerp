@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, Pencil, Trash2, AlertCircle } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, AlertCircle, ShieldCheck } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
 import { Input, Textarea } from '@components/ui/Input'
@@ -11,8 +11,8 @@ import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getRoles, createRole, updateRole, deleteRole } from '@api/platform'
-import type { Role } from '@/types/platform'
+import { getRoles, createRole, updateRole, deleteRole, getPermissionCatalog, getAllPermissions, getRoleMatrix, setRolePermissions } from '@api/platform'
+import type { Role, CatalogModule, PermissionRef } from '@/types/platform'
 
 const roleSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -20,6 +20,15 @@ const roleSchema = z.object({
 })
 
 type RoleForm = z.infer<typeof roleSchema>
+
+const ACTIONS = ['view', 'create', 'edit', 'delete'] as const
+type Action = (typeof ACTIONS)[number]
+const ACTION_LABELS: Record<Action, string> = { view: 'View', create: 'Create', edit: 'Edit', delete: 'Delete' }
+
+// Build the stable permission code the backend uses: "{module}.{page}.{action}".
+function codeFor(module: string, page: string, action: Action): string {
+  return `${module}.${page}.${action}`
+}
 
 function fieldError(message: string | undefined): { error?: string } {
   return message ? { error: message } : {}
@@ -32,6 +41,9 @@ export function RolesPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Permission selection state for the matrix editor, keyed by code.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const {
     register,
@@ -47,6 +59,25 @@ export function RolesPage() {
     queryKey: ['platform', 'roles'],
     queryFn: getRoles,
   })
+
+  // Catalog (module -> pages -> actions) + the full permission id map (code -> id).
+  const { data: catalog = [] } = useQuery({
+    queryKey: ['platform', 'permission-catalog'],
+    queryFn: getPermissionCatalog,
+    enabled: isModalOpen,
+  })
+  const { data: allPermissions = [] } = useQuery({
+    queryKey: ['platform', 'permissions'],
+    queryFn: getAllPermissions,
+    enabled: isModalOpen,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const codeToId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of allPermissions as PermissionRef[]) map.set(p.code, p.id)
+    return map
+  }, [allPermissions])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['platform', 'roles'] })
@@ -71,6 +102,11 @@ export function RolesPage() {
     onError: err => setFormError(getErrorMessage(err)),
   })
 
+  const savePermsMutation = useMutation({
+    mutationFn: ({ id, ids }: { id: string; ids: string[] }) => setRolePermissions(id, ids),
+    onError: err => setFormError(getErrorMessage(err)),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: deleteRole,
     onSuccess: () => {
@@ -83,6 +119,7 @@ export function RolesPage() {
   const openCreateForm = () => {
     setEditingRole(null)
     setFormError(null)
+    setSelected(new Set())
     reset({ name: '', description: '' })
     setIsModalOpen(true)
   }
@@ -92,30 +129,76 @@ export function RolesPage() {
     setFormError(null)
     reset({ name: role.name, description: role.description })
     setIsModalOpen(true)
+    // Load the role's current grants into the matrix.
+    getRoleMatrix(role.id)
+      .then(matrix => {
+        const next = new Set<string>()
+        for (const mod of matrix.modules) {
+          for (const page of mod.pages) {
+            if (page.view) next.add(codeFor(mod.module, page.page, 'view'))
+            if (page.create) next.add(codeFor(mod.module, page.page, 'create'))
+            if (page.edit) next.add(codeFor(mod.module, page.page, 'edit'))
+            if (page.delete) next.add(codeFor(mod.module, page.page, 'delete'))
+          }
+        }
+        setSelected(next)
+      })
+      .catch(() => setSelected(new Set()))
   }
 
   const closeForm = () => {
     setIsModalOpen(false)
     setEditingRole(null)
     setFormError(null)
+    setSelected(new Set())
+  }
+
+  const toggle = (code: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
   }
 
   const onSubmit = (data: RoleForm) => {
     setFormError(null)
+    const ids = Array.from(selected)
+      .map(code => codeToId.get(code))
+      .filter((id): id is string => !!id)
+
+    const afterSaved = (roleId: string) => {
+      savePermsMutation.mutate(
+        { id: roleId, ids },
+        {
+          onSuccess: () => {
+            invalidate()
+            closeForm()
+          },
+        },
+      )
+    }
+
     if (editingRole) {
-      updateMutation.mutate({ id: editingRole.id, data })
+      updateMutation.mutate(
+        { id: editingRole.id, data },
+        { onSuccess: (r) => afterSaved(r.id) },
+      )
       return
     }
-    createMutation.mutate(data)
+    createMutation.mutate(data, { onSuccess: (r) => afterSaved(r.id) })
   }
 
   const filteredRoles = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return roles
     return roles.filter(
-      r => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)
+      r => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q),
     )
   }, [roles, search])
+
+  const saving = createMutation.isPending || updateMutation.isPending || savePermsMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -212,17 +295,13 @@ export function RolesPage() {
         onClose={closeForm}
         title={editingRole ? 'Edit Role' : 'New Role'}
         description={editingRole ? `Update ${editingRole.name}` : 'Add a new security role'}
-        size="md"
+        size="xl"
         footer={
           <>
-            <Button variant="secondary" onClick={closeForm} disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button variant="secondary" onClick={closeForm} disabled={saving}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleSubmit(onSubmit)}
-              isLoading={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button variant="primary" onClick={handleSubmit(onSubmit)} isLoading={saving}>
               {editingRole ? 'Save Changes' : 'Create Role'}
             </Button>
           </>
@@ -243,6 +322,61 @@ export function RolesPage() {
             {...fieldError(errors.description?.message)}
             required
           />
+
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="h-4 w-4 text-indigo-500" aria-hidden="true" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                Page Permissions
+              </h3>
+              <span className="text-xs text-gray-400">View · Create · Edit · Delete per page</span>
+            </div>
+
+            {catalog.length === 0 ? (
+              <p className="text-sm text-gray-500">Loading pages…</p>
+            ) : (
+              <div className="max-h-[50vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/60">
+                {(catalog as CatalogModule[]).map(mod => (
+                  <div key={mod.module} className="p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                      {mod.label}
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-400">
+                          <th className="py-1 font-medium">Page</th>
+                          {ACTIONS.map(a => (
+                            <th key={a} className="py-1 font-medium text-center w-16">{ACTION_LABELS[a]}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mod.pages.map(page => (
+                          <tr key={page.page} className="border-t border-gray-100 dark:border-gray-700/40">
+                            <td className="py-1 pr-2 text-gray-700 dark:text-gray-300">{page.label}</td>
+                            {ACTIONS.map(a => {
+                              const code = codeFor(mod.module, page.page, a)
+                              return (
+                                <td key={a} className="py-1 text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    checked={selected.has(code)}
+                                    onChange={() => toggle(code)}
+                                    aria-label={`${page.label} - ${ACTION_LABELS[a]}`}
+                                  />
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </form>
       </Modal>
 

@@ -56,6 +56,8 @@ import type {
   HolidayCalendarEntry,
   CreateHolidayCalendarRequest,
   UpdateHolidayCalendarRequest,
+  CatalogModule,
+  RoleMatrix,
 } from '@/types/platform'
 import { useAuthStore } from '@stores/authStore'
 import { get, post, put, del } from './client'
@@ -262,6 +264,22 @@ export function assignRolePermission(id: string, permissionId: string): Promise<
 
 export function removeRolePermission(id: string, permissionId: string): Promise<void> {
   return del(`/platform/roles/${id}/permissions/${permissionId}`)
+}
+
+export function getPermissionCatalog(): Promise<CatalogModule[]> {
+  return get('/platform/roles/catalog')
+}
+
+export function getAllPermissions(): Promise<PermissionRef[]> {
+  return get('/platform/permissions')
+}
+
+export function getRoleMatrix(id: string): Promise<RoleMatrix> {
+  return get(`/platform/roles/${id}/matrix`)
+}
+
+export function setRolePermissions(id: string, permissionIds: string[]): Promise<void> {
+  return put(`/platform/roles/${id}/permissions`, { permissionIds })
 }
 
 export function getAuditLogsByEntity(entityType: string, entityId: string): Promise<AuditLog[]> {
