@@ -8,6 +8,7 @@ using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Platform.Api;
 
@@ -20,12 +21,14 @@ public class RoleController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ICurrentUserService _currentUser;
+    private readonly PlatformDbContext _db;
 
-    public RoleController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, ICurrentUserService currentUser)
+    public RoleController(IUnitOfWork unitOfWork, IAuditLogService auditLogService, ICurrentUserService currentUser, PlatformDbContext db)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+        _db = db ?? throw new ArgumentNullException(nameof(db));
     }
 
     [HttpGet]
@@ -208,7 +211,22 @@ public class RoleController : ControllerBase
         if (source == null)
             return NotFound();
 
-        var name = string.IsNullOrWhiteSpace(request.Name) ? $"{source.Name} (Copy)" : request.Name;
+        // Role.Name is unique (soft-deleted rows still occupy the name), so derive
+        // a name that does not collide with ANY existing role, including soft-deleted.
+        var desired = string.IsNullOrWhiteSpace(request.Name) ? $"{source.Name} (Copy)" : request.Name;
+        var existingNames = (await _db.Roles
+            .IgnoreQueryFilters()
+            .Select(r => r.Name)
+            .ToListAsync(cancellationToken))
+            .ToHashSet();
+        var name = desired;
+        var n = 2;
+        while (existingNames.Contains(name))
+        {
+            name = $"{desired} {n}";
+            n++;
+        }
+
         var clone = new Role(name, source.Description);
         foreach (var rp in source.Permissions)
             clone.AddPermission(rp.PermissionId);

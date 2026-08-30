@@ -115,6 +115,7 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [x] **Module filter**: dropdown above the matrix filters the rendered modules (with per-module grant/none when "All modules").
 - [x] **usePagePermission wired into page action buttons**: `RolesPage` uses `usePagePermission('platform','roles')` to show/hide New (create), Edit, Clone (create), and Delete buttons. This is the canonical demo of button-level gating.
 - [x] Verified (live): clone returns `Tmp Clerk2 (Copy)` with copied perms; grant-all 204 (776 perms); limited `rbacviewer` 403 on clone (no CompanyAdminOrSuper). `tsc --noEmit` clean.
+- [x] **Bugfix (post-commit)**: clone 500'd with `IX_Roles_Name` duplicate when a `(Copy)` name already existed (incl. soft-deleted rows, which the repo's `GetAllAsync` filters out but the unique index still enforces). `Clone` now reads all role names via `PlatformDbContext.Roles.IgnoreQueryFilters()` and derives a guaranteed-unique name (`(Copy)`, `(Copy) 2`, …). Verified: repeated clones get distinct names, no 500.
 
 ### Phase 5 — optional follow-ups
 - [ ] Roll `[RequirePermission]` across all module endpoints (coarse role gates stay).
