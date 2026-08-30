@@ -8,8 +8,6 @@ import { LoadingOverlay } from '@components/ui/LoadingSpinner'
 import { useAuth } from '@stores/authStore'
 import { useAuthStore } from '@stores/authStore'
 
-const companyId = '00000000-0000-0000-0000-000000000001'
-
 async function apiFetch<T>(url: string): Promise<T | null> {
   try {
     const token = useAuthStore.getState().accessToken
@@ -54,6 +52,7 @@ export function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
+    const companyId = useAuthStore.getState().currentCompany?.id ?? '00000000-0000-0000-0000-000000000001'
     const [c, p, b, ba, v, cu, it, pr, em, wo, al] = await Promise.all([
       apiFetch<{ data: Company[] } | Company[]>('/api/v1/platform/companies'),
       apiFetch<{ data: FiscalPeriod[] } | FiscalPeriod[]>('/api/v1/platform/fiscal-periods'),
