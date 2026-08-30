@@ -199,13 +199,19 @@ END
 
 IF NOT EXISTS (SELECT 1 FROM ar.Customers WHERE CustomerId = 'C-1001')
 BEGIN
-    INSERT INTO ar.Customers (Id, CustomerId, Name, LegalName, TaxId, CreditLimit, CreditHoldDays, DefaultPaymentTermId, TaxExempt, CurrencyCode, IsActive, SalesRepId, TaxCodeId, CreatedBy, CreatedOn) VALUES
-    (@custAcme, 'C-1001', 'Acme Industries',  'Acme Industries Inc.',  '12-1111111', 100000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
-    (@custGlob, 'C-1002', 'Globex Corporation','Globex Corp',          '12-2222222', 250000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', GETDATE()),
-    ('A0000000-0000-0000-0000-000000000003', 'C-1003', 'Initech LLC',    'Initech LLC',          '12-3333333', 50000,  30, @ptNet15, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
-    ('A0000000-0000-0000-0000-000000000004', 'C-1004', 'Soylent Foods',  'Soylent Foods Inc',    '12-4444444', 75000,  0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
-    ('A0000000-0000-0000-0000-000000000005', 'C-1005', 'Hooli',          'Hooli Inc',            '12-5555555', 300000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET());
+    INSERT INTO ar.Customers (Id, CompanyId, CustomerId, Name, LegalName, TaxId, CreditLimit, CreditHoldDays, DefaultPaymentTermId, TaxExempt, CurrencyCode, IsActive, SalesRepId, TaxCodeId, CreatedBy, CreatedOn) VALUES
+    (@custAcme, @co, 'C-1001', 'Acme Industries',  'Acme Industries Inc.',  '12-1111111', 100000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
+    (@custGlob, @co, 'C-1002', 'Globex Corporation','Globex Corp',          '12-2222222', 250000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', GETDATE()),
+    ('A0000000-0000-0000-0000-000000000003', @co, 'C-1003', 'Initech LLC',    'Initech LLC',          '12-3333333', 50000,  30, @ptNet15, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
+    ('A0000000-0000-0000-0000-000000000004', @co, 'C-1004', 'Soylent Foods',  'Soylent Foods Inc',    '12-4444444', 75000,  0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET()),
+    ('A0000000-0000-0000-0000-000000000005', @co, 'C-1005', 'Hooli',          'Hooli Inc',            '12-5555555', 300000, 0, @ptNet30, 0, 'USD', 1, @srep1, @taxStd, 'seed', SYSDATETIMEOFFSET());
 END
+
+-- Repair-safe: ensure the legacy C-100x customers carry the correct CompanyId
+-- (an earlier 03 version omitted CompanyId, leaving them on the zero GUID).
+UPDATE ar.Customers SET CompanyId = @co
+WHERE CompanyId = '00000000-0000-0000-0000-000000000000'
+  AND CustomerId IN ('C-1001','C-1002','C-1003','C-1004','C-1005');
 
 -- ---------------------------------------------------------------------
 -- 5. CASH: Bank Accounts
@@ -217,6 +223,13 @@ BEGIN
     (NEWID(), @co, 'BANK-02', 'Payroll Checking',   '00002222', '021000021', 'First National', 'USD', 0, 100000.00, 100000.00, @acctCash, 0, 'seed', SYSDATETIMEOFFSET()),
     (NEWID(), @co, 'BANK-03', 'Savings',            '00003333', '021000021', 'First National', 'USD', 1, 250000.00, 250000.00, @acctCash, 0, 'seed', SYSDATETIMEOFFSET());
 END
+
+-- Repair-safe: realign bank GL links to the actual Cash account (a prior run may
+-- have left NULL or a dangling GlAccountId on BANK-01/02/03 or other US banks).
+DECLARE @usCash UNIQUEIDENTIFIER = (SELECT Id FROM platform.Accounts WHERE CompanyId = @co AND AccountNumber = '1000');
+IF @usCash IS NOT NULL
+    UPDATE cash.BankAccounts SET GlAccountId = @usCash
+    WHERE CompanyId = @co AND (GlAccountId IS NULL OR NOT EXISTS (SELECT 1 FROM platform.Accounts a WHERE a.Id = GlAccountId));
 
 -- ---------------------------------------------------------------------
 -- 6. INVENTORY: UoM, Categories, Warehouses, Items
@@ -312,6 +325,16 @@ END
 -- ---------------------------------------------------------------------
 -- 9. PROJECT: Projects + Tasks
 -- ---------------------------------------------------------------------
+-- Repair-safe: unconditionally relink PRJ-001/PRJ-002 to the per-company
+-- C1001/C1002 customers (re-resolved by code) so legacy fixed-GUID links
+-- left by older seed versions are corrected on every run.
+SET @custAcme = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1001');
+IF @custAcme IS NULL SET @custAcme = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C-1001');
+SET @custGlob = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1002');
+IF @custGlob IS NULL SET @custGlob = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C-1002');
+UPDATE proj.Projects SET CustomerId = @custAcme WHERE CompanyId = @co AND ProjectCode = 'PRJ-001' AND @custAcme IS NOT NULL;
+UPDATE proj.Projects SET CustomerId = @custGlob WHERE CompanyId = @co AND ProjectCode = 'PRJ-002' AND @custGlob IS NOT NULL;
+
 DECLARE @proj1 UNIQUEIDENTIFIER = '90000000-0000-0000-000A-000000000001';
 IF NOT EXISTS (SELECT 1 FROM proj.Projects WHERE ProjectCode = 'PRJ-001')
 BEGIN
@@ -343,7 +366,7 @@ BEGIN
     (@payOT,  @co, 'OT',  'Overtime Wages',0, '6000', 1, 1, 'seed', SYSDATETIMEOFFSET());
 END
 
-IF NOT EXISTS (SELECT 1 FROM pay.Employees WHERE EmployeeCode = 'HerMES')
+IF NOT EXISTS (SELECT 1 FROM pay.Employees WHERE Id = @emp1 OR EmployeeCode = 'E0001')
 BEGIN
     INSERT INTO pay.Employees (Id, CompanyId, EmployeeCode, FirstName, LastName, EmploymentType, Status, HireDate, Email, DefaultProjectId, AllocationPercentage, IsBillable, CreatedBy, CreatedOn) VALUES
     (@emp1, @co, 'E0001', 'Alice', 'Nguyen',  0, 0, '2024-01-15T00:00:00Z', 'alice@erp.com',  @proj1, 100.0, 1, 'seed', SYSDATETIMEOFFSET()),

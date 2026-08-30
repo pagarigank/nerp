@@ -52,7 +52,8 @@ DECLARE @Tenants TABLE (
 INSERT @Tenants (Id, TenantCode, Name, LegalName, Currency, TaxId, Address) VALUES
     ('11111111-1111-1111-1111-111111111111', 'US',  'US Operations',    'ERP US Operations Inc.',     'USD', '12-3456789', '123 Main St, New York, NY'),
     (NEWID(),                                 'EU',  'EU Operations',    'ERP EU Operations GmbH',      'EUR', 'EU-9876543', 'Berlinstrasse 1, Berlin, DE'),
-    (NEWID(),                                 'APAC','APAC Operations',  'ERP APAC Operations Pte Ltd', 'USD', 'APAC-1122',  '10 Marina Blvd, Singapore');
+    (NEWID(),                                 'APAC','APAC Operations',  'ERP APAC Operations Pte Ltd', 'USD', 'APAC-1122',  '10 Marina Blvd, Singapore'),
+    (NEWID(),                                 'CA',  'Canada Operations','ERP Canada Operations Ltd.',  'CAD', '98-7654321', '456 Queen St, Toronto, ON'); -- company row already exists (DevSeed); reuses Id by Name
 
 -- Ensure each tenant company row exists (idempotent by Name; reuse existing Id).
 DECLARE @tId UNIQUEIDENTIFIER, @tCode NVARCHAR(10), @tName NVARCHAR(120),
@@ -288,6 +289,11 @@ BEGIN
     SET @taxNone = (SELECT Id FROM om.TaxCodes WHERE CompanyId = @co AND Code = 'NTAX');
     SET @taxRed  = (SELECT Id FROM om.TaxCodes WHERE CompanyId = @co AND Code = 'RTAX');
 
+    -- Repair-safe: if a prior (older) seed version inserted these tax codes with a
+    -- different Guid, realign any references. (TaxCodes are company-scoped here.)
+    UPDATE ar.Customers SET TaxCodeId = @taxStd WHERE CompanyId = @co AND TaxCodeId IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM om.TaxCodes t WHERE t.Id = TaxCodeId);
+
     IF NOT EXISTS (SELECT 1 FROM om.SalesTerritories WHERE CompanyId = @co AND Code = 'EAST')
     BEGIN
         INSERT INTO om.SalesTerritories (Id, CompanyId, Code, Name, Region, DefaultCommissionRate, IsActive, CreatedBy, CreatedOn) VALUES
@@ -410,6 +416,14 @@ BEGIN
     SET @bom2 = (SELECT Id FROM bom.BomHeaders WHERE CompanyId = @co AND ParentItemId = @itemB AND Revision = 'A');
 
     -- ---- PROJECT: Projects + tasks ----
+    -- Repair-safe: unconditionally relink PRJ-001/PRJ-002 to the per-company
+    -- C1001/C1002 customers (re-resolved by code) so legacy fixed-GUID links
+    -- left by older seed versions are corrected on every run.
+    SET @custAcme = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1001');
+    SET @custGlob = (SELECT Id FROM ar.Customers WHERE CompanyId = @co AND CustomerId = 'C1002');
+    UPDATE proj.Projects SET CustomerId = @custAcme WHERE CompanyId = @co AND ProjectCode = 'PRJ-001' AND @custAcme IS NOT NULL;
+    UPDATE proj.Projects SET CustomerId = @custGlob WHERE CompanyId = @co AND ProjectCode = 'PRJ-002' AND @custGlob IS NOT NULL;
+
     IF NOT EXISTS (SELECT 1 FROM proj.Projects WHERE CompanyId = @co AND ProjectCode = 'PRJ-001')
     BEGIN
         INSERT INTO proj.Projects (Id, CompanyId, ProjectCode, Name, Description, ProjectType, [Status], CustomerId, ProjectManager, ContractValue, OriginalBudget, RevisedBudget, CostsToDate, RevenueToDate, PercentComplete, RetainagePercentage, RetainageHeld, IsBilled, IsClosed, ContingencyAmount, ReleasedContingency, ExchangeRate, BillingHold, AccountingMethod, AccruedLoss, CreatedBy, CreatedOn) VALUES
@@ -497,7 +511,18 @@ BEGIN
         (@v5, @co, 'V1005', 'TechParts Direct',    'TechParts Direct LLC',    '45-5555555', @ptNet15, 1, 0, 0, 'seed', SYSDATETIMEOFFSET());
     END
 
-    -- Technicians reference employees (per company).
+    -- Technicians reference employees (per company). Re-resolve to actual rows first.
+    SET @emp1 = (SELECT Id FROM pay.Employees WHERE CompanyId = @co AND EmployeeCode = 'E0001');
+    SET @emp2 = (SELECT Id FROM pay.Employees WHERE CompanyId = @co AND EmployeeCode = 'E0002');
+    SET @ster1 = (SELECT Id FROM fs.ServiceTerritories WHERE CompanyId = @co AND Code = 'ST-EAST');
+    -- Repair-safe: realign technician employee/territory links left dangling by older seed versions.
+    UPDATE fs.Technicians SET EmployeeId = @emp1 WHERE CompanyId = @co AND Code = 'TECH-01'
+        AND (@emp1 IS NOT NULL AND (EmployeeId IS NULL OR NOT EXISTS (SELECT 1 FROM pay.Employees e WHERE e.Id = EmployeeId)));
+    UPDATE fs.Technicians SET EmployeeId = @emp2 WHERE CompanyId = @co AND Code = 'TECH-02'
+        AND (@emp2 IS NOT NULL AND (EmployeeId IS NULL OR NOT EXISTS (SELECT 1 FROM pay.Employees e WHERE e.Id = EmployeeId)));
+    UPDATE fs.Technicians SET DefaultTerritoryId = @ster1 WHERE CompanyId = @co AND DefaultTerritoryId IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM fs.ServiceTerritories t WHERE t.Id = DefaultTerritoryId);
+
     IF NOT EXISTS (SELECT 1 FROM fs.Technicians WHERE CompanyId = @co AND Code = 'TECH-01')
     BEGIN
         INSERT INTO fs.Technicians (Id, CompanyId, EmployeeId, Code, FirstName, LastName, DefaultTerritoryId, [Status], Email, Phone, HourlyRate, CreatedBy, CreatedOn) VALUES
@@ -511,6 +536,12 @@ BEGIN
         (NEWID(), @co, 'EQ-001', 'SN-1001', 'Rooftop HVAC Unit A', @itemA, @custAcme, 1, 1, 'seed', SYSDATETIMEOFFSET()),
         (NEWID(), @co, 'EQ-002', 'SN-1002', 'Rooftop HVAC Unit B', @itemA, @custGlob, 1, 0, 'seed', SYSDATETIMEOFFSET());
     END
+
+    -- Repair-safe: realign service-contract customer links left dangling by older seed versions.
+    UPDATE fs.ServiceContracts SET CustomerId = @custAcme WHERE CompanyId = @co AND ContractNumber = 'SC-001'
+        AND (@custAcme IS NOT NULL AND (CustomerId IS NULL OR NOT EXISTS (SELECT 1 FROM ar.Customers c WHERE c.Id = fs.ServiceContracts.CustomerId)));
+    UPDATE fs.ServiceContracts SET CustomerId = @custGlob WHERE CompanyId = @co AND ContractNumber = 'SC-002'
+        AND (@custGlob IS NOT NULL AND (CustomerId IS NULL OR NOT EXISTS (SELECT 1 FROM ar.Customers c WHERE c.Id = fs.ServiceContracts.CustomerId)));
 
     IF NOT EXISTS (SELECT 1 FROM fs.ServiceContracts WHERE CompanyId = @co AND ContractNumber = 'SC-001')
     BEGIN
