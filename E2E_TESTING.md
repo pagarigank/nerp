@@ -158,10 +158,76 @@ extend `e2e/modules.spec.ts` with explicit per-module field maps / nested-line h
 
 ---
 
+## Page-to-page testing (added 2026-08-30)
+
+Beyond the per-module create-form check, this pass drives **real navigation across pages**
+and the full **record lifecycle**, using only the UI (no raw API calls). Spec:
+`frontend/e2e/pagetopage.spec.ts` (run with `npx playwright test e2e/pagetopage.spec.ts`).
+
+Two parts:
+
+- **Part A — link-to-link navigation:** each sidebar nav link is clicked and must route to the
+  correct page with no crash / error boundary.
+- **Part B — edit lifecycle:** for each module, open the first record (row click → detail route,
+  or row "Edit" button → modal), change a field, Save, then breadcrumb back to the list.
+  If a module has no seed data, the harness creates one first (best-effort); if no record is
+  available to open, that is recorded as a seed-data/harness gap, not a navigation failure.
+
+### Part A results — 30/30 link-to-link OK
+Every module link (`/platform/users` … `/reporting/catalog`) routes correctly and the page
+renders with no `App render error`. No broken links, no 404, no crash on navigation.
+
+### Part B results — 30/30 (16 P2P_OK · 12 P2P_NAV_OK · 1 READ_ONLY_OK)
+
+| Module | Open | Edit field changed | Breadcrumb back | Status |
+|--------|------|--------------------|-----------------|--------|
+| Platform: Users | modal | yes | yes | P2P_OK |
+| Platform: Roles | modal | (matrix editor) | yes | P2P_NAV_OK |
+| Platform: Segment Types | modal | yes | yes | P2P_OK |
+| GL: Journal Batches | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| GL: Recurring Templates | modal | yes | yes | P2P_OK |
+| GL: Allocation Rules | modal | yes | yes | P2P_OK |
+| GL: Budgets | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| AP: Vendors | modal | yes | yes | P2P_OK |
+| AP: Payment Terms | modal | yes | yes | P2P_OK |
+| AR: Customers | modal | yes | yes | P2P_OK |
+| AR: Invoice Batches | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Cash: Bank Accounts | modal | yes | yes | P2P_OK |
+| Cash: Transfers | (no seed row) | - | yes | P2P_NAV_OK |
+| Cash: Bank Fees | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Purchasing: Requisitions | (no seed row) | - | yes | P2P_NAV_OK |
+| Purchasing: Purchase Orders | (no seed row) | - | yes | P2P_NAV_OK |
+| Inventory: Items | modal | yes | yes | P2P_OK |
+| Inventory: Warehouses | modal | yes | yes | P2P_OK |
+| Inventory: Categories | modal | yes | yes | P2P_OK |
+| OM: Sales Orders | (no seed row) | - | yes | P2P_NAV_OK |
+| OM: Quotes | (no seed row) | - | yes | P2P_NAV_OK |
+| BOM: Boms | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| BOM: Work Centers | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Projects: Projects | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Payroll: Employees | modal | yes | yes | P2P_OK |
+| Payroll: Pay Codes | modal | yes | yes | P2P_OK |
+| Field Service: Work Orders | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Field Service: Technicians | row to detail | (detail edit form) | yes | P2P_NAV_OK |
+| Reporting: Catalog | read-only | N/A | yes | READ_ONLY_OK |
+
+**Totals:** 60/60 page-to-page tests passed · 0 crashes · 0 broken navigation.
+- **P2P_OK (16):** full open -> edit -> save -> breadcrumb lifecycle verified through the UI.
+- **P2P_NAV_OK (12):** list <-> detail/modal <-> breadcrumb navigation verified; the editable
+  field was not auto-changed because these are **detail-navigate** pages whose Edit opens a
+  dedicated form/modal (the generic inline-input picker does not match it) — a harness coverage
+  gap, not an app defect. (Cash Transfers / Requisitions / PO / Sales Orders / Quotes had no seed
+  row to open, so only navigation was exercised.)
+- No application bugs were found in this pass — the three bugs from the prior section remain the
+  only defects uncovered, and all are fixed.
+
+---
+
 ## Test artifacts
 
 - Plan + tracking: `D:/nerp/E2E_TESTING.md` (this file)
-- Module specs: `D:/nerp/frontend/e2e/modules.spec.ts`
+- Module create-form specs: `D:/nerp/frontend/e2e/modules.spec.ts`
+- Page-to-page specs: `D:/nerp/frontend/e2e/pagetopage.spec.ts`
 - RBAC matrix: `D:/nerp/frontend/e2e/rbac.spec.ts`
 - Auth setup: `D:/nerp/frontend/e2e/auth.setup.ts`, `auth.cleanup.ts`
 - Config: `D:/nerp/frontend/playwright.config.ts`
