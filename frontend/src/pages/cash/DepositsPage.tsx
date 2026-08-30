@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -22,8 +23,7 @@ import {
   confirmDeposit,
   clearDeposit,
   deleteDeposit,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { CashDeposit, CreateCashDepositRequest, DepositLineItem } from '@/types/cash'
 import { depositStatusMap } from './statusMaps'
 
@@ -136,7 +136,7 @@ export function DepositsPage() {
   const createFromArMutation = useMutation({
     mutationFn: (data: { bankAccountId: string; depositNumber: string; depositDate: string; cashReceiptId: string }) =>
       createDepositFromAr({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         ...data,
       }),
     onSuccess: () => {
@@ -219,7 +219,7 @@ export function DepositsPage() {
     }
 
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       bankAccountId: data.bankAccountId,
       depositNumber: data.depositNumber,
       depositDate: new Date(data.depositDate).toISOString(),

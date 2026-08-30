@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -22,8 +23,7 @@ import {
   validateBankStatement,
   deleteBankStatement,
   bankStatementFormats,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type {
   CashBankStatement,
   CashBankStatementDetail,
@@ -163,7 +163,7 @@ export function BankStatementsPage() {
     setFormError(null)
     setImportResult(null)
     importMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       bankAccountId: data.bankAccountId,
       statementNumber: data.statementNumber,
       statementDate: new Date(data.statementDate).toISOString(),

@@ -60,7 +60,6 @@ import type {
 import { useAuthStore } from '@stores/authStore'
 import { get, post, put, del } from './client'
 
-export const DEMO_COMPANY_ID = '11111111-1111-1111-1111-111111111111'
 
 export function companyId(): string {
   const current = useAuthStore.getState().currentCompany

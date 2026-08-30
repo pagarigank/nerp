@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -21,8 +22,7 @@ import {
   voidPayment,
   getVendors,
   getVoucherBatches,
-  DEMO_COMPANY_ID,
-} from '@api/ap'
+  } from '@api/ap'
 import type { Payment, Voucher } from '@/types/ap'
 import { paymentMethodMap, paymentStatusMap } from './statusMaps'
 
@@ -297,7 +297,7 @@ export function PaymentsPage() {
   const onSubmit = (data: PaymentForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       vendorId: data.vendorId,
       paymentReference: data.paymentReference,
       paymentDate: new Date(data.paymentDate).toISOString(),

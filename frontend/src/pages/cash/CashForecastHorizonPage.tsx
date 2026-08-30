@@ -1,12 +1,13 @@
+import { currentCompanyId } from '@/api/company'
 import { useQuery } from '@tanstack/react-query'
 import { LineChart } from 'lucide-react'
 import { formatCurrency } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
-import { getCashForecastHorizon, DEMO_COMPANY_ID } from '@api/cash'
+import { getCashForecastHorizon} from '@api/cash'
 
 export function CashForecastHorizonPage() {
   const { data, isLoading } = useQuery({
-    queryKey: ['cash', 'forecast-horizon', DEMO_COMPANY_ID],
+    queryKey: ['cash', 'forecast-horizon', currentCompanyId()],
     queryFn: () => getCashForecastHorizon(),
   })
 

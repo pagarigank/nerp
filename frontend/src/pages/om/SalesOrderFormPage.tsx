@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +10,7 @@ import { Button } from '@components/ui/Button'
 import { Input, Select, Textarea } from '@components/ui/Input'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { getErrorMessage } from '@api/client'
-import { createSalesOrder, DEMO_COMPANY_ID, getShippingMethods, getSalesOrderTypes, evaluatePrice, getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
+import { createSalesOrder, getShippingMethods, getSalesOrderTypes, evaluatePrice, getSalesReps, getTaxCodes, getTaxExemptions } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
 import { getAccounts } from '@api/platform'
@@ -322,7 +323,7 @@ export function SalesOrderFormPage() {
     if (!customerId) return // customer must be chosen first
     try {
       const res = await evaluatePrice({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         baseUnitPrice: ctx.baseUnitPrice,
         customerId,
         itemId: ctx.itemId,
@@ -360,7 +361,7 @@ export function SalesOrderFormPage() {
     try {
       const payload = {
         orderNumber: data.orderNumber?.trim() || null,
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         customerId: data.customerId,
         orderDate: new Date(data.orderDate).toISOString(),
         shipToAddress: data.shipToAddress || null,

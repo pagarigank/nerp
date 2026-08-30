@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useState, useEffect, useCallback } from 'react'
 import { Building2, DollarSign, Users, Package, CreditCard, TrendingUp, AlertTriangle, CheckCircle, Clock, FileText } from 'lucide-react'
 import { formatNumber } from '@utils/helpers'
@@ -52,7 +53,7 @@ export function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const companyId = useAuthStore.getState().currentCompany?.id ?? '00000000-0000-0000-0000-000000000001'
+    const companyId = useAuthStore.getState().currentCompany?.id ?? currentCompanyId()
     const [c, p, b, ba, v, cu, it, pr, em, wo, al] = await Promise.all([
       apiFetch<{ data: Company[] } | Company[]>('/api/v1/platform/companies'),
       apiFetch<{ data: FiscalPeriod[] } | FiscalPeriod[]>('/api/v1/platform/fiscal-periods'),

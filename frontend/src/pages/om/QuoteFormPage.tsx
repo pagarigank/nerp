@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 // <copyright file="QuoteFormPage.tsx" company="ERP Project">
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
@@ -13,7 +14,7 @@ import { Input } from '@components/ui/Input'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Combobox } from '@components/ui/Combobox'
 import { getErrorMessage } from '@api/client'
-import { createSalesOrder, configureQuote, DEMO_COMPANY_ID } from '@api/orderManagement'
+import { createSalesOrder, configureQuote} from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
 import { getItems } from '@api/inventory'
 import type { ArCustomer } from '@/types/ar'
@@ -86,7 +87,7 @@ export function QuoteFormPage() {
     try {
       const payload = {
         orderNumber: null,
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         customerId: data.customerId,
         orderDate: new Date(data.orderDate).toISOString(),
         shipToAddress: null,

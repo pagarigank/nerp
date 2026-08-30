@@ -99,7 +99,7 @@ const MONEY = (v: number) => `$${Number(v).toFixed(2)}`
 const ORDER_TYPE_OPTIONS = (['Quote', 'Order', 'Return', 'CreditOnly'] as SalesOrderTypeCodeValue[]).map((v) => ({ value: v, label: v }))
 const PRICING_SCOPE_OPTIONS = (['Standard', 'CustomerSpecific', 'QuantityBreak', 'Promotional'] as PricingRuleScopeValue[]).map((v) => ({ value: v, label: v }))
 
-const DEMO_COMPANY = '11111111-1111-1111-1111-111111111111'
+const DEMO_COMPANY = currentCompanyId()
 const resolveCompanyId = () => currentCompanyId() || DEMO_COMPANY
 
 const MASTERS: MasterConfig<any>[] = [

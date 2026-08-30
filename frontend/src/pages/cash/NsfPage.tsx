@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -14,7 +15,7 @@ import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
 import { getErrorMessage } from '@api/client'
 import { getCashReceipts } from '@api/ar'
-import { getNsfRecords, getBankAccounts, processNsf, DEMO_COMPANY_ID } from '@api/cash'
+import { getNsfRecords, getBankAccounts, processNsf} from '@api/cash'
 import type { ArCashReceipt } from '@/types/ar'
 import { nsfStatusMap } from './statusMaps'
 
@@ -136,7 +137,7 @@ export function NsfPage() {
   const onSubmit = (data: NsfForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       bankAccountId: data.bankAccountId,
       cashReceiptId: data.cashReceiptId,
       nsfNumber: data.nsfNumber,

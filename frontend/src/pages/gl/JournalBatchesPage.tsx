@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -14,7 +15,7 @@ import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
 import { getErrorMessage } from '@api/client'
-import { getJournalBatches, createJournalBatch, getNextJournalBatchNumber, DEMO_COMPANY_ID } from '@api/gl'
+import { getJournalBatches, createJournalBatch, getNextJournalBatchNumber} from '@api/gl'
 import { getFiscalPeriods } from '@api/platform'
 import { journalBatchStatusMap } from './statusMaps'
 
@@ -109,7 +110,7 @@ export function JournalBatchesPage() {
   const onSubmit = (data: BatchForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       batchNumber: data.batchNumber,
       description: data.description,
       postingDate: new Date(data.postingDate).toISOString(),

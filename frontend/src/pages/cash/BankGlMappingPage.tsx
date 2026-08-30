@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -16,8 +17,7 @@ import {
   createBankGlMapping,
   updateBankGlMapping,
   getBankAccounts,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { BankGlMapping } from '@/types/cash'
 
 const mappingSchema = z.object({
@@ -85,7 +85,7 @@ export function BankGlMappingPage() {
   const createMutation = useMutation({
     mutationFn: (data: MappingForm) =>
       createBankGlMapping({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         bankAccountId: data.bankAccountId,
         glAccountId: data.glAccountId,
         isDefault: data.isDefault,

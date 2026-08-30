@@ -2,8 +2,6 @@
 import { useAuthStore } from '@stores/authStore'
 import { get, post } from './client'
 
-export const DEMO_COMPANY_ID = '11111111-1111-1111-1111-111111111111'
-
 export function companyId(): string {
   const current = useAuthStore.getState().currentCompany
   // Empty id is the "All Companies" sentinel for super admins: omit the
@@ -12,7 +10,7 @@ export function companyId(): string {
 }
 
 function userId(): string {
-  return useAuthStore.getState().user?.id ?? DEMO_COMPANY_ID
+  return useAuthStore.getState().user?.id ?? ''
 }
 
 export { userId }

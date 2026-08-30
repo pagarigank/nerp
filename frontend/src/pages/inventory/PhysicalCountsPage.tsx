@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -91,7 +92,7 @@ export function PhysicalCountsPage() {
   const createMutation = useMutation({
     mutationFn: (data: CreateForm) => {
       const body: CreatePhysicalCountRequest = {
-        companyId: '11111111-1111-1111-1111-111111111111',
+        companyId: currentCompanyId(),
         warehouseId: data.warehouseId,
         countNumber: data.countNumber,
         countDate: data.countDate,

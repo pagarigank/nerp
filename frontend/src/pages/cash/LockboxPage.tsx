@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -18,8 +19,7 @@ import {
   createLockboxBatch,
   postLockboxBatch,
   getBankAccounts,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { LockboxBatch } from '@/types/cash'
 
 const batchSchema = z.object({
@@ -77,7 +77,7 @@ export function LockboxPage() {
   const createMutation = useMutation({
     mutationFn: (data: BatchForm) =>
       createLockboxBatch({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         batchNumber: data.batchNumber,
         fileName: `${data.batchNumber}.csv`,
         format: 'CSV',

@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -20,8 +21,7 @@ import {
   executeAllocation,
   activateAllocationRule,
   deactivateAllocationRule,
-  DEMO_COMPANY_ID,
-} from '@api/gl'
+  } from '@api/gl'
 import { getAccounts, getFiscalPeriods } from '@api/platform'
 import type { GlAllocationRule } from '@/types/gl'
 import { allocationMethodMap } from './statusMaps'
@@ -487,7 +487,7 @@ export function AllocationRulesPage() {
       return
     }
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       name: data.name,
       description: data.description,
       sourceAccountId: data.sourceAccountId,

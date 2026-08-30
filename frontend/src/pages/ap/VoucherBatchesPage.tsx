@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -13,7 +14,7 @@ import { Modal } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
 import { getErrorMessage } from '@api/client'
-import { getVoucherBatches, createVoucherBatch, getNextVoucherBatchNumber, DEMO_COMPANY_ID } from '@api/ap'
+import { getVoucherBatches, createVoucherBatch, getNextVoucherBatchNumber} from '@api/ap'
 import { getFiscalPeriods } from '@api/platform'
 import { voucherBatchStatusMap } from './statusMaps'
 
@@ -108,7 +109,7 @@ export function VoucherBatchesPage() {
   const onSubmit = (data: BatchForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       batchNumber: data.batchNumber,
       description: data.description,
       postingDate: new Date(data.postingDate).toISOString(),

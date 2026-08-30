@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useState, useEffect, useCallback } from 'react'
 import { Settings, Plus, Play, Star, Trash2 } from 'lucide-react'
 
@@ -40,7 +41,7 @@ export function ReportParameterSetsPage() {
       await fetch('/api/v1/reporting/parameter-sets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId: '00000000-0000-0000-0000-000000000001', reportDefinitionId: reportId, ...editForm })
+        body: JSON.stringify({ companyId: currentCompanyId(), reportDefinitionId: reportId, ...editForm })
       })
       setIsCreating(false)
       setEditForm({ name: '', parametersJson: '{}', isDefault: false, description: '' })

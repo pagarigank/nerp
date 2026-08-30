@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -20,8 +21,7 @@ import {
   confirmBankTransfer,
   completeBankTransfer,
   voidBankTransfer,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { CashBankTransfer } from '@/types/cash'
 import { transferStatusMap } from './statusMaps'
 
@@ -150,7 +150,7 @@ export function BankTransfersPage() {
       return
     }
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       fromBankAccountId: data.fromBankAccountId,
       toBankAccountId: data.toBankAccountId,
       transferNumber: data.transferNumber,

@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -25,8 +26,7 @@ import {
   getBankAccountDetail,
   addBankContact,
   deleteBankContact,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { CashBankAccount, CreateCashBankAccountRequest, UpdateCashBankAccountRequest } from '@/types/cash'
 import { bankAccountStatusMap, bankAccountTypeMap, bankAccountTypeValue } from './statusMaps'
 
@@ -242,7 +242,7 @@ export function BankAccountsPage() {
       return
     }
     const payload: CreateCashBankAccountRequest = {
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       accountCode: data.accountCode,
       openingBalance: data.openingBalance,
       ...common,

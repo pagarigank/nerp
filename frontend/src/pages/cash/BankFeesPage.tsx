@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -14,7 +15,7 @@ import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
 import { getErrorMessage } from '@api/client'
 import { getAccounts } from '@api/platform'
-import { getBankFees, getBankAccounts, recordBankFee, DEMO_COMPANY_ID } from '@api/cash'
+import { getBankFees, getBankAccounts, recordBankFee} from '@api/cash'
 import { bankFeeStatusMap, bankFeeTypeMap } from './statusMaps'
 
 const feeSchema = z.object({
@@ -133,7 +134,7 @@ export function BankFeesPage() {
   const onSubmit = (data: FeeForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       bankAccountId: data.bankAccountId,
       feeNumber: data.feeNumber,
       feeType: Number(data.feeType),

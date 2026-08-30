@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useState, useEffect, useCallback } from 'react'
 import { FolderTree, Plus, Edit2, Trash2, ChevronRight, ChevronDown, GripVertical } from 'lucide-react'
 
@@ -22,7 +23,7 @@ export function ReportCategoriesPage() {
   const fetchCategories = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/v1/reporting/categories?companyId=00000000-0000-0000-0000-000000000001')
+      const response = await fetch(`/api/v1/reporting/categories?companyId=${currentCompanyId()}`)
       const data = await response.json()
       setCategories(data.data || [])
     } catch (err) {
@@ -49,7 +50,7 @@ export function ReportCategoriesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyId: '00000000-0000-0000-0000-000000000001',
+          companyId: currentCompanyId(),
           ...editForm
         })
       })

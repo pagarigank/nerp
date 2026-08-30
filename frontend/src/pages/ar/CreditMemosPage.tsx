@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 // <copyright file="CreditMemosPage.tsx" company="ERP Project">
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
@@ -11,7 +12,7 @@ import { Input, Select } from '@components/ui/Input'
 import { Modal } from '@components/ui/Modal'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getMemos, createMemo, getCustomers, DEMO_COMPANY_ID } from '@api/ar'
+import { getMemos, createMemo, getCustomers} from '@api/ar'
 import type { ArMemo, CreateMemoRequest } from '@/types/ar'
 
 function statusBadge(status: string) {
@@ -79,7 +80,7 @@ export function CreditMemosPage() {
     if (validLines.length === 0) { setFormError('Add at least one line with description and price'); return }
 
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       customerId,
       referenceNumber: referenceNumber.trim(),
       memoDate: new Date(memoDate).toISOString(),

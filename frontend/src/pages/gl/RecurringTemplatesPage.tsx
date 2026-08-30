@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -21,8 +22,7 @@ import {
   generateFromRecurring,
   activateRecurringTemplate,
   deactivateRecurringTemplate,
-  DEMO_COMPANY_ID,
-} from '@api/gl'
+  } from '@api/gl'
 import { getAccounts, getFiscalPeriods } from '@api/platform'
 import type { GlRecurringTemplate } from '@/types/gl'
 import { recurringFrequencyMap } from './statusMaps'
@@ -434,7 +434,7 @@ export function RecurringTemplatesPage() {
       return
     }
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       name: data.name,
       description: data.description,
       frequency: Number(data.frequency),

@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, Download, PiggyBank, TrendingDown, TrendingUp, Scale } from 'lucide-react'
@@ -15,8 +16,7 @@ import {
   getReconciliationSummary,
   getPositivePay,
   getBankAccounts,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import { reconciliationStatusMap } from './statusMaps'
 
 export function CashReportsPage() {
@@ -47,7 +47,7 @@ export function CashReportsPage() {
 
   const { data: aging, isLoading: agingLoading } = useQuery({
     queryKey: ['cash', 'reports', 'outstandingChecks', agingAccountId],
-    queryFn: () => getOutstandingChecks(DEMO_COMPANY_ID, agingAccountId),
+    queryFn: () => getOutstandingChecks(currentCompanyId(), agingAccountId),
     enabled: !!agingAccountId,
   })
 
@@ -66,7 +66,7 @@ export function CashReportsPage() {
     setError(null)
     setIsDownloading(true)
     try {
-      const csv = await getPositivePay(DEMO_COMPANY_ID, positivePayAccountId)
+      const csv = await getPositivePay(currentCompanyId(), positivePayAccountId)
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')

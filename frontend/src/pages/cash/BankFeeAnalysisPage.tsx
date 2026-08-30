@@ -1,10 +1,11 @@
+import { currentCompanyId } from '@/api/company'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3 } from 'lucide-react'
 import { formatCurrency } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Input } from '@components/ui/Input'
-import { getBankFeeAnalysis, DEMO_COMPANY_ID } from '@api/cash'
+import { getBankFeeAnalysis} from '@api/cash'
 import type { BankFeeType } from '@/types/cash'
 
 const feeTypeLabels: Record<BankFeeType, string> = {
@@ -22,7 +23,7 @@ export function BankFeeAnalysisPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cash', 'fee-analysis', year, month, DEMO_COMPANY_ID],
+    queryKey: ['cash', 'fee-analysis', year, month, currentCompanyId()],
     queryFn: () => getBankFeeAnalysis(year, month),
   })
 

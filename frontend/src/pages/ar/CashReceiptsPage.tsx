@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -19,8 +20,7 @@ import {
   autoApplyCash,
   getInvoices,
   getCustomers,
-  DEMO_COMPANY_ID,
-} from '@api/ar'
+  } from '@api/ar'
 import type { ArCashReceipt } from '@/types/ar'
 import { receiptStatusMap } from './statusMaps'
 import { ArStatusBadge } from './ArStatusBadge'
@@ -130,7 +130,7 @@ export function CashReceiptsPage() {
   const onSubmit = (data: ReceiptForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       customerId: data.customerId,
       receiptReference: data.receiptReference,
       totalAmount: data.totalAmount,

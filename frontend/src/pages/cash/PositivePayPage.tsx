@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -17,8 +18,7 @@ import {
   getPositivePayExceptions,
   createPositivePayException,
   decidePositivePay,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { PositivePayException } from '@/types/cash'
 
 const exceptionSchema = z.object({
@@ -105,7 +105,7 @@ export function PositivePayPage() {
   const createMutation = useMutation({
     mutationFn: (data: ExceptionForm) =>
       createPositivePayException({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         bankAccountId: data.bankAccountId,
         checkNumber: data.checkNumber,
         amount: data.amount,

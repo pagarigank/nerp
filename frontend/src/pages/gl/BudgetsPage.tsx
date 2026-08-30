@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -13,7 +14,7 @@ import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getBudgets, createBudget, addBudgetLine, deleteBudget, DEMO_COMPANY_ID } from '@api/gl'
+import { getBudgets, createBudget, addBudgetLine, deleteBudget} from '@api/gl'
 import { getAccounts, getFiscalYears } from '@api/platform'
 import type { GlBudget } from '@/types/gl'
 import { budgetTypeMap } from './statusMaps'
@@ -243,7 +244,7 @@ export function BudgetsPage() {
   const onSubmit = (data: BudgetForm) => {
     setFormError(null)
     createMutation.mutate({
-      companyId: DEMO_COMPANY_ID,
+      companyId: currentCompanyId(),
       fiscalYearId: data.fiscalYearId,
       name: data.name,
       description: data.description,

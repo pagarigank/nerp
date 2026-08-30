@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Clock, AlertTriangle } from 'lucide-react'
 
@@ -34,7 +35,7 @@ export function ReportUsagePage() {
   const [byModule, setByModule] = useState<ModuleUsage[]>([])
   const [dailyTrend, setDailyTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
-  const [companyId] = useState('00000000-0000-0000-0000-000000000001')
+  const [companyId] = useState(currentCompanyId())
 
   useEffect(() => {
     const fetchUsage = async () => {

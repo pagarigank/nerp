@@ -1,12 +1,13 @@
+import { currentCompanyId } from '@/api/company'
 import { useQuery } from '@tanstack/react-query'
 import { Layers } from 'lucide-react'
 import { formatCurrency } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
-import { getOutstandingDeposits, DEMO_COMPANY_ID } from '@api/cash'
+import { getOutstandingDeposits} from '@api/cash'
 
 export function OutstandingDepositsPage() {
   const { data, isLoading } = useQuery({
-    queryKey: ['cash', 'outstanding-deposits', DEMO_COMPANY_ID],
+    queryKey: ['cash', 'outstanding-deposits', currentCompanyId()],
     queryFn: () => getOutstandingDeposits(),
   })
 

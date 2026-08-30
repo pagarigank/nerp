@@ -1,3 +1,4 @@
+import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -19,8 +20,7 @@ import {
   createStaleCheckEscheatment,
   escheatStaleCheck,
   reissueStaleCheck,
-  DEMO_COMPANY_ID,
-} from '@api/cash'
+  } from '@api/cash'
 import type { StaleCheckEscheatment } from '@/types/cash'
 
 const staleSchema = z.object({
@@ -97,7 +97,7 @@ export function StaleCheckEscheatPage() {
   const createMutation = useMutation({
     mutationFn: (data: StaleForm) =>
       createStaleCheckEscheatment({
-        companyId: DEMO_COMPANY_ID,
+        companyId: currentCompanyId(),
         bankAccountId: data.bankAccountId,
         checkNumber: data.checkNumber,
         amount: data.amount,
