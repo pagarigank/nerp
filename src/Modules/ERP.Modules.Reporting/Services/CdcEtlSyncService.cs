@@ -425,4 +425,4 @@ public class CdcEtlSyncService : ICdcEtlSyncService
 /// Maps a source table to its staging table and identifies the timestamp column
 /// used for incremental extraction.
 /// </summary>
-public record SourceTableMapping(string StagingTable, string TimestampColumn);
+public record SourceTableMapping(string StagingTable, string? TimestampColumn);
