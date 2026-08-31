@@ -89,7 +89,10 @@ public class WarehouseBinController : ControllerBase
         var bin = new WarehouseBin(
             request.WarehouseId,
             request.BinCode,
-            BinType.Picking);
+            BinType.Picking,
+            request.Aisle,
+            request.Rack,
+            request.Shelf);
 
         await _repository.AddAsync(bin, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -167,6 +170,44 @@ public class WarehouseBinController : ControllerBase
 
         return Ok(ApiResponse<WarehouseBinDto>.Success(dto));
     }
+
+    [HttpPut("{id:guid}/location")]
+    public async Task<ActionResult<ApiResponse<WarehouseBinDto>>> UpdateLocation(
+        Guid id,
+        [FromBody] UpdateWarehouseBinLocationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var bin = await _repository.GetByIdAsync(id, cancellationToken);
+
+        if (bin == null)
+        {
+            return NotFound(ApiResponse<WarehouseBinDto>.Failure(["Bin not found."]));
+        }
+
+        bin.UpdateLocation(request.Aisle, request.Rack, request.Shelf);
+        _repository.Update(bin);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var dto = new WarehouseBinDto
+        {
+            Id = bin.Id,
+            WarehouseId = bin.WarehouseId,
+            BinCode = bin.BinCode,
+            Aisle = bin.Aisle,
+            Rack = bin.Rack,
+            Shelf = bin.Shelf,
+            IsActive = bin.IsActive,
+        };
+
+        return Ok(ApiResponse<WarehouseBinDto>.Success(dto));
+    }
+}
+
+public class UpdateWarehouseBinLocationRequest
+{
+    public string? Aisle { get; set; }
+    public string? Rack { get; set; }
+    public string? Shelf { get; set; }
 }
 
 public class WarehouseBinDto

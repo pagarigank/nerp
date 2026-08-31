@@ -67,6 +67,15 @@ export function getWarehouseBins(warehouseId?: string): Promise<import('@/types/
 export function createWarehouseBin(body: import('@/types/inventory').CreateWarehouseBinRequest): Promise<string> {
   return post('/inventory/warehouse-bins', body)
 }
+export function updateWarehouseBinLocation(id: string, body: { aisle?: string | null; rack?: string | null; shelf?: string | null }): Promise<void> {
+  return put(`/inventory/warehouse-bins/${id}/location`, body)
+}
+export function activateWarehouseBin(id: string): Promise<void> {
+  return put(`/inventory/warehouse-bins/${id}/activate`, {})
+}
+export function deactivateWarehouseBin(id: string): Promise<void> {
+  return put(`/inventory/warehouse-bins/${id}/deactivate`, {})
+}
 
 // --- Item stock ---
 export function getItemStock(warehouseId?: string, itemId?: string): Promise<import('@/types/inventory').ItemStockSummary[]> {

@@ -10,7 +10,7 @@ import { UomSelect } from '@components/ui/UomSelect'
 import { Input, Select } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
 import { getErrorMessage } from '@api/client'
-import { getTransactions, createReceipt, createIssue, createTransfer, createAdjustment, getItems, getWarehouses, getItemUomConversions } from '@api/inventory'
+import { getTransactions, createReceipt, createIssue, createAdjustment, createTransfer, getItems, getWarehouses, getWarehouseBins, getItemUomConversions } from '@api/inventory'
 import type { UomConversionDto } from '@/types/inventory'
 
 const schema = z.object({
@@ -18,6 +18,9 @@ const schema = z.object({
   itemId: z.string().min(1, 'Item is required'),
   warehouseId: z.string().min(1, 'Warehouse is required'),
   toWarehouseId: z.string().optional(),
+  binId: z.string().optional(),
+  fromBinId: z.string().optional(),
+  toBinId: z.string().optional(),
   quantity: z.coerce.number().positive('Quantity must be > 0'),
   unitCost: z.coerce.number().min(0).optional(),
   unitOfMeasure: z.string().optional(),
@@ -26,7 +29,7 @@ const schema = z.object({
   notes: z.string().optional(),
 })
 type Form = z.infer<typeof schema>
-const defaults: Form = { transactionType: 'receipt', itemId: '', warehouseId: '', toWarehouseId: '', quantity: 1, unitCost: 0, unitOfMeasure: '', reasonCode: '', referenceNumber: '', notes: '' }
+const defaults: Form = { transactionType: 'receipt', itemId: '', warehouseId: '', toWarehouseId: '', binId: '', fromBinId: '', toBinId: '', quantity: 1, unitCost: 0, unitOfMeasure: '', reasonCode: '', referenceNumber: '', notes: '' }
 function fieldError(message?: string) { return message ? { error: message } : {} }
 
 export function TransactionsPage() {
@@ -37,15 +40,22 @@ export function TransactionsPage() {
 
   const { data: items = [] } = useQuery({ queryKey: ['inventory', 'items'], queryFn: () => getItems() })
   const { data: warehouses = [] } = useQuery({ queryKey: ['inventory', 'warehouses'], queryFn: () => getWarehouses() })
+  const selectedWarehouse = watch('warehouseId')
+  const selectedToWarehouse = watch('toWarehouseId')
+  const { data: fromBins = [] } = useQuery({ queryKey: ['inventory', 'bins', selectedWarehouse], queryFn: () => getWarehouseBins(selectedWarehouse || undefined), enabled: !!selectedWarehouse })
+  const { data: toBins = [] } = useQuery({ queryKey: ['inventory', 'bins', selectedToWarehouse], queryFn: () => getWarehouseBins(selectedToWarehouse || undefined), enabled: !!selectedToWarehouse && watch('transactionType') === 'transfer' })
   const { data: rows = [], isLoading } = useQuery({ queryKey: ['inventory', 'transactions'], queryFn: () => getTransactions() })
 
   const itemOptions = useMemo(() => items.map(i => ({ value: i.id, label: `${i.itemCode} - ${i.description}` })), [items])
   const whOptions = useMemo(() => warehouses.map(w => ({ value: w.id, label: `${w.warehouseCode} - ${w.warehouseName}` })), [warehouses])
+  const binToOption = (b: any) => ({ value: b.id, label: [b.binCode, b.aisle && `Aisle ${b.aisle}`, b.rack && `Rack ${b.rack}`, b.shelf && `Shelf ${b.shelf}`].filter(Boolean).join(' / ') })
+  const fromBinOptions = useMemo(() => [{ value: '', label: 'No bin (default)' }, ...fromBins.map(binToOption)], [fromBins])
+  const toBinOptions = useMemo(() => [{ value: '', label: 'No bin (default)' }, ...toBins.map(binToOption)], [toBins])
 
   const mutation = useMutation({
     mutationFn: (d: Form) => {
       const base = {
-        companyId: '',
+        companyId: companyId(),
         itemId: d.itemId,
         warehouseId: d.warehouseId,
         quantity: d.quantity,
@@ -53,12 +63,12 @@ export function TransactionsPage() {
         referenceNumber: d.referenceNumber || undefined,
         notes: d.notes || undefined,
       }
-      if (d.transactionType === 'receipt') return createReceipt({ ...base, unitCost: d.unitCost ?? 0 })
-      if (d.transactionType === 'issue') return createIssue(base)
-      if (d.transactionType === 'adjustment') return createAdjustment({ ...base, quantityAdjustment: d.quantity, reasonCode: d.reasonCode || 'ADJ' })
-      return createTransfer({ ...base, fromWarehouseId: d.warehouseId, toWarehouseId: d.toWarehouseId || d.warehouseId })
+      if (d.transactionType === 'receipt') return createReceipt({ ...base, binId: d.binId || null, unitCost: d.unitCost ?? 0 })
+      if (d.transactionType === 'issue') return createIssue({ ...base, binId: d.binId || null })
+      if (d.transactionType === 'adjustment') return createAdjustment({ ...base, binId: d.binId || null, quantityAdjustment: d.quantity, reasonCode: d.reasonCode || 'ADJ' })
+      return createTransfer({ ...base, fromWarehouseId: d.warehouseId, toWarehouseId: d.toWarehouseId || d.warehouseId, fromBinId: d.fromBinId || null, toBinId: d.toBinId || null })
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inventory', 'transactions'] }); qc.invalidateQueries({ queryKey: ['inventory', 'item-stock'] }); close() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inventory', 'transactions'] }); qc.invalidateQueries({ queryKey: ['inventory', 'item-stock'] }); qc.invalidateQueries({ queryKey: ['inventory', 'stock-by-location'] }); close() },
     onError: (e) => setFormError(getErrorMessage(e)),
   })
 
@@ -88,8 +98,17 @@ export function TransactionsPage() {
                 ]} required />
               <Select {...register('itemId')} label="Item" options={itemOptions} {...fieldError(errors.itemId?.message)} required onChange={(e) => { register('itemId').onChange(e); const itemId = e.target.value; if (itemId) { const item = items.find((i: any) => i.id === itemId); const baseUom = item?.baseUnitOfMeasure || 'EA'; setUomOptions([{ value: baseUom, label: baseUom + ' (base)' }]); void getItemUomConversions(itemId).then((convs: UomConversionDto[]) => { const opts = [{ value: baseUom, label: baseUom + ' (base)' }]; for (const c of convs) { if (c.fromUOM === baseUom) opts.push({ value: c.toUOM, label: `${c.toUOM} (${c.conversionFactor}x)` }); } setUomOptions(opts); }).catch(() => {}); } }} />
               <Select {...register('warehouseId')} label={selectedType === 'transfer' ? 'From Warehouse' : 'Warehouse'} options={whOptions} {...fieldError(errors.warehouseId?.message)} required />
+              {(selectedType === 'receipt' || selectedType === 'issue' || selectedType === 'adjustment') && (
+                <Select {...register('binId')} label="Bin" options={fromBinOptions} {...fieldError(errors.binId?.message)} />
+              )}
+              {selectedType === 'transfer' && (
+                <Select {...register('fromBinId')} label="From Bin" options={fromBinOptions} {...fieldError(errors.fromBinId?.message)} />
+              )}
               {selectedType === 'transfer' && (
                 <Select {...register('toWarehouseId')} label="To Warehouse" options={whOptions} required />
+              )}
+              {selectedType === 'transfer' && (
+                <Select {...register('toBinId')} label="To Bin" options={toBinOptions} {...fieldError(errors.toBinId?.message)} />
               )}
               <Input {...register('quantity')} label="Quantity" type="number" step="0.01" min="0.01" {...fieldError(errors.quantity?.message)} required />
               {selectedType === 'receipt' && (
