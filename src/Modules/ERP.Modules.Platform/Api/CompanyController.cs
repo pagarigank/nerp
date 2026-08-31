@@ -42,6 +42,23 @@ public class CompanyController : ControllerBase
         return Ok(companies.Select(MapToDto).ToList());
     }
 
+    /// <summary>
+    /// Minimal, anonymous-safe list (Id + Name only) used by the public
+    /// "Request Access" registration page so a prospective user can pick the
+    /// company they want access to. No sensitive company data is exposed.
+    /// </summary>
+    [HttpGet("public")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyList<PublicCompanyDto>>> GetPublicList(CancellationToken cancellationToken)
+    {
+        var companies = await _unitOfWork.Companies.GetAllAsync(cancellationToken);
+        return Ok(companies
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new PublicCompanyDto(c.Id, c.Name))
+            .ToList());
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CompanyDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -157,3 +174,5 @@ public class CompanyController : ControllerBase
             company.ModifiedOn);
     }
 }
+
+public record PublicCompanyDto(Guid Id, string Name);

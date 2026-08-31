@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { useAuth } from '@stores/authStore'
 import { MainLayout } from '@layouts/MainLayout'
 import { LoginPage } from '@pages/auth/LoginPage'
+import { RegisterPage } from '@pages/auth/RegisterPage'
 import { DashboardPage } from '@pages/DashboardPage'
 import { NotFoundPage } from '@pages/NotFoundPage'
 import { LoadingSpinner } from '@components/ui/LoadingSpinner'
@@ -31,6 +32,7 @@ import { SegmentTypesPage } from '@pages/platform/SegmentTypesPage'
 import { SegmentValuesPage } from '@pages/platform/SegmentValuesPage'
 import { UsersPage } from '@pages/platform/UsersPage'
 import { RolesPage } from '@pages/platform/RolesPage'
+import { AccessRequestsPage } from '@pages/platform/AccessRequestsPage'
 import { AuditLogsPage } from '@pages/platform/AuditLogsPage'
 import { CurrenciesPage } from '@pages/platform/CurrenciesPage'
 import { ExchangeRatesPage } from '@pages/platform/ExchangeRatesPage'
@@ -237,6 +239,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<ProtectedRoutes />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={
@@ -253,6 +256,7 @@ function App() {
           <Route path="segment-types" element={<SegmentTypesPage />} />
           <Route path="segment-values" element={<SegmentValuesPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="access-requests" element={<AccessRequestsPage />} />
           <Route path="roles" element={<RolesPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="currencies" element={<CurrenciesPage />} />

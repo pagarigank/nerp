@@ -41,6 +41,7 @@ public class PlatformDbContext : DispatchableDbContext
     public DbSet<ApprovalDelegation> ApprovalDelegations => Set<ApprovalDelegation>();
     public DbSet<ApprovalEscalationPolicy> ApprovalEscalationPolicies => Set<ApprovalEscalationPolicy>();
     public DbSet<HolidayCalendar> HolidayCalendars => Set<HolidayCalendar>();
+    public DbSet<UserAccessRequest> UserAccessRequests => Set<UserAccessRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -398,6 +399,26 @@ public class PlatformDbContext : DispatchableDbContext
             e.Property(x => x.ModifiedBy).HasMaxLength(256);
             e.Property(x => x.DeletedBy).HasMaxLength(256);
             e.HasIndex(x => new { x.CompanyId, x.Date }).IsUnique();
+            e.HasQueryFilter(x => !x.DeletedOn.HasValue);
+        });
+
+        modelBuilder.Entity<UserAccessRequest>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Username).HasMaxLength(100).IsRequired();
+            e.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            e.Property(x => x.RequestedRole).HasMaxLength(100).IsRequired();
+            e.Property(x => x.PhoneNumber).HasMaxLength(50);
+            e.Property(x => x.Reason).HasMaxLength(1000);
+            e.Property(x => x.ReviewNotes).HasMaxLength(1000);
+            e.Property(x => x.CreatedBy).HasMaxLength(256).IsRequired();
+            e.Property(x => x.ModifiedBy).HasMaxLength(256);
+            e.Property(x => x.DeletedBy).HasMaxLength(256);
+            e.HasIndex(x => x.CompanyId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.Email);
             e.HasQueryFilter(x => !x.DeletedOn.HasValue);
         });
     }

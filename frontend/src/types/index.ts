@@ -63,6 +63,13 @@ export interface Company {
   updatedAt: string
 }
 
+// Minimal anonymous-safe company shape (id + name) for the registration page.
+export interface PublicCompany {
+  id: string
+  name: string
+}
+}
+
 export interface FiscalPeriod {
   id: string
   companyId: string

@@ -74,6 +74,16 @@ export function getCompanies(): Promise<Company[]> {
   return get('/platform/companies')
 }
 
+export interface PublicCompany {
+  id: string
+  name: string
+}
+
+// Anonymous-safe list (id + name) for the public registration page.
+export function getPublicCompanies(): Promise<PublicCompany[]> {
+  return get('/platform/companies/public')
+}
+
 export function getCompany(id: string): Promise<Company> {
   return get(`/platform/companies/${id}`)
 }
@@ -418,4 +428,54 @@ export function deleteHolidayEntry(id: string): Promise<void> {
 }
 export function advanceHolidayDate(companyId: string, from: string, businessDays: number): Promise<string> {
   return get('/platform/holiday-calendar/advance', { companyId, from, businessDays })
+}
+
+// --- Access requests (self-service registration + admin approval) ---
+export interface AccessRequest {
+  id: string
+  fullName: string
+  email: string
+  username: string
+  companyId: string
+  companyName?: string | null
+  requestedRole: string
+  phoneNumber?: string | null
+  reason?: string | null
+  status: 'Pending' | 'Approved' | 'Rejected'
+  reviewedOn?: string | null
+  reviewNotes?: string | null
+  createdOn: string
+}
+
+export interface SubmitAccessRequest {
+  fullName: string
+  email: string
+  username: string
+  password: string
+  companyId: string
+  requestedRole?: string | null
+  phoneNumber?: string | null
+  reason?: string | null
+}
+
+// Public: anyone may submit a request (no auth).
+export function submitAccessRequest(data: SubmitAccessRequest): Promise<AccessRequest> {
+  return post('/platform/access-requests/request', data)
+}
+
+// Admin only (company admin / super admin).
+export function getAccessRequests(): Promise<AccessRequest[]> {
+  return get('/platform/access-requests')
+}
+
+export function getAccessRequest(id: string): Promise<AccessRequest> {
+  return get(`/platform/access-requests/${id}`)
+}
+
+export function approveAccessRequest(id: string, roleId?: string | null, notes?: string | null): Promise<AccessRequest> {
+  return post(`/platform/access-requests/${id}/approve`, { roleId: roleId ?? null, notes: notes ?? null })
+}
+
+export function rejectAccessRequest(id: string, notes?: string | null): Promise<AccessRequest> {
+  return post(`/platform/access-requests/${id}/reject`, { roleId: null, notes: notes ?? null })
 }

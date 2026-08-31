@@ -55,6 +55,10 @@ function matchesPermission(held: string[], requested: string): boolean {
 interface AuthState {
   error: string | null
   
+  // True for super admin OR a company-scoped administrator (Admin/Administrator
+  // role). These are the only users permitted to review/approve access requests.
+  isCompanyAdmin: boolean
+
   // Actions
   setAuth: (data: {
     user: User
@@ -89,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
       companies: [],
       currentCompany: null,
       isSuperAdmin: false,
+      isCompanyAdmin: false,
       fiscalPeriods: [],
       currentPeriod: null,
       roles: [],
@@ -101,6 +106,9 @@ export const useAuthStore = create<AuthState>()(
         const safeCompanies = companies ?? []
         const safePeriods = fiscalPeriods ?? []
         const superAdmin = isSuperAdmin ?? false
+        const rolesForAdmin = roles ?? user.roles ?? []
+        const adminRoleNames = new Set(['admin', 'administrator'])
+        const isCompanyAdminDerived = superAdmin || rolesForAdmin.some(r => adminRoleNames.has(r.name?.toLowerCase() ?? ''))
         // Super admins default to "All Companies" (unbounded). Company-scoped
         // users default to their first company.
         const firstCompany = superAdmin ? ALL_COMPANIES : (safeCompanies.length > 0 ? safeCompanies[0]! : null)
@@ -114,6 +122,7 @@ export const useAuthStore = create<AuthState>()(
           companies: safeCompanies,
           currentCompany: firstCompany,
           isSuperAdmin: superAdmin,
+          isCompanyAdmin: isCompanyAdminDerived,
           fiscalPeriods: safePeriods,
           currentPeriod: firstPeriod,
           roles: roles ?? user.roles ?? [],
@@ -186,6 +195,7 @@ export const useAuthStore = create<AuthState>()(
         companies: state.companies,
         currentCompany: state.currentCompany,
         isSuperAdmin: state.isSuperAdmin,
+        isCompanyAdmin: state.isCompanyAdmin,
         fiscalPeriods: state.fiscalPeriods,
         currentPeriod: state.currentPeriod,
         roles: state.roles,
@@ -214,6 +224,7 @@ export const useAuth = () => useAuthStore(useShallow(state => ({
   companies: state.companies,
   currentCompany: state.currentCompany,
   isSuperAdmin: state.isSuperAdmin,
+  isCompanyAdmin: state.isCompanyAdmin,
   fiscalPeriods: state.fiscalPeriods,
   currentPeriod: state.currentPeriod,
   roles: state.roles,

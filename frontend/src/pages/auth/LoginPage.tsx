@@ -333,69 +333,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Demo Access
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-gray-600 dark:text-gray-300 font-mono">
-                <span className="text-gray-400 dark:text-gray-500">User:</span>{' '}
-                demo@erp.com
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 font-mono">
-                <span className="text-gray-400 dark:text-gray-500">Pass:</span>{' '}
-                password123
-              </p>
-            </div>
-          </div>
-
-          {/* SSO Section */}
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-white dark:bg-gray-950 text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                  or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => {/* TODO: Azure AD */}}
-                className="group h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 flex items-center justify-center gap-2.5"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#F25022" d="M1 1h10v10H1z" />
-                  <path fill="#00A4EF" d="M1 13h10v10H1z" />
-                  <path fill="#7FBA00" d="M13 1h10v10H13z" />
-                  <path fill="#FFB900" d="M13 13h10v10H13z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Azure AD</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {/* TODO: Google */}}
-                className="group h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 flex items-center justify-center gap-2.5"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M8.08 14.75c0 1.36.46 2.53 1.27 3.4H5.17v-2.84h2.91zm6.04 3.4H12v2.84h5.92c1.48-2.68 1.48-5.93 0-8.51H12V5.75h5.08c2.34 2.15 2.34 5.7 0 7.85z" />
-                  <path fill="#EA4335" d="M12 5.75c1.82 0 3.53.6 4.85 1.69l3.15-3.15C18.5 2.83 15.31 2 12 2 7.31 2 3.25 5.35 2.18 9.18h2.84c.87-2.45 3.3-4.48 6.98-4.48z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Google</span>
-              </button>
-            </div>
-          </div>
-
           {/* Footer */}
           <p className="mt-8 text-center text-xs text-gray-400 dark:text-gray-500">
             Don't have an account?{' '}
@@ -411,3 +348,4 @@ export function LoginPage() {
     </div>
   )
 }
+
