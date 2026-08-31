@@ -146,12 +146,13 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
   hint?: string
-  options: { value: string; label: string; disabled?: boolean }[]
+  options?: { value: string; label: string; disabled?: boolean }[]
   placeholder?: string
+  children?: React.ReactNode
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, hint, options, placeholder, id, ...props }, ref) => {
+  ({ className, label, error, hint, options = [], placeholder, children, id, ...props }, ref) => {
     const autoId = useId()
     const selectId = id || `select-${autoId}`
 
@@ -188,11 +189,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               {placeholder}
             </option>
           )}
-          {options.map(option => (
-            <option key={option.value} value={option.value} disabled={option.disabled}>
-              {option.label}
-            </option>
-          ))}
+          {options.length > 0
+            ? options.map(option => (
+                <option key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </option>
+              ))
+            : children}
         </select>
         {error && (
           <p id={`${selectId}-error`} className="mt-1.5 text-sm text-red-600 dark:text-red-400" role="alert">
