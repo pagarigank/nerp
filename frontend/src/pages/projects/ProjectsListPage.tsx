@@ -47,15 +47,15 @@ export function ProjectsListPage() {
   })
 
   const columns: DataTableColumn<ProjectSummary>[] = [
-    { key: 'projectCode', header: 'Code', sortable: true },
-    { key: 'name', header: 'Name' },
-    { key: 'projectType', header: 'Type' },
-    { key: 'projectManager', header: 'PM', render: (r: ProjectSummary) => r.projectManager ?? '—' },
-    { key: 'contractValue', header: 'Contract', align: 'right', render: (r: ProjectSummary) => MONEY(r.contractValue) },
-    { key: 'costsToDate', header: 'Costs', align: 'right', render: (r: ProjectSummary) => MONEY(r.costsToDate) },
-    { key: 'revenueToDate', header: 'Revenue', align: 'right', render: (r: ProjectSummary) => MONEY(r.revenueToDate) },
-    { key: 'percentComplete', header: '% Complete', align: 'right', render: (r: ProjectSummary) => PCT(r.percentComplete) },
-    { key: 'status', header: 'Status', render: (r: ProjectSummary) => (
+    { key: 'projectCode', header: 'Code', sortable: true, searchValue: (r) => r.projectCode },
+    { key: 'name', header: 'Name', sortable: true, searchValue: (r) => r.name },
+    { key: 'projectType', header: 'Type', searchValue: (r) => r.projectType },
+    { key: 'projectManager', header: 'PM', sortable: true, searchValue: (r) => r.projectManager ?? '' },
+    { key: 'contractValue', header: 'Contract', align: 'right', sortable: true, render: (r: ProjectSummary) => MONEY(r.contractValue), sortValue: (r) => r.contractValue ?? 0 },
+    { key: 'costsToDate', header: 'Costs', align: 'right', sortable: true, render: (r: ProjectSummary) => MONEY(r.costsToDate), sortValue: (r) => r.costsToDate ?? 0 },
+    { key: 'revenueToDate', header: 'Revenue', align: 'right', sortable: true, render: (r: ProjectSummary) => MONEY(r.revenueToDate), sortValue: (r) => r.revenueToDate ?? 0 },
+    { key: 'percentComplete', header: '% Complete', align: 'right', sortable: true, render: (r: ProjectSummary) => PCT(r.percentComplete), sortValue: (r) => r.percentComplete ?? 0 },
+    { key: 'status', header: 'Status', sortable: true, searchValue: (r) => r.status, render: (r: ProjectSummary) => (
       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
         r.status === 'Active' ? 'bg-green-100 text-green-800'
         : r.status === 'Completed' ? 'bg-blue-100 text-blue-800'
@@ -89,8 +89,20 @@ export function ProjectsListPage() {
         ))}
       </div>
 
-      <DataTable data={projects as ProjectSummary[]} columns={columns} isLoading={isLoading}
-        onRowClick={(row) => setSelectedId(row.id)} emptyMessage="No projects yet." />
+      <DataTable
+        data={projects as ProjectSummary[]}
+        columns={columns}
+        isLoading={isLoading}
+        onRowClick={(row) => setSelectedId(row.id)}
+        rowKey={selectedId ?? undefined}
+        rowKeyField="id"
+        searchable
+        searchPlaceholder="Search projects by code, name, type, PM, or status..."
+        clientSort
+        pageSize={25}
+        getRowKey={(r) => r.id}
+        emptyMessage="No projects yet."
+      />
 
       <CreateProjectModal open={showCreate} onClose={() => setShowCreate(false)} onSubmit={(d) => createMutation.mutate(d)} customers={customers as any[]} />
       {showEdit && selectedProject && (
