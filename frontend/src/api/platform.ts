@@ -84,6 +84,11 @@ export function getPublicCompanies(): Promise<PublicCompany[]> {
   return get('/platform/companies/public')
 }
 
+// Count of pending access requests for the caller's company (admin/super admin).
+export function getPendingAccessRequestsCount(): Promise<{ data: number }> {
+  return get<{ data: number }>('/platform/access-requests/pending-count')
+}
+
 export function getCompany(id: string): Promise<Company> {
   return get(`/platform/companies/${id}`)
 }

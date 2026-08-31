@@ -1,13 +1,13 @@
 import { currentCompanyId } from '@/api/company'
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, DollarSign, Users, Package, CreditCard, TrendingUp, AlertTriangle, CheckCircle, Clock, FileText } from 'lucide-react'
+import { Building2, DollarSign, Users, Package, CreditCard, TrendingUp, AlertTriangle, CheckCircle, Clock, FileText, UserPlus } from 'lucide-react'
 import { formatNumber } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Badge, StatusBadge, AmountBadge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
 import { LoadingOverlay } from '@components/ui/LoadingSpinner'
-import { useAuth } from '@stores/authStore'
-import { useAuthStore } from '@stores/authStore'
+import { useAuth, useAuthStore } from '@stores/authStore'
+import { getPendingAccessRequestsCount } from '@/api/platform'
 
 async function apiFetch<T>(url: string): Promise<T | null> {
   try {
@@ -49,6 +49,7 @@ export function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [pendingAccessRequests, setPendingAccessRequests] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
@@ -84,6 +85,13 @@ export function DashboardPage() {
     setEmployees(extract(em))
     setWorkOrders(extract(wo))
     setAuditLogs(extract(al))
+
+    // Pending access-request count (company admin / super admin only).
+    if (useAuthStore.getState().isCompanyAdmin || useAuthStore.getState().isSuperAdmin) {
+      const cnt = await getPendingAccessRequestsCount().then(r => r?.data ?? null).catch(() => null)
+      setPendingAccessRequests(cnt)
+    }
+
     setLoading(false)
   }, [])
 
@@ -238,6 +246,33 @@ export function DashboardPage() {
             </Card>
           ))}
         </div>
+
+        {/* Access Requests card (company admins / super admins only) */}
+        {(useAuthStore.getState().isCompanyAdmin || useAuthStore.getState().isSuperAdmin) && (
+          <Card className="bg-white dark:bg-gray-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
+                    <UserPlus className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Access Requests</p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
+                      {pendingAccessRequests ?? '—'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {pendingAccessRequests === 0 ? 'No pending requests' : 'Pending your review'}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <a href="/platform/access-requests">Review</a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

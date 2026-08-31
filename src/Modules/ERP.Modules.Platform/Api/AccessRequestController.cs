@@ -114,6 +114,17 @@ public class AccessRequestController : ControllerBase
             items.Select(r => ToDto(r, companyNames)).ToList()));
     }
 
+    /// <summary>Pending-request count for the caller's scope (for dashboard cards).</summary>
+    [HttpGet("pending-count")]
+    [Authorize(Policy = "CompanyAdminOrSuper")]
+    public async Task<ActionResult<ApiResponse<int>>> PendingCount(CancellationToken cancellationToken)
+    {
+        var query = _db.UserAccessRequests.Where(r => r.DeletedOn == null && r.Status == AccessRequestStatus.Pending);
+        if (!_currentUser.IsSuperAdmin)
+            query = query.Where(r => _currentUser.CompanyIds.Contains(r.CompanyId));
+        return Ok(ApiResponse<int>.Success(await query.CountAsync(cancellationToken)));
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "CompanyAdminOrSuper")]
     public async Task<ActionResult<ApiResponse<AccessRequestDto>>> Get(
