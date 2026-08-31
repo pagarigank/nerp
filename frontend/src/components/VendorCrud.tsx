@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { Plus, Search, Pencil, Trash2, AlertCircle, Banknote, ShieldCheck, X } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button, IconButton } from '@components/ui/Button'
-import { Input, Select, Checkbox } from '@components/ui/Input'
+import { Input, Select, Checkbox, SearchInput } from '@components/ui/Input'
 import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
@@ -263,11 +263,10 @@ export function VendorCrud() {
         />
         <CardContent>
           <div className="mb-4 max-w-md">
-            <Input
+            <SearchInput
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder="Search by name or code..."
-              leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}
               aria-label="Search vendors"
             />
           </div>

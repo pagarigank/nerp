@@ -80,13 +80,13 @@ export function WorkCentersPage() {
   }
 
   const columns: DataTableColumn<WorkCenterSummary>[] = [
-    { key: 'code', header: 'Code', sortable: true },
-    { key: 'name', header: 'Name' },
-    { key: 'department', header: 'Department', render: (r: WorkCenterSummary) => r.department ?? '—' },
-    { key: 'capacityHoursPerDay', header: 'Capacity Hrs/Day', align: 'right' },
-    { key: 'efficiencyPercentage', header: 'Efficiency %', align: 'right', render: (r: WorkCenterSummary) => `${r.efficiencyPercentage}%` },
-    { key: 'costRatePerHour', header: 'Cost Rate/Hr', align: 'right', render: (r: WorkCenterSummary) => MONEY(r.costRatePerHour) },
-    { key: 'isActive', header: 'Active', render: (r: WorkCenterSummary) => YESNO(r.isActive) },
+    { key: 'code', header: 'Code', sortable: true, searchValue: (r) => r.code },
+    { key: 'name', header: 'Name', sortable: true, searchValue: (r) => r.name },
+    { key: 'department', header: 'Department', sortable: true, searchValue: (r) => r.department ?? '', render: (r: WorkCenterSummary) => r.department ?? '—' },
+    { key: 'capacityHoursPerDay', header: 'Capacity Hrs/Day', align: 'right', sortable: true, sortValue: (r) => r.capacityHoursPerDay ?? 0 },
+    { key: 'efficiencyPercentage', header: 'Efficiency %', align: 'right', sortable: true, sortValue: (r) => r.efficiencyPercentage ?? 0, render: (r: WorkCenterSummary) => `${r.efficiencyPercentage}%` },
+    { key: 'costRatePerHour', header: 'Cost Rate/Hr', align: 'right', sortable: true, sortValue: (r) => r.costRatePerHour ?? 0, render: (r: WorkCenterSummary) => MONEY(r.costRatePerHour) },
+    { key: 'isActive', header: 'Active', sortable: true, searchValue: (r) => r.isActive ? 'active' : 'inactive', render: (r: WorkCenterSummary) => YESNO(r.isActive) },
     {
       key: 'actions', header: 'Actions',
       render: (_: unknown, row: WorkCenterSummary) => (
@@ -116,7 +116,16 @@ export function WorkCentersPage() {
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">{error}</div>
       )}
 
-      <DataTable data={centers as WorkCenterSummary[]} columns={columns} isLoading={isLoading} emptyMessage="No work centers defined." />
+      <DataTable
+        data={centers as WorkCenterSummary[]}
+        columns={columns}
+        isLoading={isLoading}
+        searchable
+        searchPlaceholder="Search work centers by code, name, or department..."
+        clientSort
+        pageSize={25}
+        emptyMessage="No work centers defined."
+      />
 
       <Modal title={editId ? 'Edit Work Center' : 'New Work Center'} isOpen={showForm} onClose={() => { setShowForm(false); setEditId(null) }}>
         <div className="space-y-4">

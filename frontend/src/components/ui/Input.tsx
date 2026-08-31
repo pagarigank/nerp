@@ -1,4 +1,5 @@
 import { forwardRef, useId, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
+import { Search, X } from 'lucide-react'
 import { cn } from '@utils/helpers'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -249,3 +250,54 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
 )
 
 Checkbox.displayName = 'Checkbox'
+
+export interface SearchInputProps {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  'aria-label'?: string
+  className?: string
+}
+
+/**
+ * Reusable search field with a clear (X) button and Esc-to-clear.
+ * Use on list pages for consistent, friendly search UX.
+ */
+export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
+  ({ value, onChange, placeholder = 'Search...', className, ...rest }, ref) => {
+    return (
+      <div className={cn('relative w-full', className)}>
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+          <Search className="h-4 w-4" aria-hidden="true" />
+        </div>
+        <input
+          ref={ref}
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && value) {
+              e.preventDefault()
+              onChange('')
+            }
+          }}
+          placeholder={placeholder}
+          aria-label={rest['aria-label'] ?? placeholder}
+          className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-10 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-fast"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            aria-label="Clear search"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    )
+  }
+)
+
+SearchInput.displayName = 'SearchInput'
