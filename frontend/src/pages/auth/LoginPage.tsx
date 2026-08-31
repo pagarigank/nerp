@@ -49,7 +49,6 @@ export function LoginPage() {
   const { setAuth, setLoading, setError, error: authError } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [focusedField, setFocusedField] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -215,23 +214,17 @@ export function LoginPage() {
             <div className="relative group">
               <label
                 htmlFor="email"
-                className={`absolute left-3 px-1 text-xs font-medium transition-all duration-200 z-10
-                  ${focusedField === 'email' || (document.getElementById('email') as HTMLInputElement)?.value
-                    ? '-top-2.5 bg-white dark:bg-gray-950 text-primary-600 dark:text-primary-400'
-                    : 'top-3 text-gray-400 dark:text-gray-500'
-                  }`}
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
                 Email address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors pointer-events-none" />
                 <input
                   id="email"
                   {...register('email')}
                   type="email"
                   placeholder="you@company.com"
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
                   autoComplete="email"
                   required
                   className={`w-full h-12 pl-10 pr-4 rounded-xl border bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm transition-all duration-200 outline-none
@@ -253,23 +246,17 @@ export function LoginPage() {
             <div className="relative group">
               <label
                 htmlFor="password"
-                className={`absolute left-3 px-1 text-xs font-medium transition-all duration-200 z-10
-                  ${focusedField === 'password' || (document.getElementById('password') as HTMLInputElement)?.value
-                    ? '-top-2.5 bg-white dark:bg-gray-950 text-primary-600 dark:text-primary-400'
-                    : 'top-3 text-gray-400 dark:text-gray-500'
-                  }`}
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors pointer-events-none" />
                 <input
                   id="password"
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
                   autoComplete="current-password"
                   required
                   className={`w-full h-12 pl-10 pr-12 rounded-xl border bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm transition-all duration-200 outline-none
@@ -385,7 +372,7 @@ export function LoginPage() {
                 onClick={() => {/* TODO: Azure AD */}}
                 className="group h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 flex items-center justify-center gap-2.5"
               >
-                <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#F25022" d="M1 1h10v10H1z" />
                   <path fill="#00A4EF" d="M1 13h10v10H1z" />
                   <path fill="#7FBA00" d="M13 1h10v10H13z" />
@@ -398,7 +385,7 @@ export function LoginPage() {
                 onClick={() => {/* TODO: Google */}}
                 className="group h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 flex items-center justify-center gap-2.5"
               >
-                <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M8.08 14.75c0 1.36.46 2.53 1.27 3.4H5.17v-2.84h2.91zm6.04 3.4H12v2.84h5.92c1.48-2.68 1.48-5.93 0-8.51H12V5.75h5.08c2.34 2.15 2.34 5.7 0 7.85z" />
