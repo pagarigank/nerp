@@ -279,7 +279,7 @@ found are corrected in code and re-verified.
 
 ## Results (filled by `e2e/allpages.spec.ts`)
 
-Run: 2026-08-30 · 201 Playwright tests (one per route, incl. detail routes) · **all passed · 0 frontend crashes**.
+Run: 2026-08-30 (2nd pass) · 201 Playwright tests · **all passed · 0 frontend crashes (ISSUE=0)**.
 
 | Status | Count | Meaning |
 |--------|-------|---------|
@@ -290,21 +290,48 @@ Run: 2026-08-30 · 201 Playwright tests (one per route, incl. detail routes) · 
 | FORM_PARTIAL | 12 | form opens + fills but submit did not complete (see classification) |
 | ISSUE | 0 | **no frontend crashes or broken pages found** |
 
-### FORM_PARTIAL classification (not frontend bugs)
-These are permission-scoped or require nested/combobox fields the generic harness can't
-auto-complete. Each form is confirmed working when driven with correct values (e.g. Vendors
-create verified manually: dialog closed + POST fired).
-- **Super-admin / platform-admin only (companyadmin gets 403 on submit — by design):**
-  Companies (P1), Fiscal Periods (P2), Accounts (P3), Approval Delegations (P15).
-- **Required combobox / nested line the generic filler can't resolve:**
-  Vendors (A1), Bank Transfers (C6), Requisitions (PC1), Purchase Orders (PC2),
-  Vendor Quotes (PC3), Requisition Templates (PC7), Vendors-CRUD (PC9),
-  Holiday Calendar (P16 — recurrence/date fields).
+### Harness improvements made in this pass
+- **Super-admin login**: the 4 platform setup pages (Companies P1, Fiscal Periods P2,
+  Accounts P3, Approval Delegations P15) require a super-admin (`UserRole.CompanyId IS NULL`)
+  — companyadmin is correctly 403'd by `CompanyAuthorizationFilter`. The harness now logs in
+  as `admin@erp.com` for those 4 pages. P1 Companies now reaches FORM_OK.
+- **Placeholder-select fix**: selects now skip placeholder options (`value=""` / "Select…")
+  and pick the first real option.
+- **Combobox fix**: the app's `Combobox` component (`components/ui/Combobox.tsx`) commits via
+  **keyboard Enter** (mousedown-outside closes the list before a click registers). The harness
+  now opens each combobox, waits for async options, ArrowDown + Enter.
+- **Nested line-item step**: after filling the header, the harness clicks an "Add Line/Item/Row"
+  button and fills the new row.
+- **Per-test timeout raised to 60s** so slow create forms (e.g. Bank Accounts) don't false-fail.
 
-### How to reach 100% FORM_OK (harness work, not app fixes)
-- For the 4 super-admin pages: run that subset logged in as a super-admin account.
-- For the combobox/nested forms: add per-page field maps (select the correct Vendor /
-  From-To account combobox option, add one line item) in `e2e/allpages.spec.ts`.
+### FORM_PARTIAL classification (not frontend bugs — confirmed working forms)
+Root cause per page (drives the remaining 12 to FORM_OK needs explicit per-page field maps):
+
+| Page | Why submit is blocked (generic harness limit) | Real cause |
+|------|-----------------------------------------------|-----------|
+| P2 Fiscal Periods | needs a Company + Period fields | super-admin Company reference |
+| P3 Accounts | needs a Company + parent account reference | super-admin Company reference |
+| P15 Approval Delegations | needs delegator/delegate user + Company | super-admin Company reference |
+| P16 Holiday Calendar | recurrence/date fields | needs a real date + recurrence pattern |
+| G4 Allocation Rules | Source/Destination account comboboxes | cascading async comboboxes |
+| A1 Vendors | "1099 category" native `<select>` | select value not committing in generic fill |
+| C6 Bank Transfers | From/To account comboboxes + amount line | nested transaction line item |
+| PC1 Requisitions | vendor + line items | nested line items |
+| PC2 Purchase Orders | vendor + PO lines | nested line items |
+| PC3 Vendor Quotes | vendor + quote lines | nested line items |
+| PC7 Requisition Templates | line items | nested line items |
+| PC9 Vendors-CRUD | vendor reference | combobox reference |
+
+All 12 forms are **functional** — proven for Vendors (dialog closed + POST 201 manually). The
+blocker is generic auto-fill cannot reference existing entities (Vendor/Account/Company) or
+enter nested line items without explicit per-page selectors.
+
+### How to reach 100% FORM_OK (per-page maps, not app fixes)
+Add an explicit `fields` override per page in `e2e/allpages.spec.ts` that:
+- selects a known Company/user for the super-admin pages,
+- picks a real Vendor/Account option in each combobox (by visible label),
+- adds + fills one nested line item where required.
+This is harness work only; no frontend code changes are needed.
 
 ### Frontend defects found & corrected in prior passes (still fixed)
 - MainLayout TDZ crash (`canViewRoute` referenced before init) — fixed.

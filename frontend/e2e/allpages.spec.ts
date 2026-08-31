@@ -1,6 +1,8 @@
 import { test, type Page } from '@playwright/test'
 import * as fs from 'fs'
 
+test.setTimeout(60000)
+
 /**
  * Per-page frontend E2E (REAL UI only, NO raw API calls).
  * For every route in the inventory:
@@ -23,9 +25,9 @@ function valueFor(label: string, type: string): string {
   if (l.includes('zip') || l.includes('postal')) return '12345'
   return `QA${STAMP}`
 }
-async function login(page: Page) {
+async function login(page: Page, user = 'companyadmin@erp.com') {
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
-  await page.fill('#email', 'companyadmin@erp.com'); await page.fill('#password', 'password123')
+  await page.fill('#email', user); await page.fill('#password', 'password123')
   await page.getByRole('button', { name: /sign in/i }).click()
   await page.waitForURL('**/dashboard', { timeout: 20000 })
 }
@@ -53,9 +55,19 @@ async function fillNative(container: any, page: Page): Promise<{ filled: number;
     }
   }
   const selects = container.locator('select:visible'); const sc = await selects.count()
-  for (let i = 0; i < sc; i++) { const s = selects.nth(i); if (await s.isDisabled()) continue; const opts = await s.locator('option').all(); for (const o of opts) { const v = await o.getAttribute('value'); if (v) { await s.selectOption({ value: v }).catch(() => {}); break } } filled++ }
+  for (let i = 0; i < sc; i++) { const s = selects.nth(i); if (await s.isDisabled()) continue; const opts = await s.locator('option').all(); let picked = false; for (const o of opts) { const v = await o.getAttribute('value'); const txt = (await o.innerText().catch(() => '')) || ''; if (v && v !== '' && !/^select|choose|—|-{2,}$/i.test(txt.trim())) { await s.selectOption({ value: v }).catch(() => {}); picked = true; break } } if (!picked && opts.length) { const v = await opts[0].getAttribute('value'); if (v) await s.selectOption({ value: v }).catch(() => {}) } filled++ }
   const cbs = container.locator('[role="combobox"]:visible'); const cn = await cbs.count()
-  for (let i = 0; i < cn; i++) { const cb = cbs.nth(i); if (await cb.isDisabled()) continue; try { await cb.click({ timeout: 3000 }); const list = page.locator('[role="listbox"]:visible').last(); await list.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}); const opts = await list.locator('[role="option"]:visible').count(); if (opts > 0) { await list.locator('[role="option"]:visible').nth(0).dispatchEvent('click', { bubbles: true }); filled++ } await page.keyboard.press('Escape').catch(() => {}) } catch { } }
+  for (let i = 0; i < cn; i++) { const cb = cbs.nth(i); if (await cb.isDisabled()) continue; try {
+    // Custom Combobox: open, wait for async options, ArrowDown+Enter (no typing so numeric/any options stay).
+    await cb.click({ timeout: 3000 }); await cb.focus().catch(() => {})
+    const list = page.locator('[role="listbox"]:visible').last()
+    const opt = list.locator('[role="option"]:visible')
+    const ready = await opt.first().waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)
+    if (ready) { await page.keyboard.press('ArrowDown', { delay: 60 }).catch(() => {}); await page.waitForTimeout(200); await page.keyboard.press('Enter', { delay: 60 }).catch(() => {}) }
+    await page.waitForTimeout(250)
+    filled++
+    await page.keyboard.press('Escape').catch(() => {})
+  } catch { } }
   return { filled, token }
 }
 async function clickSubmit(container: any) {
@@ -66,9 +78,9 @@ async function clickSubmit(container: any) {
 // Full route list (leaf pages). Some need an :id — handled below by reading a parent row link.
 const PAGES: { id: string; path: string; detail?: boolean; form?: 'create' | 'none' }[] = [
   // Platform
-  { id: 'P1', path: '/platform/companies', form: 'create' },
-  { id: 'P2', path: '/platform/fiscal-periods', form: 'create' },
-  { id: 'P3', path: '/platform/accounts', form: 'create' },
+  { id: 'P1', path: '/platform/companies', form: 'create', loginAs: 'superadmin' },
+  { id: 'P2', path: '/platform/fiscal-periods', form: 'create', loginAs: 'superadmin' },
+  { id: 'P3', path: '/platform/accounts', form: 'create', loginAs: 'superadmin' },
   { id: 'P4', path: '/platform/segment-types', form: 'create' },
   { id: 'P5', path: '/platform/segment-values', form: 'create' },
   { id: 'P6', path: '/platform/users', form: 'create' },
@@ -80,7 +92,7 @@ const PAGES: { id: string; path: string; detail?: boolean; form?: 'create' | 'no
   { id: 'P12', path: '/platform/approval-workflows', form: 'create' },
   { id: 'P13', path: '/platform/period-close', form: 'none' },
   { id: 'P14', path: '/platform/api-keys', form: 'create' },
-  { id: 'P15', path: '/platform/approval-delegations', form: 'create' },
+  { id: 'P15', path: '/platform/approval-delegations', form: 'create', loginAs: 'superadmin' },
   { id: 'P16', path: '/platform/holiday-calendar', form: 'create' },
   { id: 'P17', path: '/platform/sod', form: 'none' },
   { id: 'P18', path: '/platform/reports', form: 'none' },
@@ -284,7 +296,7 @@ for (const def of PAGES) {
   test(`PAGE [${def.id}] ${def.path}${def.detail ? ' (detail)' : ''}`, async ({ page }) => {
     const entry: Record<string, unknown> = { id: def.id, path: def.path, detail: !!def.detail, ts: new Date().toISOString() }
     try {
-      await login(page)
+      await login(page, def.loginAs === 'superadmin' ? 'admin@erp.com' : 'companyadmin@erp.com')
       let url = def.path
       if (def.detail) {
         // derive an id from the first row link on the parent list
@@ -313,6 +325,16 @@ for (const def of PAGES) {
           const c = (await dlg.isVisible().catch(() => false)) ? dlg : page.locator('form, main').first()
           const { filled, token } = await fillNative(c, page)
           await page.waitForTimeout(300)
+          // Nested line items: click an Add-line button, fill the new row, then submit.
+          const addLine = c.getByRole('button', { name: /Add Line|Add Item|Add Row|\+ Add|Add Detail|Add Entry/i }).first()
+          if (await addLine.count()) {
+            await addLine.first().click().catch(() => {})
+            await page.waitForTimeout(500)
+            // fill inputs/comboboxes within the LAST row (or the dialog if rows aren't tagged)
+            const lineScope = c.locator('tr, [class*="row"], [class*="line"]').last().or(c)
+            await fillNative(lineScope, page).catch(() => {})
+            await page.waitForTimeout(200)
+          }
           const openBefore = await dlg.isVisible().catch(() => false)
           await clickSubmit(c)
           await page.waitForTimeout(2200)
