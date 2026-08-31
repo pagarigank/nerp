@@ -216,6 +216,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Holiday Calendar', to: '/platform/holiday-calendar' },
       { label: 'Segregation of Duties', to: '/platform/sod' },
       { label: 'Users', to: '/platform/users' },
+      { label: 'Access Requests', to: '/platform/access-requests' },
       { label: 'Roles', to: '/platform/roles' },
       { label: 'Audit Log', to: '/platform/audit-logs' },
       { label: 'Reports', to: '/platform/reports' },
