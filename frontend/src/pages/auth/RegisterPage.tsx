@@ -5,8 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Building2, Lock, Mail, User as UserIcon, Phone, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { getPublicCompanies, getRoles, submitAccessRequest } from '@/api/platform'
-import type { Role, PublicCompany } from '@/types'
+import { getPublicCompanies, submitAccessRequest } from '@/api/platform'
+import type { PublicCompany } from '@/types'
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -14,7 +14,6 @@ const schema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   companyId: z.string().min(1, 'Please select a company'),
-  requestedRole: z.string().optional(),
   phoneNumber: z.string().optional(),
   reason: z.string().optional(),
 })
@@ -28,10 +27,6 @@ export function RegisterPage() {
   const { data: companies = [] } = useQuery<PublicCompany[]>({
     queryKey: ['companies-public'],
     queryFn: getPublicCompanies,
-  })
-  const { data: roles = [] } = useQuery<Role[]>({
-    queryKey: ['roles-public'],
-    queryFn: getRoles,
   })
 
   const {
@@ -49,7 +44,7 @@ export function RegisterPage() {
         username: data.username,
         password: data.password,
         companyId: data.companyId,
-        requestedRole: data.requestedRole || 'Staff',
+        requestedRole: 'Staff',
         phoneNumber: data.phoneNumber || null,
         reason: data.reason || null,
       })
@@ -192,15 +187,6 @@ export function RegisterPage() {
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               {errors.companyId && <p className="mt-1.5 text-xs text-red-500">{errors.companyId.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="requestedRole" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Requested role <span className="text-gray-400 font-normal">(optional)</span></label>
-              <select id="requestedRole" {...register('requestedRole')}
-                className="w-full h-12 px-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20">
-                <option value="Staff">Staff (default)</option>
-                {roles.filter(r => !/admin/i.test(r.name)).map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
-              </select>
             </div>
 
             <div>
