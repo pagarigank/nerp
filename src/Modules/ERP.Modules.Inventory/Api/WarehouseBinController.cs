@@ -35,6 +35,7 @@ public class WarehouseBinController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.WarehouseBins.AsQueryable();
+        query = query.Where(b => b.DeletedOn == null);
 
         if (warehouseId.HasValue)
         {

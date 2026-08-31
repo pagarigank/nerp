@@ -30,6 +30,7 @@ public class ItemStockController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = _context.ItemStocks.AsQueryable();
+        query = query.Where(s => s.DeletedOn == null);
 
         query = query.ApplyCompanyScope(HttpContext, s => s.CompanyId);
 

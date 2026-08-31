@@ -35,6 +35,7 @@ public class WarehouseController : ControllerBase
         [FromQuery] Guid? companyId, CancellationToken cancellationToken)
     {
         var query = _context.Warehouses.AsQueryable();
+        query = query.Where(w => w.DeletedOn == null);
         query = query.ApplyCompanyScope(HttpContext, w => w.CompanyId, companyId);
 
         var warehouses = await query.OrderBy(w => w.WarehouseCode).ToListAsync(cancellationToken);
