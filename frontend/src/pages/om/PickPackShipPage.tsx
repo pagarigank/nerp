@@ -4,7 +4,7 @@ import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import { DataTable } from '@components/ui/DataTable'
 import { getErrorMessage } from '@api/client'
-import { getSalesOrders, getPickList, getPackingSlip, createShipment, confirmShipment, companyId } from '@api/orderManagement'
+import { getSalesOrders, getPickList, getPackingSlip, createShipment, confirmShipment, getSalesOrder, companyId } from '@api/orderManagement'
 import type { SalesOrderSummary, PickList, PackingSlip } from '@/types/orderManagement'
 
 type Stage = 'pick' | 'pack' | 'ship'
@@ -28,9 +28,20 @@ export function PickPackShipPage() {
       .catch((e) => setError(getErrorMessage(e)))
   }, [])
 
-  // Only Confirmed orders are eligible for picking/packing/shipping.
-  // Draft orders are still being edited; Shipped/Closed/Cancelled are fulfilled.
-  const confirmedOrders = useMemo(() => orders.filter((o) => o.status === 'Confirmed'), [orders])
+  // Only orders with something still to ship are eligible for picking/packing/shipping.
+  // Draft orders are still being edited; Closed/Cancelled are done. A Confirmed order
+  // whose lines are already fully shipped (incl. when the order status hasn't been
+  // advanced to Shipped yet) must also be excluded so it doesn't re-appear here.
+  const confirmedOrders = useMemo(
+    () =>
+      orders.filter(
+        (o) =>
+          o.status === 'Confirmed' &&
+          (o.quantity ?? 0) > 0 &&
+          (o.shippedQuantity ?? 0) < (o.quantity ?? 0)
+      ),
+    [orders]
+  )
 
   function fuzzyMatchOrder(query: string, label: string): boolean {
     const needle = query.toLowerCase()
@@ -74,20 +85,29 @@ export function PickPackShipPage() {
     setLoading(true)
     setError(null)
     try {
-      const shipmentLines = (pickList?.lines ?? []).map((pl, i) => ({
-        lineNumber: i + 1,
-        itemId: pl.itemId,
-        description: pl.description,
-        quantity: pl.remainingToPick > 0 ? pl.remainingToPick : pl.quantity,
-        unitPrice: 0,
-        unitOfMeasure: pl.unitOfMeasure,
-        warehouseId: pl.warehouseId ?? null,
-        salesOrderLineId: null,
-        projectId: null,
-        accountId: null,
-        discountPercent: 0,
-        taxPercent: 0,
-      }))
+      // Pull unit prices / accounts from the sales order lines so the shipment
+      // lines carry a real UnitPrice. Without it the AR invoice totals are zero,
+      // which makes the downstream AR->GL posting event fail canonical
+      // validation ("A line must have either a debit or credit amount").
+      const soDetail = await getSalesOrder(soId).catch(() => null) as (import('@/types/orderManagement').SalesOrderDetail | null)
+      const soLines = soDetail?.lines ?? []
+      const shipmentLines = (pickList?.lines ?? []).map((pl, i) => {
+        const soLine = soLines.find((l) => l.itemId === pl.itemId)
+        return {
+          lineNumber: i + 1,
+          itemId: pl.itemId,
+          description: pl.description,
+          quantity: pl.remainingToPick > 0 ? pl.remainingToPick : pl.quantity,
+          unitPrice: soLine?.unitPrice ?? 0,
+          unitOfMeasure: pl.unitOfMeasure,
+          warehouseId: pl.warehouseId ?? soLine?.warehouseId ?? null,
+          salesOrderLineId: soLine?.id ?? null,
+          projectId: soLine?.projectId ?? null,
+          accountId: soLine?.accountId ?? null,
+          discountPercent: soLine?.discountPercent ?? 0,
+          taxPercent: soLine?.taxPercent ?? 0,
+        }
+      })
       const id = await createShipment({
         shipmentNumber: `SHP${Date.now().toString().slice(-6)}`,
         companyId: companyId(),

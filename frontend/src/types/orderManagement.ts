@@ -33,6 +33,8 @@ export interface SalesOrderSummary {
   orderDate: string
   status: SalesOrderStatus
   totalAmount: number
+  shippedQuantity: number
+  quantity: number
   pendingDropShipCount?: number
   firstPendingDropShipLineId?: string | null
 }

@@ -57,6 +57,8 @@ public class SalesOrderController : ControllerBase
                 o.OrderDate,
                 o.Status,
                 o.Lines.Sum(l => (l.Quantity * l.UnitPrice) * ((1m - (l.DiscountPercent / 100m)) * (1m + (l.TaxPercent / 100m)))),
+                o.Lines.Sum(l => l.ShippedQuantity),
+                o.Lines.Sum(l => l.Quantity),
                 o.Lines.Count(l => l.IsDropShip && l.DropShipConfirmedOn == null),
                 o.Lines
                     .Where(l => l.IsDropShip && l.DropShipConfirmedOn == null)
@@ -468,6 +470,8 @@ public record SalesOrderSummary(
     DateTime OrderDate,
     SalesOrderStatus Status,
     decimal TotalAmount,
+    decimal ShippedQuantity,
+    decimal Quantity,
     int PendingDropShipCount,
     Guid? FirstPendingDropShipLineId);
 
