@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@components/ui/Button'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
@@ -12,6 +12,8 @@ type Stage = 'pick' | 'pack' | 'ship'
 export function PickPackShipPage() {
   const [orders, setOrders] = useState<SalesOrderSummary[]>([])
   const [soId, setSoId] = useState('')
+  const [soSearch, setSoSearch] = useState('')
+  const [soDropdownOpen, setSoDropdownOpen] = useState(false)
   const [stage, setStage] = useState<Stage>('pick')
   const [pickList, setPickList] = useState<PickList | null>(null)
   const [packing, setPacking] = useState<PackingSlip | null>(null)
@@ -25,6 +27,31 @@ export function PickPackShipPage() {
       .then((d) => setOrders(d as SalesOrderSummary[]))
       .catch((e) => setError(getErrorMessage(e)))
   }, [])
+
+  // Only Confirmed orders are eligible for picking/packing/shipping.
+  // Draft orders are still being edited; Shipped/Closed/Cancelled are fulfilled.
+  const confirmedOrders = useMemo(() => orders.filter((o) => o.status === 'Confirmed'), [orders])
+
+  function fuzzyMatchOrder(query: string, label: string): boolean {
+    const needle = query.toLowerCase()
+    if (!needle) return true
+    const hay = label.toLowerCase()
+    let i = 0
+    for (const ch of needle) {
+      i = hay.indexOf(ch, i)
+      if (i === -1) return false
+      i += 1
+    }
+    return true
+  }
+
+  const filteredOrders = useMemo(
+    () =>
+      confirmedOrders.filter((o) =>
+        fuzzyMatchOrder(soSearch, `${o.orderNumber} (${o.customerId})`)
+      ),
+    [confirmedOrders, soSearch]
+  )
 
   async function loadPick() {
     if (!soId) return
@@ -110,20 +137,47 @@ export function PickPackShipPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Pick / Pack / Ship Workspace (644)</h1>
       <Card className="p-4 flex items-end gap-3">
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <label className="block text-sm font-medium mb-1.5">Sales Order</label>
-          <select
+          <input
+            type="text"
             className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm"
-            value={soId}
-            onChange={(e) => setSoId(e.target.value)}
-          >
-            <option value="">Select order…</option>
-            {orders
-              .filter((o) => o.status === 'Confirmed')
-              .map((o) => (
-                <option key={o.id} value={o.id}>{o.orderNumber} ({o.status})</option>
+            placeholder="Start typing order number…"
+            value={soSearch}
+            onChange={(e) => {
+              setSoSearch(e.target.value)
+              setSoDropdownOpen(true)
+            }}
+            onFocus={() => setSoDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setSoDropdownOpen(false), 200)}
+            aria-autocomplete="list"
+          />
+          {soDropdownOpen && filteredOrders.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+              {filteredOrders.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    setSoId(o.id)
+                    setSoSearch(o.orderNumber)
+                    setSoDropdownOpen(false)
+                  }}
+                >
+                  <span className="font-medium">{o.orderNumber}</span>
+                  <span className="ml-2 text-gray-500 text-xs">{o.status}</span>
+                </button>
               ))}
-          </select>
+            </div>
+          )}
+          {soDropdownOpen && soSearch && filteredOrders.length === 0 && (
+            <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No orders found</div>
+            </div>
+          )}
+          <input type="hidden" name="salesOrderId" />
         </div>
         <Button variant="primary" disabled={!soId || loading} onClick={loadPick}>Load Pick List</Button>
       </Card>
