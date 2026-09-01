@@ -113,6 +113,23 @@ export function get<T>(path: string, query?: RequestOptions['query']): Promise<T
   return request<T>(path, query ? { query } : {})
 }
 
+/** Fetches a binary (e.g. PDF) resource as a Blob, honoring auth + error handling. */
+export async function blob(path: string): Promise<Blob> {
+  const token = useAuthStore.getState().accessToken
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'GET', headers })
+  if (!res.ok) {
+    const message = ((await parseErrorBody(res)) ?? res.statusText) || `Request failed with status ${res.status}`
+    throw new ApiError(message, res.status)
+  }
+
+  const contentType = res.headers.get('content-type') ?? 'application/octet-stream'
+  const arrayBuffer = await res.arrayBuffer()
+  return new Blob([arrayBuffer], { type: contentType })
+}
+
 export function post<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', ...(body === undefined ? {} : { body }) })
 }

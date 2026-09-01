@@ -10,7 +10,7 @@ import type {
   ShipmentSummary,
 } from '@/types/orderManagement'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 export function companyId(): string {
@@ -259,6 +259,15 @@ export function getPickList(orderId: string): Promise<import('@/types/orderManag
 }
 export function getPackingSlip(shipmentId: string): Promise<import('@/types/orderManagement').PackingSlip> {
   return get(`/om/fulfillment/packing-slip/${shipmentId}`)
+}
+export function getPickListPdf(orderId: string): Promise<Blob> {
+  return blob(`/om/fulfillment/pick-list/${orderId}/pdf`)
+}
+export function getPackingSlipPdf(shipmentId: string): Promise<Blob> {
+  return blob(`/om/fulfillment/packing-slip/${shipmentId}/pdf`)
+}
+export function getShippingListPdf(shipmentId: string, packageCount = 1): Promise<Blob> {
+  return blob(`/om/fulfillment/shipping-list/${shipmentId}/pdf?packageCount=${packageCount}`)
 }
 
 // ----- Phase 8 gap features -------------------------------------------------

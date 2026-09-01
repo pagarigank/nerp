@@ -40,7 +40,7 @@ import type {
   CreateResaleCertificateRequest,
 } from '@/types/ar'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 function companyId(): string {
@@ -100,6 +100,9 @@ export function createStandaloneInvoice(data: CreateStandaloneInvoiceRequest): P
 
 export function voidInvoice(invoiceId: string): Promise<void> {
   return post(`/ar/invoices/${invoiceId}/void`)
+}
+export function getInvoicePdf(invoiceId: string): Promise<Blob> {
+  return blob(`/ar/invoices/${invoiceId}/pdf`)
 }
 
 export function getCashReceipts(companyIdParam?: string): Promise<ArCashReceipt[]> {

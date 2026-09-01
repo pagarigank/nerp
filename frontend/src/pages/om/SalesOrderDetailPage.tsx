@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CheckCircle, ArrowLeft, Lock, Unlock } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Lock, Unlock, FileText } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { confirmSalesOrder, getSalesOrder, placeCreditHold, releaseCreditHold, getPickList, approveDiscount, getSalesReps, getSalesOrderTypes } from '@api/orderManagement'
+import { confirmSalesOrder, getSalesOrder, placeCreditHold, releaseCreditHold, getPickListPdf, approveDiscount, getSalesReps, getSalesOrderTypes } from '@api/orderManagement'
 import { getCustomers } from '@api/ar'
-import type { SalesOrderDetail, PickList, SalesRepSummary, SalesOrderTypeSummary } from '@/types/orderManagement'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
+import type { SalesOrderDetail, SalesRepSummary, SalesOrderTypeSummary } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
 
 export function SalesOrderDetailPage() {
@@ -15,11 +16,9 @@ export function SalesOrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
-  const [pickList, setPickList] = useState<PickList | null>(null)
-  const [pickLoading, setPickLoading] = useState(false)
-  const [pickError, setPickError] = useState<string | null>(null)
   const [customers, setCustomers] = useState<ArCustomer[]>([])
   const [salesReps, setSalesReps] = useState<SalesRepSummary[]>([])
+  const [pdfDoc, setPdfDoc] = useState<{ title: string; loader: (oid: string) => Promise<Blob> } | null>(null)
   const [orderTypes, setOrderTypes] = useState<SalesOrderTypeSummary[]>([])
   const customerName = (id?: string | null) => id ? customers.find((c: ArCustomer) => c.id === id)?.name ?? id.slice(0, 8) : '—'
   const repName = (id?: string | null) => id ? salesReps.find((r: SalesRepSummary) => r.id === id)?.name ?? id.slice(0, 8) : '—'
@@ -140,21 +139,10 @@ export function SalesOrderDetailPage() {
           )}
           <Button
             variant="outline"
-            disabled={pickLoading}
-            onClick={async () => {
-              if (!id) return
-              setPickLoading(true)
-              setPickError(null)
-              try {
-                setPickList(await getPickList(id))
-              } catch (e) {
-                setPickError(getErrorMessage(e))
-              } finally {
-                setPickLoading(false)
-              }
-            }}
+            leftIcon={<FileText className="h-4 w-4" />}
+            onClick={() => setPdfDoc({ title: `Pick List ${order?.orderNumber ?? id}`, loader: getPickListPdf })}
           >
-            {pickLoading ? 'Loading…' : 'Pick List'}
+            Pick List (PDF)
           </Button>
           <Button variant="primary" onClick={() => navigate(`/om/shipments?salesOrderId=${id}`)}>
             Create Shipment
@@ -162,39 +150,14 @@ export function SalesOrderDetailPage() {
         </div>
       </div>
 
-      {pickError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">{pickError}</div>
-      )}
-      {pickList && (
-        <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-            Pick List — {pickList.orderNumber} ({pickList.status})
-          </h3>
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead>
-              <tr className="text-left text-xs font-medium uppercase text-gray-500">
-                <th className="px-2 py-1">Item</th>
-                <th className="px-2 py-1">Description</th>
-                <th className="px-2 py-1 text-right">Qty</th>
-                <th className="px-2 py-1 text-right">UoM</th>
-                <th className="px-2 py-1">Warehouse</th>
-                <th className="px-2 py-1 text-right">Remaining</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {pickList.lines.map((l, i) => (
-                <tr key={i} className="text-sm">
-                  <td className="px-2 py-1">{l.itemId}</td>
-                  <td className="px-2 py-1">{l.description}</td>
-                  <td className="px-2 py-1 text-right">{l.quantity}</td>
-                  <td className="px-2 py-1 text-right">{l.unitOfMeasure}</td>
-                  <td className="px-2 py-1">{l.warehouseId ?? '—'}</td>
-                  <td className="px-2 py-1 text-right">{l.remainingToPick}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {pdfDoc && (
+        <PdfPreviewModal
+          entityId={id!}
+          title={pdfDoc.title}
+          loader={pdfDoc.loader}
+          open={true}
+          onClose={() => setPdfDoc(null)}
+        />
       )}
 
       <div>

@@ -10,12 +10,14 @@ import { Combobox } from '@components/ui/Combobox'
 import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { Skeleton } from '@components/ui/LoadingSpinner'
 import { getErrorMessage } from '@api/client'
-import { getInvoiceBatch, addInvoiceBatchLines, releaseInvoiceBatch, postInvoiceBatch, getCustomers } from '@api/ar'
+import { getInvoiceBatch, addInvoiceBatchLines, releaseInvoiceBatch, postInvoiceBatch, getCustomers, getInvoicePdf } from '@api/ar'
 import { getAccounts } from '@api/platform'
 import type { ArCustomer, ArInvoiceBatchLineItem } from '@/types/ar'
 import type { Account } from '@/types/platform'
 import { batchStatusMap, invoiceStatusMap } from './statusMaps'
 import { ArStatusBadge } from './ArStatusBadge'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
+import { FileText } from 'lucide-react'
 
 interface LineRow {
   accountId: string
@@ -340,6 +342,7 @@ export function InvoiceBatchDetailPage() {
   const [actionDialog, setActionDialog] = useState<'release' | 'post' | null>(null)
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pdfInvoice, setPdfInvoice] = useState<{ id: string; number: string } | null>(null)
 
   const { data: batch, isLoading, isError } = useQuery({
     queryKey: ['ar', 'invoiceBatch', batchId],
@@ -449,6 +452,16 @@ export function InvoiceBatchDetailPage() {
           <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
           <span className="text-sm">{actionError}</span>
         </div>
+      )}
+
+      {pdfInvoice && (
+        <PdfPreviewModal
+          entityId={pdfInvoice.id}
+          title={`Invoice ${pdfInvoice.number}`}
+          loader={getInvoicePdf}
+          open={true}
+          onClose={() => setPdfInvoice(null)}
+        />
       )}
 
       <Card>
@@ -586,6 +599,19 @@ export function InvoiceBatchDetailPage() {
                           </td>
                           <td className="px-3 py-3 text-right font-tabular tabular-nums text-gray-900 dark:text-white">
                             {formatCurrency(invoice.balanceDue)}
+                            {' '}
+                            <IconButton
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Preview ${invoice.invoiceNumber} as PDF`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPdfInvoice({ id: invoice.id, number: invoice.invoiceNumber })
+                              }}
+                              disabled={invoice.status === 'Draft'}
+                            >
+                              <FileText className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                            </IconButton>
                           </td>
                         </tr>
                         {isExpanded && (
