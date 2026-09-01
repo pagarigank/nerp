@@ -101,8 +101,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const res = await fetch(`${BASE_URL}${path}${buildQuery(options.query)}`, init)
 
   if (!res.ok) {
-    const message =
-      ((await parseErrorBody(res)) ?? res.statusText) || `Request failed with status ${res.status}`
+    const parsed = await parseErrorBody(res)
+    const message = (parsed ?? res.statusText) || `Request failed with status ${res.status}`
     throw new ApiError(message, res.status)
   }
 
@@ -121,7 +121,8 @@ export async function blob(path: string): Promise<Blob> {
 
   const res = await fetch(`${BASE_URL}${path}`, { method: 'GET', headers })
   if (!res.ok) {
-    const message = ((await parseErrorBody(res)) ?? res.statusText) || `Request failed with status ${res.status}`
+    const parsed = await parseErrorBody(res)
+    const message = (parsed ?? res.statusText) || `Request failed with status ${res.status}`
     throw new ApiError(message, res.status)
   }
 
