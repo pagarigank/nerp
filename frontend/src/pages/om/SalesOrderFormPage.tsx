@@ -91,6 +91,8 @@ export function SalesOrderFormPage() {
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [lineUomOptions, setLineUomOptions] = useState<Record<number, { value: string; label: string }[]>>({})
+  const [lineItemSearch, setLineItemSearch] = useState<Record<number, string>>({})
+  const [showItemDropdown, setShowItemDropdown] = useState<Record<number, boolean>>({})
 
   const {
     register,
@@ -214,10 +216,21 @@ export function SalesOrderFormPage() {
     return { subtotal, totalDiscount, totalTax, grandTotal: subtotal - totalDiscount + totalTax }
   }, [watchedLines])
 
-  const itemOptions = useMemo(
-    () => items.map((i: ItemSummary) => ({ value: i.id, label: `${i.itemCode} - ${i.description}` })),
-    [items]
-  )
+  // Fuzzy filter (matches item code and description, case-insensitive, gaps allowed)
+  function fuzzyMatch(q: string, label: string): boolean {
+    const needle = q.toLowerCase()
+    if (!needle) return true
+    const hay = label.toLowerCase()
+    let i = 0
+    for (const ch of hay) { if (ch === needle[i]) i++; if (i === needle.length) return true }
+    return false
+  }
+  function filterItems(query: string): { value: string; label: string; item: ItemSummary }[] {
+    return items
+      .filter(i => fuzzyMatch(query, `${i.itemCode} - ${i.description}`))
+      .map(i => ({ value: i.id, label: `${i.itemCode} - ${i.description}`, item: i }))
+      .slice(0, 12)
+  }
 
   const warehouseOptions = useMemo(
     () => warehouses.map((w: any) => ({ value: w.id, label: `${w.warehouseCode} - ${w.warehouseName}` })),
@@ -318,9 +331,13 @@ export function SalesOrderFormPage() {
     index: number,
     ctx: { itemId: string; itemCategoryId: string; quantity: number; baseUnitPrice: number }
   ) {
+    // Always surface a price immediately (item's standard cost) so the line
+    // total is correct even before a customer is chosen. Customer-specific
+    // rules will override this below when a customer is set.
+    setValue(`lines.${index}.unitPrice`, ctx.baseUnitPrice, { shouldValidate: false })
     const customerId = watch('customerId')
     const orderDate = watch('orderDate')
-    if (!customerId) return // customer must be chosen first
+    if (!customerId) return // customer must be chosen first for rules-based pricing
     try {
       const res = await evaluatePrice({
         companyId: currentCompanyId(),
@@ -575,20 +592,37 @@ export function SalesOrderFormPage() {
                     return (
                       <tr key={field.id} className="bg-white dark:bg-gray-900">
                         <td className="px-3 py-2 text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-3 py-2">
-                          <select
-                            {...register(`lines.${index}.itemId`)}
-                            onChange={(e) => {
-                              register(`lines.${index}.itemId`).onChange(e)
-                              selectItem(index, e.target.value)
-                            }}
+                        <td className="px-3 py-2 relative">
+                          <input
+                            type="text"
+                            value={lineItemSearch[index] || ''}
+                            onChange={(e) => setLineItemSearch(prev => ({ ...prev, [index]: e.target.value }))}
+                            onFocus={() => setShowItemDropdown(idx => ({ ...idx, [index]: true }))}
+                            onBlur={() => setTimeout(() => setShowItemDropdown(idx => ({ ...idx, [index]: false })), 200)}
+                            placeholder="Start typing item code or name..."
                             className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
-                          >
-                            <option value="">Select item...</option>
-                            {itemOptions.map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                          />
+                          {(showItemDropdown[index] && filterItems(lineItemSearch[index] || '').length > 0) && (
+                            <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              {filterItems(lineItemSearch[index] || '').map(opt => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    selectItem(index, opt.value)
+                                    setLineItemSearch(prev => ({ ...prev, [index]: opt.label }))
+                                    setShowItemDropdown(d => ({ ...d, [index]: false }))
+                                  }}
+                                >
+                                  <span className="font-medium">{opt.item.itemCode}</span>
+                                  <span className="ml-2 text-gray-500 text-xs">{opt.item.description}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <input type="hidden" {...register(`lines.${index}.itemId`)} />
                         </td>
                         <td className="px-3 py-2">
                           <input
