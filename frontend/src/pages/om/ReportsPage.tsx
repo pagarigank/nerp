@@ -15,6 +15,7 @@ import {
   History,
   Route,
 } from 'lucide-react'
+import { IconButton } from '@components/ui/Button'
 import {
   getOpenOrdersReport,
   getBackordersReport,
@@ -26,7 +27,12 @@ import {
   getSalesTrendReport,
   getShippingLog,
   getFreightAnalysis,
+  getPackingSlipPdf,
+  getShippingListPdf,
 } from '@/api/orderManagement'
+import { getCustomers } from '@/api/ar'
+import { getItems } from '@/api/inventory'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import type {
   OpenOrderRow,
   BackorderRow,
@@ -54,6 +60,12 @@ type ReportKey =
 
 const money = (n: number) => `$${n.toFixed(2)}`
 
+interface PdfTarget {
+  id: string
+  title: string
+  loader: (id: string) => Promise<Blob>
+}
+
 export function ReportsPage() {
   const [active, setActive] = useState<ReportKey>('open-orders')
   const [loading, setLoading] = useState(false)
@@ -69,6 +81,38 @@ export function ReportsPage() {
   const [trend, setTrend] = useState<SalesTrendRow[]>([])
   const [shippingLog, setShippingLog] = useState<ShippingLogRow[]>([])
   const [freight, setFreight] = useState<FreightAnalysisRow[]>([])
+
+  // Customer + item lookup maps so reports show names/codes instead of raw IDs.
+  const [customers, setCustomers] = useState<Map<string, string>>(new Map())
+  const [items, setItems] = useState<Map<string, { code: string; desc: string }>>(new Map())
+  const [pdfTarget, setPdfTarget] = useState<PdfTarget | null>(null)
+
+  const customerName = (id?: string | null) => (id ? customers.get(id) ?? id : '—')
+  const itemDisplay = (id: string) => {
+    const it = items.get(id)
+    if (!it) return id
+    return `${it.code}${it.desc ? ` — ${it.desc}` : ''}`
+  }
+
+  // Load lookup masters once (company-scoped) so every report can resolve IDs.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [cust, it] = await Promise.all([getCustomers(), getItems()])
+        setCustomers(new Map(cust.map((c) => [c.id, c.name])))
+        setItems(
+          new Map(
+            it.map((i) => [
+              i.id,
+              { code: i.itemCode, desc: i.description ?? i.longDescription ?? '' },
+            ]),
+          ),
+        )
+      } catch {
+        /* masters optional — fall back to raw IDs */
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -161,7 +205,7 @@ export function ReportsPage() {
           headers={['Order', 'Customer', 'Date', 'Status', 'Ordered', 'Backorder', 'Value', 'Hold']}
           rows={openOrders.map((r) => [
             r.orderNumber,
-            r.customerId ?? '—',
+            customerName(r.customerId),
             new Date(r.orderDate).toLocaleDateString(),
             r.status,
             String(r.orderedQty),
@@ -177,8 +221,8 @@ export function ReportsPage() {
           headers={['Order', 'Customer', 'Item', 'Ordered', 'Shipped', 'Backorder', 'Unit Price']}
           rows={backorders.map((r) => [
             r.orderNumber,
-            r.customerId ?? '—',
-            r.itemId,
+            customerName(r.customerId),
+            itemDisplay(r.itemId),
             String(r.orderedQty),
             String(r.shippedQty),
             String(r.backorderedQty),
@@ -187,27 +231,15 @@ export function ReportsPage() {
         />
       )}
 
-      {!loading && !error && active === 'shipment-register' && (
-        <ReportTable
-          headers={['Shipment', 'Order', 'Customer', 'Date', 'Status', 'Freight', 'Value']}
-          rows={shipmentReg.map((r) => [
-            r.shipmentNumber,
-            r.salesOrderId ?? '—',
-            r.customerId ?? '—',
-            new Date(r.shipDate).toLocaleDateString(),
-            r.status,
-            money(r.freightCost),
-            money(r.shipmentValue),
-          ])}
-        />
-      )}
+      {!loading && !error && active === 'shipment-register' &&
+        shipRegisterWithActions(shipmentReg, customerName, setPdfTarget)}
 
       {!loading && !error && active === 'sales-analysis' && (
         <ReportTable
           headers={['Item', 'Customer', 'Qty', 'Shipped', 'Net Sales', 'Tax']}
           rows={analysis.map((r) => [
-            r.itemId,
-            r.customerId ?? '—',
+            itemDisplay(r.itemId),
+            customerName(r.customerId),
             String(r.quantity),
             String(r.shippedQuantity),
             money(r.netSales),
@@ -221,7 +253,7 @@ export function ReportsPage() {
           headers={['Order', 'Customer', 'Date', 'Status', 'Reason']}
           rows={holds.map((r) => [
             r.orderNumber,
-            r.customerId ?? '—',
+            customerName(r.customerId),
             new Date(r.orderDate).toLocaleDateString(),
             r.status,
             r.reason,
@@ -234,8 +266,8 @@ export function ReportsPage() {
           headers={['Order', 'Customer', 'Item', 'Vendor', 'Ordered', 'Shipped', 'Backorder']}
           rows={dropShips.map((r) => [
             r.orderNumber,
-            r.customerId ?? '—',
-            r.itemId,
+            customerName(r.customerId),
+            itemDisplay(r.itemId),
             r.dropShipVendorId ?? '—',
             String(r.orderedQty),
             String(r.shippedQty),
@@ -269,21 +301,8 @@ export function ReportsPage() {
         />
       )}
 
-      {!loading && !error && active === 'shipping-log' && (
-        <ReportTable
-          headers={['Shipment', 'Order', 'Customer', 'Date', 'Carrier', 'Tracking', 'Freight', 'Value']}
-          rows={shippingLog.map((r) => [
-            r.shipmentNumber,
-            r.salesOrderId ?? '—',
-            r.customerId ?? '—',
-            new Date(r.shipDate).toLocaleDateString(),
-            r.carrier,
-            r.trackingNumber,
-            money(r.freightCost),
-            money(r.shipmentValue),
-          ])}
-        />
-      )}
+      {!loading && !error && active === 'shipping-log' &&
+        shippingLogWithActions(shippingLog, customerName, setPdfTarget)}
 
       {!loading && !error && active === 'freight-analysis' && (
         <ReportTable
@@ -296,6 +315,150 @@ export function ReportsPage() {
           ])}
         />
       )}
+    </div>
+  )
+
+  {pdfTarget && (
+    <PdfPreviewModal
+      entityId={pdfTarget.id}
+      title={pdfTarget.title}
+      loader={pdfTarget.loader}
+      open={true}
+      onClose={() => setPdfTarget(null)}
+    />
+  )}
+}
+
+function ShipRegisterRowActions({ shipmentNumber, shipmentId, onPdf }: {
+  shipmentNumber: string
+  shipmentId: string
+  onPdf: (t: { id: string; title: string; loader: (id: string) => Promise<Blob> }) => void
+}) {
+  return (
+    <div className="inline-flex items-center gap-1">
+      <IconButton
+        aria-label={`Packing slip for ${shipmentNumber}`}
+        icon={<FileText className="h-4 w-4" />}
+        onClick={() =>
+          onPdf({
+            id: shipmentId,
+            title: `Packing Slip ${shipmentNumber}`,
+            loader: getPackingSlipPdf,
+          })
+        }
+        size="sm"
+        variant="ghost"
+      />
+      <IconButton
+        aria-label={`Shipping list for ${shipmentNumber}`}
+        icon={<FileText className="h-4 w-4" />}
+        onClick={() =>
+          onPdf({
+            id: shipmentId,
+            title: `Shipping List ${shipmentNumber}`,
+            loader: getShippingListPdf as (id: string) => Promise<Blob>,
+          })
+        }
+        size="sm"
+        variant="ghost"
+      />
+    </div>
+  )
+}
+
+function shipRegisterWithActions(
+  rows: ShipmentRegisterRow[],
+  customerName: (id?: string | null) => string,
+  onPdf: (t: { id: string; title: string; loader: (id: string) => Promise<Blob> }) => void,
+) {
+  const headers = ['Shipment', 'Order', 'Customer', 'Date', 'Status', 'Freight', 'Value', '']
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            {headers.map((h) => (
+              <th
+                key={h}
+                className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={headers.length} className="px-4 py-6 text-center text-sm text-gray-400">
+                No records found.
+              </td>
+            </tr>
+          ) : (
+            rows.map((r) => (
+              <tr key={r.shipmentId}>
+                <td className="px-4 py-2 text-sm">{r.shipmentNumber}</td>
+                <td className="px-4 py-2 text-sm">{r.salesOrderId ?? '—'}</td>
+                <td className="px-4 py-2 text-sm">{customerName(r.customerId)}</td>
+                <td className="px-4 py-2 text-sm">{new Date(r.shipDate).toLocaleDateString()}</td>
+                <td className="px-4 py-2 text-sm">{r.status}</td>
+                <td className="px-4 py-2 text-sm text-right">{money(r.freightCost)}</td>
+                <td className="px-4 py-2 text-sm text-right">{money(r.shipmentValue)}</td>
+                <td className="px-4 py-2"><ShipRegisterRowActions shipmentNumber={r.shipmentNumber} shipmentId={r.shipmentId} onPdf={onPdf} /></td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function shippingLogWithActions(
+  rows: ShippingLogRow[],
+  customerName: (id?: string | null) => string,
+  onPdf: (t: { id: string; title: string; loader: (id: string) => Promise<Blob> }) => void,
+) {
+  const headers = ['Shipment', 'Order', 'Customer', 'Date', 'Carrier', 'Tracking', 'Freight', 'Value', '']
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            {headers.map((h) => (
+              <th
+                key={h}
+                className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={headers.length} className="px-4 py-6 text-center text-sm text-gray-400">
+                No records found.
+              </td>
+            </tr>
+          ) : (
+            rows.map((r) => (
+              <tr key={r.shipmentId}>
+                <td className="px-4 py-2 text-sm">{r.shipmentNumber}</td>
+                <td className="px-4 py-2 text-sm">{r.salesOrderId ?? '—'}</td>
+                <td className="px-4 py-2 text-sm">{customerName(r.customerId)}</td>
+                <td className="px-4 py-2 text-sm">{new Date(r.shipDate).toLocaleDateString()}</td>
+                <td className="px-4 py-2 text-sm">{r.carrier}</td>
+                <td className="px-4 py-2 text-sm">{r.trackingNumber}</td>
+                <td className="px-4 py-2 text-sm text-right">{money(r.freightCost)}</td>
+                <td className="px-4 py-2 text-sm text-right">{money(r.shipmentValue)}</td>
+                <td className="px-4 py-2"><ShipRegisterRowActions shipmentNumber={r.shipmentNumber} shipmentId={r.shipmentId} onPdf={onPdf} /></td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
