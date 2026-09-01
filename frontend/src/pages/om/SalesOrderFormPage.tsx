@@ -600,7 +600,7 @@ export function SalesOrderFormPage() {
                             onFocus={() => setShowItemDropdown(idx => ({ ...idx, [index]: true }))}
                             onBlur={() => setTimeout(() => setShowItemDropdown(idx => ({ ...idx, [index]: false })), 200)}
                             placeholder="Start typing item code or name..."
-                            className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
+                            className="w-full min-w-[180px] text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5"
                           />
                           {(showItemDropdown[index] && filterItems(lineItemSearch[index] || '').length > 0) && (
                             <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
@@ -620,6 +620,11 @@ export function SalesOrderFormPage() {
                                   <span className="ml-2 text-gray-500 text-xs">{opt.item.description}</span>
                                 </button>
                               ))}
+                            </div>
+                          )}
+                          {showItemDropdown[index] && lineItemSearch[index] && filterItems(lineItemSearch[index] || '').length === 0 && (
+                            <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No items found</div>
                             </div>
                           )}
                           <input type="hidden" {...register(`lines.${index}.itemId`)} />
