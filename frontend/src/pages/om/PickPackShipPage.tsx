@@ -119,7 +119,7 @@ export function PickPackShipPage() {
           >
             <option value="">Select order…</option>
             {orders
-              .filter((o) => o.status !== 'Shipped' && o.status !== 'Closed' && o.status !== 'Cancelled')
+              .filter((o) => o.status === 'Confirmed')
               .map((o) => (
                 <option key={o.id} value={o.id}>{o.orderNumber} ({o.status})</option>
               ))}
