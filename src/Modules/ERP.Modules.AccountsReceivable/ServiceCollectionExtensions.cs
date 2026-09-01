@@ -7,6 +7,7 @@ using ERP.Core.Domain.Events;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.AccountsReceivable.Infrastructure.Handlers;
+using ERP.Modules.AccountsReceivable.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,10 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<ICreditLimitCheckService, CreditLimitCheckService>();
+
+        // Expose the shared ERP.Shared contract for the document header (company + customer)
+        // so the Order Management module can render PDFs without a compile-time dependency on AR.
+        services.AddScoped<ERP.Shared.Kernel.Documents.ICustomerReadService, CustomerReadService>();
 
         // Expose the shared ERP.Core contract so the Order Management module can enforce
         // credit policy without a compile-time dependency on this module.

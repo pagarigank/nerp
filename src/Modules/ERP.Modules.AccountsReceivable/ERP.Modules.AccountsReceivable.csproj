@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
+    <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
     <ProjectReference Include="..\ERP.Modules.OrderManagement\ERP.Modules.OrderManagement.csproj" />
@@ -28,5 +29,6 @@
     <PackageReference Include="FluentValidation" Version="11.10.0" />
     <PackageReference Include="MediatR" Version="12.4.1" />
     <PackageReference Include="Hangfire" Version="1.8.14" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
   </ItemGroup>
 </Project>

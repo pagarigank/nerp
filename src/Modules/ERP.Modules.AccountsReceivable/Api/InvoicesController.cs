@@ -5,7 +5,10 @@
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Modules.AccountsReceivable.Reporting.Documents;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Reporting;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,17 +23,20 @@ public class InvoicesController : ControllerBase
     private readonly IPeriodService _periodService;
     private readonly ISodService _sodService;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICustomerReadService _customerRead;
 
     public InvoicesController(
         ArDbContext context,
         IPeriodService periodService,
         ISodService sodService,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        ICustomerReadService customerRead)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _periodService = periodService ?? throw new ArgumentNullException(nameof(periodService));
         _sodService = sodService ?? throw new ArgumentNullException(nameof(sodService));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+        _customerRead = customerRead ?? throw new ArgumentNullException(nameof(customerRead));
     }
 
     [HttpGet("batches")]
@@ -141,6 +147,64 @@ public class InvoicesController : ControllerBase
             batch.Status.ToString(),
             batch.PostingDate,
             invoices));
+    }
+
+    /// <summary>Renders the customer sales invoice for the given invoice as a PDF.</summary>
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<ActionResult> GetInvoicePdfAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var invoice = await _context.Invoices.AsNoTracking()
+            .Include(i => i.Lines)
+            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+        if (invoice is null)
+            return NotFound($"Invoice {id} not found.");
+
+        var customer = await _context.Customers.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId, cancellationToken);
+
+        var batch = await _context.InvoiceBatches.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == invoice.InvoiceBatchId, cancellationToken);
+
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            batch?.CompanyId ?? Guid.Empty,
+            invoice.CustomerId,
+            "Sales Invoice",
+            invoice.InvoiceNumber,
+            invoice.InvoiceDate,
+            cancellationToken);
+
+        var subtotal = invoice.Lines.Sum(l => (l.Quantity * l.UnitPrice) - l.DiscountAmount);
+        var taxTotal = invoice.Lines.Sum(l => l.TaxAmount);
+        var discountTotal = invoice.Lines.Sum(l => l.DiscountAmount);
+
+        var view = new SalesInvoiceView(
+            invoice.Id,
+            batch?.CompanyId ?? Guid.Empty,
+            invoice.CustomerId,
+            invoice.InvoiceNumber,
+            invoice.InvoiceDate,
+            invoice.DueDate,
+            customer?.CustomerId,
+            null,
+            decimal.Round(subtotal, 2),
+            decimal.Round(taxTotal, 2),
+            decimal.Round(discountTotal, 2),
+            0m,
+            invoice.TotalAmount,
+            invoice.BalanceDue,
+            invoice.Lines.Select(l => new SalesInvoiceLineView(
+                l.AccountId,
+                l.Description,
+                l.Quantity,
+                l.UnitPrice,
+                l.TaxAmount,
+                l.DiscountAmount,
+                l.TotalAmount)).ToList());
+
+        var document = new SalesInvoiceDocument(header, view);
+        var pdf = DocumentGenerator.GeneratePdf(document);
+
+        return File(pdf, "application/pdf", $"Invoice-{invoice.InvoiceNumber}.pdf");
     }
 
     [HttpPost("batches")]

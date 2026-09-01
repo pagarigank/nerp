@@ -10,9 +10,15 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using ERP.Modules.OrderManagement.Domain.Entities;
 using ERP.Modules.OrderManagement.Infrastructure;
+using ERP.Modules.OrderManagement.Reporting.Documents;
+using ERP.Reporting;
 using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.OrderManagement.Api;
 
@@ -22,10 +28,12 @@ namespace ERP.Modules.OrderManagement.Api;
 public class FulfillmentDocumentsController : ControllerBase
 {
     private readonly OmDbContext _context;
+    private readonly ICustomerReadService _customerRead;
 
-    public FulfillmentDocumentsController(OmDbContext context)
+    public FulfillmentDocumentsController(OmDbContext context, ICustomerReadService customerRead)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _customerRead = customerRead ?? throw new ArgumentNullException(nameof(customerRead));
     }
 
     /// <summary>
@@ -92,6 +100,137 @@ public class FulfillmentDocumentsController : ControllerBase
             shipment.TrackingNumber,
             lines);
         return Ok(ApiResponse<PackingSlip>.Success(doc));
+    }
+
+    /// <summary>PDF pick list (A4, warehouse-facing, no pricing).</summary>
+    [HttpGet("pick-list/{orderId:guid}/pdf")]
+    public async Task<ActionResult> GetPickListPdfAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        var order = await _context.SalesOrders.AsNoTracking()
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        if (order is null)
+            return NotFound($"Sales order {orderId} not found.");
+
+        var lines = order.Lines
+            .OrderBy(l => l.LineNumber)
+            .Select(l => new PickListLine(
+                l.ItemId,
+                l.Description,
+                l.Quantity,
+                l.UnitOfMeasure ?? "EA",
+                l.WarehouseId,
+                Math.Max(0, l.Quantity - l.ShippedQuantity)))
+            .ToList();
+
+        var pickList = new PickList(
+            order.Id,
+            order.OrderNumber,
+            order.CompanyId,
+            order.CustomerId,
+            order.Status.ToString(),
+            order.OrderDate,
+            lines);
+
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            order.CompanyId,
+            order.CustomerId,
+            "Pick List",
+            order.OrderNumber,
+            order.OrderDate,
+            cancellationToken);
+        var customerName = header.CustomerName ?? order.CustomerId.ToString();
+
+        var pdfBytes = DocumentGenerator
+            .GeneratePdf(new PickListDocument(header, pickList, customerName));
+
+        return File(pdfBytes, "application/pdf", $"PickList-{order.OrderNumber}.pdf");
+    }
+
+    /// <summary>PDF packing slip (A4, customer-facing, no pricing).</summary>
+    [HttpGet("packing-slip/{shipmentId:guid}/pdf")]
+    public async Task<ActionResult> GetPackingSlipPdfAsync(Guid shipmentId, CancellationToken cancellationToken)
+    {
+        var shipment = await _context.Shipments.AsNoTracking()
+            .Include(s => s.Lines)
+            .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
+        if (shipment is null)
+            return NotFound($"Shipment {shipmentId} not found.");
+
+        var lines = shipment.Lines
+            .OrderBy(l => l.LineNumber)
+            .Select(l => new PackingSlipLine(l.ItemId, l.Description, l.Quantity, l.UnitOfMeasure ?? "EA"))
+            .ToList();
+
+        var packingSlip = new PackingSlip(
+            shipment.Id,
+            shipment.ShipmentNumber,
+            shipment.CompanyId,
+            shipment.CustomerId,
+            shipment.SalesOrderId,
+            shipment.ShipmentDate,
+            shipment.Carrier,
+            shipment.TrackingNumber,
+            lines);
+
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            shipment.CompanyId,
+            shipment.CustomerId,
+            "Packing Slip",
+            shipment.ShipmentNumber,
+            shipment.ShipmentDate,
+            cancellationToken);
+        var customerName = header.CustomerName ?? shipment.CustomerId.ToString();
+
+        var pdfBytes = DocumentGenerator.GeneratePdf(new PackingSlipDocument(header, packingSlip, customerName));
+
+        return File(pdfBytes, "application/pdf", $"PackingSlip-{shipment.ShipmentNumber}.pdf");
+    }
+
+    /// <summary>PDF shipping list / bill-of-lading manifest (A4, warehouse-facing).</summary>
+    [HttpGet("shipping-list/{shipmentId:guid}/pdf")]
+    public async Task<ActionResult> GetShippingListPdfAsync(Guid shipmentId, int packageCount, CancellationToken cancellationToken)
+    {
+        var shipment = await _context.Shipments.AsNoTracking()
+            .Include(s => s.Lines)
+            .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
+        if (shipment is null)
+            return NotFound($"Shipment {shipmentId} not found.");
+
+        var lines = shipment.Lines
+            .OrderBy(l => l.LineNumber)
+            .Select(l => new PackingSlipLine(l.ItemId, l.Description, l.Quantity, l.UnitOfMeasure ?? "EA"))
+            .ToList();
+
+        var packingSlip = new PackingSlip(
+            shipment.Id,
+            shipment.ShipmentNumber,
+            shipment.CompanyId,
+            shipment.CustomerId,
+            shipment.SalesOrderId,
+            shipment.ShipmentDate,
+            shipment.Carrier,
+            shipment.TrackingNumber,
+            lines);
+
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            shipment.CompanyId,
+            shipment.CustomerId,
+            "Shipping List",
+            shipment.ShipmentNumber,
+            shipment.ShipmentDate,
+            cancellationToken);
+        var customerName = header.CustomerName ?? shipment.CustomerId.ToString();
+
+        var document = new ShippingListDocument(
+            header,
+            packingSlip,
+            customerName,
+            Math.Max(1, packageCount));
+
+        var pdfBytes = DocumentGenerator.GeneratePdf(document);
+
+        return File(pdfBytes, "application/pdf", $"ShippingList-{shipment.ShipmentNumber}.pdf");
     }
 }
 

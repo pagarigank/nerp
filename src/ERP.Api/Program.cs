@@ -44,6 +44,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using QuestPDF.Infrastructure;
 using Serilog;
 using Serilog.Context;
 
@@ -84,6 +85,11 @@ public class Program
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
             });
+
+        // QuestPDF 2025.x requires an explicit license level at startup; without it
+        // DocumentGenerator.ValidateLicense() throws on every PDF render. The ERP
+        // project is open-source-internal and qualifies for the Community license.
+        QuestPDF.Settings.License = LicenseType.Community;
 
         builder.Services.AddApiVersioning(options =>
         {
