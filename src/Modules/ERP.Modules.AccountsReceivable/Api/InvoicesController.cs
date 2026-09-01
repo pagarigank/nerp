@@ -153,11 +153,58 @@ public class InvoicesController : ControllerBase
     [HttpGet("{id:guid}/pdf")]
     public async Task<ActionResult> GetInvoicePdfAsync(Guid id, CancellationToken cancellationToken)
     {
+        var (pdf, fileName) = await BuildSalesInvoicePdfAsync(id, cancellationToken);
+        if (pdf.Length == 0)
+        {
+            return NotFound($"Invoice {id} not found.");
+        }
+
+        return File(pdf, "application/pdf", fileName);
+    }
+
+    /// <summary>
+    /// Resolves the posted sales invoice for a given sales order and renders it as
+    /// a PDF (Order -> Invoice via the Invoice.SalesOrderId FK).
+    /// </summary>
+    [HttpGet("by-sales-order/{salesOrderId:guid}/pdf")]
+    public async Task<ActionResult> GetInvoiceBySalesOrderPdfAsync(
+        Guid salesOrderId,
+        CancellationToken cancellationToken)
+    {
+        var invoice = await _context.Invoices.AsNoTracking()
+            .Where(i => i.SalesOrderId == salesOrderId)
+            .OrderByDescending(i => i.InvoiceDate)
+            .FirstOrDefaultAsync(i => true, cancellationToken);
+        if (invoice is null)
+        {
+            return NotFound($"No posted invoice found for sales order {salesOrderId}.");
+        }
+
+        var (pdf, fileName) = await BuildSalesInvoicePdfAsync(invoice.Id, cancellationToken);
+        if (pdf.Length == 0)
+        {
+            return NotFound($"Invoice {invoice.Id} not found.");
+        }
+
+        return File(pdf, "application/pdf", fileName);
+    }
+
+    /// <summary>Builds the sales-invoice PDF bytes for the given invoice id.</summary>
+    /// <returns>
+    /// A tuple of (pdfBytes, fileName). <c>pdfBytes</c> is empty when the
+    /// invoice cannot be found.
+    /// </returns>
+    private async Task<(byte[] pdf, string fileName)> BuildSalesInvoicePdfAsync(
+        Guid invoiceId,
+        CancellationToken cancellationToken)
+    {
         var invoice = await _context.Invoices.AsNoTracking()
             .Include(i => i.Lines)
-            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(i => i.Id == invoiceId, cancellationToken);
         if (invoice is null)
-            return NotFound($"Invoice {id} not found.");
+        {
+            return (Array.Empty<byte>(), string.Empty);
+        }
 
         var customer = await _context.Customers.AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId, cancellationToken);
@@ -203,8 +250,7 @@ public class InvoicesController : ControllerBase
 
         var document = new SalesInvoiceDocument(header, view);
         var pdf = DocumentGenerator.GeneratePdf(document);
-
-        return File(pdf, "application/pdf", $"Invoice-{invoice.InvoiceNumber}.pdf");
+        return (pdf, $"Invoice-{invoice.InvoiceNumber}.pdf");
     }
 
     [HttpPost("batches")]

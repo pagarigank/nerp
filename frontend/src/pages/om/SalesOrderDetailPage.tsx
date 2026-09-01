@@ -4,7 +4,7 @@ import { CheckCircle, ArrowLeft, Lock, Unlock, FileText } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
 import { confirmSalesOrder, getSalesOrder, placeCreditHold, releaseCreditHold, getPickListPdf, approveDiscount, getSalesReps, getSalesOrderTypes } from '@api/orderManagement'
-import { getCustomers } from '@api/ar'
+import { getCustomers, getSalesOrderInvoicePdf } from '@api/ar'
 import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import type { SalesOrderDetail, SalesRepSummary, SalesOrderTypeSummary } from '@/types/orderManagement'
 import type { ArCustomer } from '@/types/ar'
@@ -143,6 +143,13 @@ export function SalesOrderDetailPage() {
             onClick={() => setPdfDoc({ title: `Pick List ${order?.orderNumber ?? id}`, loader: getPickListPdf })}
           >
             Pick List (PDF)
+          </Button>
+          <Button
+            variant="outline"
+            leftIcon={<FileText className="h-4 w-4" />}
+            onClick={() => setPdfDoc({ title: `Invoice for ${order?.orderNumber ?? id}`, loader: (oid) => getSalesOrderInvoicePdf(oid) })}
+          >
+            Invoice (PDF)
           </Button>
           <Button variant="primary" onClick={() => navigate(`/om/shipments?salesOrderId=${id}`)}>
             Create Shipment

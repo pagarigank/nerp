@@ -104,6 +104,9 @@ export function voidInvoice(invoiceId: string): Promise<void> {
 export function getInvoicePdf(invoiceId: string): Promise<Blob> {
   return blob(`/ar/invoices/${invoiceId}/pdf`)
 }
+export function getSalesOrderInvoicePdf(salesOrderId: string): Promise<Blob> {
+  return blob(`/ar/invoices/by-sales-order/${salesOrderId}/pdf`)
+}
 
 export function getCashReceipts(companyIdParam?: string): Promise<ArCashReceipt[]> {
   return get('/ar/cash-receipts', { companyId: companyIdParam ?? companyId() })
