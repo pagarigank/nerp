@@ -118,9 +118,11 @@ export function PickPackShipPage() {
             onChange={(e) => setSoId(e.target.value)}
           >
             <option value="">Select order…</option>
-            {orders.map((o) => (
-              <option key={o.id} value={o.id}>{o.orderNumber} ({o.status})</option>
-            ))}
+            {orders
+              .filter((o) => o.status !== 'Shipped' && o.status !== 'Closed' && o.status !== 'Cancelled')
+              .map((o) => (
+                <option key={o.id} value={o.id}>{o.orderNumber} ({o.status})</option>
+              ))}
           </select>
         </div>
         <Button variant="primary" disabled={!soId || loading} onClick={loadPick}>Load Pick List</Button>
