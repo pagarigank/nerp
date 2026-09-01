@@ -1,5 +1,6 @@
-// Sales Reports (Phase 8) — Open Orders, Backorders, Shipment Register, Sales
-// Analysis, Credit Holds, Drop-Ship Status, Sales Tax. Reads from the OM reports API.
+// <copyright file="ReportsPage.tsx" company="ERP Project">
+// Copyright (c) ERP Project. All rights reserved.
+// </copyright>
 
 import { useEffect, useState } from 'react'
 import {
@@ -60,17 +61,10 @@ type ReportKey =
 
 const money = (n: number) => `$${n.toFixed(2)}`
 
-interface PdfTarget {
-  id: string
-  title: string
-  loader: (id: string) => Promise<Blob>
-}
-
 export function ReportsPage() {
   const [active, setActive] = useState<ReportKey>('open-orders')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [openOrders, setOpenOrders] = useState<OpenOrderRow[]>([])
   const [backorders, setBackorders] = useState<BackorderRow[]>([])
   const [shipmentReg, setShipmentReg] = useState<ShipmentRegisterRow[]>([])
@@ -81,11 +75,9 @@ export function ReportsPage() {
   const [trend, setTrend] = useState<SalesTrendRow[]>([])
   const [shippingLog, setShippingLog] = useState<ShippingLogRow[]>([])
   const [freight, setFreight] = useState<FreightAnalysisRow[]>([])
-
-  // Customer + item lookup maps so reports show names/codes instead of raw IDs.
   const [customers, setCustomers] = useState<Map<string, string>>(new Map())
   const [items, setItems] = useState<Map<string, { code: string; desc: string }>>(new Map())
-  const [pdfTarget, setPdfTarget] = useState<PdfTarget | null>(null)
+  const [pdfTarget, setPdfTarget] = useState<{ id: string; title: string; loader: (id: string) => Promise<Blob> } | null>(null)
 
   const customerName = (id?: string | null) => (id ? customers.get(id) ?? id : '—')
   const itemDisplay = (id: string) => {
@@ -94,22 +86,14 @@ export function ReportsPage() {
     return `${it.code}${it.desc ? ` — ${it.desc}` : ''}`
   }
 
-  // Load lookup masters once (company-scoped) so every report can resolve IDs.
   useEffect(() => {
     void (async () => {
       try {
         const [cust, it] = await Promise.all([getCustomers(), getItems()])
         setCustomers(new Map(cust.map((c) => [c.id, c.name])))
-        setItems(
-          new Map(
-            it.map((i) => [
-              i.id,
-              { code: i.itemCode, desc: i.description ?? i.longDescription ?? '' },
-            ]),
-          ),
-        )
+        setItems(new Map(it.map((i) => [i.id, { code: i.itemCode, desc: i.description ?? i.longDescription ?? '' }])))
       } catch {
-        /* masters optional — fall back to raw IDs */
+        // masters optional — fall back to raw IDs
       }
     })()
   }, [])
@@ -315,18 +299,18 @@ export function ReportsPage() {
           ])}
         />
       )}
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId={pdfTarget.id}
+          title={pdfTarget.title}
+          loader={pdfTarget.loader}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
-
-  {pdfTarget && (
-    <PdfPreviewModal
-      entityId={pdfTarget.id}
-      title={pdfTarget.title}
-      loader={pdfTarget.loader}
-      open={true}
-      onClose={() => setPdfTarget(null)}
-    />
-  )}
 }
 
 function ShipRegisterRowActions({ shipmentNumber, shipmentId, onPdf }: {
@@ -378,10 +362,7 @@ function shipRegisterWithActions(
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {headers.map((h) => (
-              <th
-                key={h}
-                className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500"
-              >
+              <th key={h} className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 {h}
               </th>
             ))}
@@ -426,10 +407,7 @@ function shippingLogWithActions(
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {headers.map((h) => (
-              <th
-                key={h}
-                className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500"
-              >
+              <th key={h} className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 {h}
               </th>
             ))}
@@ -470,10 +448,7 @@ function ReportTable({ headers, rows }: { headers: string[]; rows: string[][] })
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {headers.map((h) => (
-              <th
-                key={h}
-                className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500"
-              >
+              <th key={h} className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 {h}
               </th>
             ))}
