@@ -566,12 +566,12 @@ export function SalesOrderFormPage() {
             {errors.lines?.message && (
               <p className="text-sm text-red-600 dark:text-red-400 mb-2">{errors.lines.message}</p>
             )}
-            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 min-h-[200px] overflow-y-visible">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 w-8">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Item</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 min-w-[220px]">Item</th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Description</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Qty</th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Price</th>
