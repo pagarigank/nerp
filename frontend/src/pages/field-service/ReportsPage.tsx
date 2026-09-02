@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileDown } from 'lucide-react'
-import { getSlaCompliance, getTechnicianUtilization, getOpenAging, getContractStatus, getPmDue, getFirstTimeFix, getRevenueProfitability, getWarrantyExpiration, getPartsUsage, getTravelExpense, getWorkOrderStatusReport, getSlaCompliancePdf, getTechnicianUtilizationPdf, getOpenAgingPdf, getContractStatusPdf, getPmDuePdf, getRevenueProfitabilityPdf, getWarrantyExpirationPdf, getPartsUsagePdf, getTravelExpensePdf, getWorkOrderStatusPdf } from '@api/fieldService'
+import { getSlaCompliance, getTechnicianUtilization, getOpenAging, getContractStatus, getPmDue, getFirstTimeFix, getRevenueProfitability, getWarrantyExpiration, getPartsUsage, getTravelExpense, getWorkOrderStatusReport, getSlaCompliancePdf, getTechnicianUtilizationPdf, getOpenAgingPdf, getContractStatusPdf, getPmDuePdf, getRevenueProfitabilityPdf, getWarrantyExpirationPdf, getPartsUsagePdf, getTravelExpensePdf, getWorkOrderStatusPdf, getFirstTimeFixPdf } from '@api/fieldService'
 import { DataTable } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
@@ -59,6 +59,7 @@ const pdfLoaders: Record<string, () => Promise<Blob>> = {
   parts: async () => getPartsUsagePdf(),
   travel: async () => getTravelExpensePdf(),
   status: async () => getWorkOrderStatusPdf(),
+  firstTimeFix: async () => getFirstTimeFixPdf(),
 }
 
 function PrintAllButton() {

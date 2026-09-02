@@ -169,7 +169,6 @@ public class FieldServiceReportsController : ControllerBase
     }
 
     // ---- PDF endpoints ----
-
     [HttpGet("sla-compliance/pdf")]
     public async Task<ActionResult> SlaCompliancePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
@@ -374,6 +373,30 @@ public class FieldServiceReportsController : ControllerBase
             new (string[], string[][])[] { (new[] { "Status", "Count", "Total Billable" }, rows) },
             data.Sum(r => r.TotalBillable), "Total Billable");
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WorkOrderStatus.pdf");
+    }
+
+    [HttpGet("first-time-fix/pdf")]
+    public async Task<ActionResult> FirstTimeFixPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await FirstTimeFix(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<FirstTimeFixRow>;
+        var data = resp?.Data;
+        if (data == null)
+        {
+            return NotFound();
+        }
+
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "First Time Fix Rate", "FTF", DateTimeOffset.UtcNow);
+        var rows = new[]
+        {
+            new[] { "Total Completed", data.TotalCompleted.ToString(CultureInfo.InvariantCulture) },
+            new[] { "First Time Fixed", data.FirstTimeFixed.ToString(CultureInfo.InvariantCulture) },
+            new[] { "Rate", $"{data.RatePercent}%" },
+        };
+        var doc = new ReportDocument(header, "First Time Fix Rate", null,
+            new (string[], string[][])[] { (new[] { "Metric", "Value" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "FirstTimeFix.pdf");
     }
 }
 

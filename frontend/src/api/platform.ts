@@ -498,3 +498,6 @@ export function getFiscalCalendarReportPdf() {
 export function getAuditTrailReportPdf() {
   return blob('/platform/reports/audit-trail/pdf', { companyId: companyId() })
 }
+export function getSecurityMatrixReportPdf() {
+  return blob('/platform/reports/security-matrix/pdf', { companyId: companyId() })
+}

@@ -264,6 +264,12 @@ export function getFreightAnalysis(from?: string, to?: string): Promise<import('
 export function getFreightAnalysisPdf(from?: string, to?: string): Promise<Blob> {
   return blob('/om/reports/freight-analysis/pdf', { companyId: companyId(), from, to })
 }
+export function getCommissionRunsPdf(): Promise<Blob> {
+  return blob('/om/reports/commission-runs/pdf', { companyId: companyId() })
+}
+export function getCustomerOrderHistoryPdf(customerId: string): Promise<Blob> {
+  return blob('/om/reports/customer-order-history/pdf', { companyId: companyId(), customerId })
+}
 
 // Discount approval
 export function approveDiscount(id: string, approvedBy: string): Promise<string> {

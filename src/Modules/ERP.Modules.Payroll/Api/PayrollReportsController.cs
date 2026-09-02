@@ -1151,6 +1151,419 @@ public class PayrollReportsController : ControllerBase
             new (string[], string[][])[] { (new[] { "Field", "Amount" }, rows) }, null, null);
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "Form940.pdf");
     }
+
+    [HttpGet("reports/pto/pdf")]
+    public async Task<ActionResult> PtoReportPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await PtoReport(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<PtoReportRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "PTO Report", "PTO", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.PolicyName, r.Accrued.ToString("F1", CultureInfo.InvariantCulture),
+            r.Used.ToString("F1", CultureInfo.InvariantCulture),
+            r.Available.ToString("F1", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "PTO Report", $"{data.Count} employees",
+            new (string[], string[][])[] { (new[] { "Policy", "Accrued", "Used", "Available" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PtoReport.pdf");
+    }
+
+    [HttpGet("reports/direct-deposit/pdf")]
+    public async Task<ActionResult> DirectDepositPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? runId, CancellationToken ct)
+    {
+        var result = await DirectDepositRegister(companyId, runId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<DirectDepositRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Direct Deposit Register", "DD", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.CheckNumber, r.CheckDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.NetPay.ToString("C", CultureInfo.InvariantCulture),
+            r.AchTraceNumber ?? "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Direct Deposit Register", $"{data.Count} deposits",
+            new (string[], string[][])[] { (new[] { "Check #", "Date", "Net Pay", "ACH Trace" }, rows) },
+            data.Sum(r => r.NetPay), "Total Net Pay");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "DirectDeposit.pdf");
+    }
+
+    [HttpGet("reports/positive-pay/pdf")]
+    public async Task<ActionResult> PositivePayPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    {
+        var result = await PositivePay(companyId, from, to, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<PositivePayRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Positive Pay", "PP", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.CheckNumber, r.CheckDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.Amount.ToString("C", CultureInfo.InvariantCulture),
+            r.IsDirectDeposit ? "DD" : "Check",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Positive Pay", $"{data.Count} checks",
+            new (string[], string[][])[] { (new[] { "Check #", "Date", "Amount", "Type" }, rows) },
+            data.Sum(r => r.Amount), "Total Amount");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PositivePay.pdf");
+    }
+
+    [HttpGet("reports/1099-nec/pdf")]
+    public async Task<ActionResult> Form1099NecPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await Form1099Nec(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<Form1099NecRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Form 1099-NEC", "1099", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.RecipientId.ToString().Substring(0, 8),
+            r.NonemployeeCompensation.ToString("C", CultureInfo.InvariantCulture),
+            r.FederalIncomeTaxWithheld.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Form 1099-NEC", $"Year {year} — {data.Count} recipients",
+            new (string[], string[][])[] { (new[] { "Recipient", "NEC Amount", "FIT Withheld" }, rows) },
+            data.Sum(r => r.NonemployeeCompensation), "Total NEC");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "Form1099Nec.pdf");
+    }
+
+    [HttpGet("reports/union/pdf")]
+    public async Task<ActionResult> UnionReportPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await UnionReport(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<UnionReportRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Union Report", "Union", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.TradeClassification, r.Jurisdiction,
+            r.PrevailingWageRate.ToString("C", CultureInfo.InvariantCulture),
+            r.FringeBenefitRate.ToString("C", CultureInfo.InvariantCulture),
+            r.TotalPrevailingRate.ToString("C", CultureInfo.InvariantCulture),
+            r.UnionLocal ?? "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Union Report", $"{data.Count} classifications",
+            new (string[], string[][])[] { (new[] { "Trade", "Jurisdiction", "PW Rate", "Fringe", "Total Rate", "Local" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "UnionReport.pdf");
+    }
+
+    [HttpGet("reports/workers-comp/pdf")]
+    public async Task<ActionResult> WorkersCompReportPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await WorkersCompReport(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<WorkersCompReportRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Workers Comp Report", "WC", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.ClassCode, r.Description, r.State,
+            r.RatePer100.ToString("F4", CultureInfo.InvariantCulture),
+            r.ExperienceModification.ToString("F2", CultureInfo.InvariantCulture),
+            r.EffectiveRatePer100.ToString("F4", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Workers Comp Report", $"{data.Count} class codes",
+            new (string[], string[][])[] { (new[] { "Class Code", "Description", "State", "Rate/100", "EMOD", "Eff Rate" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WorkersCompReport.pdf");
+    }
+
+    [HttpGet("reports/tax-liability/pdf")]
+    public async Task<ActionResult> TaxLiabilityPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, [FromQuery] int? quarter, CancellationToken ct)
+    {
+        var result = await TaxLiability(companyId, year, quarter, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<TaxLiabilityDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Tax Liability", "Tax", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.Jurisdiction, r.FormType ?? "—",
+            r.DueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.AmountOwed.ToString("C", CultureInfo.InvariantCulture),
+            r.Deposited ? "Yes" : "No",
+            r.Status,
+        }).ToArray();
+        var doc = new ReportDocument(header, "Tax Liability", $"Year {year} — {data.DepositorStatus} depositor",
+            new (string[], string[][])[] { (new[] { "Jurisdiction", "Form", "Due Date", "Amount", "Deposited", "Status" }, rows) },
+            data.TotalEmployeeTaxWithheld, "Total EE Tax Withheld");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "TaxLiability.pdf");
+    }
+
+    [HttpGet("reports/deduction-register/pdf")]
+    public async Task<ActionResult> DeductionRegisterPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTime? asOf, CancellationToken ct)
+    {
+        var result = await DeductionRegister(companyId, asOf, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<DeductionRegisterDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Deduction Register", "DedReg", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.BenefitCode, r.Description, r.Type,
+            r.EmployeeId.ToString().Substring(0, 8),
+            r.Amount.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Deduction Register", $"{data.Rows.Count} enrollments",
+            new (string[], string[][])[] { (new[] { "Code", "Description", "Type", "Employee", "Amount" }, rows) },
+            data.TotalRemittanceDue, "Total Remittance");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "DeductionRegister.pdf");
+    }
+
+    [HttpGet("reports/certified-payroll/pdf")]
+    public async Task<ActionResult> CertifiedPayrollPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    {
+        var result = await CertifiedPayrollReport(companyId, from, to, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<CertifiedPayrollWh347Dto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Certified Payroll (WH-347)", "CertPay", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.EmployeeCode, r.EmployeeName, r.TradeClassification,
+            r.RegularHours.ToString("F2", CultureInfo.InvariantCulture),
+            r.OvertimeHours.ToString("F2", CultureInfo.InvariantCulture),
+            r.Gross.ToString("C", CultureInfo.InvariantCulture),
+            r.MeetsPrevailing ? "Yes" : "No",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Certified Payroll", $"{data.Rows.Count} lines",
+            new (string[], string[][])[] { (new[] { "Code", "Name", "Trade", "Reg Hrs", "OT Hrs", "Gross", "Meets PW" }, rows) },
+            data.TotalGross, "Total Gross");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CertifiedPayroll.pdf");
+    }
+
+    [HttpGet("reports/employee-earnings/pdf")]
+    public async Task<ActionResult> EmployeeEarningsPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await EmployeeEarnings(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<EmployeeEarningsDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Employee Earnings", "Earn", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.EmployeeCode, r.EmployeeName,
+            r.Gross.ToString("C", CultureInfo.InvariantCulture),
+            r.EmployeeTax.ToString("C", CultureInfo.InvariantCulture),
+            r.Net.ToString("C", CultureInfo.InvariantCulture),
+            r.RunCount.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Employee Earnings", $"Year {year} — {data.Rows.Count} employees",
+            new (string[], string[][])[] { (new[] { "Code", "Name", "Gross", "Tax", "Net", "Runs" }, rows) },
+            data.Rows.Sum(r => r.Gross), "Total Gross");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "EmployeeEarnings.pdf");
+    }
+
+    [HttpGet("reports/w2-reconciliation/pdf")]
+    public async Task<ActionResult> W2ReconciliationPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await W2Reconciliation(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<W2ReconciliationDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "W-2 Reconciliation", "W2Rec", DateTimeOffset.UtcNow);
+        var rows = new[]
+        {
+            new[] { "Run Wages", data.RunWages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Manual Check Wages", data.ManualCheckWages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "W-2 Wages", data.W2Wages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Variance", data.Variance.ToString("C", CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "W-2 Reconciliation", $"Year {year}",
+            new (string[], string[][])[] { (new[] { "Field", "Amount" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "W2Reconciliation.pdf");
+    }
+
+    [HttpGet("reports/form-941-reconciliation/pdf")]
+    public async Task<ActionResult> Form941ReconciliationPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, [FromQuery] int quarter, CancellationToken ct)
+    {
+        var result = await Form941Reconciliation(companyId, year, quarter, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<Form941ReconciliationDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Form 941 Reconciliation", "941", DateTimeOffset.UtcNow);
+        var rows = new[]
+        {
+            new[] { "Total Wages", data.TotalWages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "EE FICA Est", data.EmployeeFicaEstimated.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "ER FICA Est", data.EmployerFicaEstimated.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "EE Tax Actual", data.EmployeeTaxWithheldActual.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "ER Tax Actual", data.EmployerTaxActual.ToString("C", CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "Form 941 Reconciliation", $"Year {year} Q{quarter}",
+            new (string[], string[][])[] { (new[] { "Field", "Amount" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "Form941Reconciliation.pdf");
+    }
+
+    [HttpGet("reports/payroll-accrual/pdf")]
+    public async Task<ActionResult> PayrollAccrualPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTime? asOf, CancellationToken ct)
+    {
+        var result = await PayrollAccrual(companyId, asOf, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<PayrollAccrualDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Payroll Accrual", "Accrual", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.EmployeeId.ToString().Substring(0, 8),
+            r.Hours.ToString("F2", CultureInfo.InvariantCulture),
+            r.AccruedWages.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Payroll Accrual", $"As of {data.AsOf:yyyy-MM-dd} — {data.Rows.Count} employees",
+            new (string[], string[][])[] { (new[] { "Employee", "Hours", "Accrued Wages" }, rows) },
+            data.AccruedWages, "Total Accrued Wages");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PayrollAccrual.pdf");
+    }
+
+    [HttpGet("reports/eftps-schedule/pdf")]
+    public async Task<ActionResult> EftpsSchedulePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await EftpsSchedule(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<EftpsScheduleDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "EFTPS Schedule", "EFTPS", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.TaxType, r.Agency, r.DepositDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.EstimatedAmount.ToString("C", CultureInfo.InvariantCulture),
+            r.State,
+        }).ToArray();
+        var doc = new ReportDocument(header, "EFTPS Schedule", $"{data.DepositorStatus} depositor",
+            new (string[], string[][])[] { (new[] { "Tax Type", "Agency", "Date", "Amount", "Status" }, rows) },
+            data.UpcomingAmount, "Upcoming Total");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "EftpsSchedule.pdf");
+    }
+
+    [HttpGet("reports/ach-return-report/pdf")]
+    public async Task<ActionResult> AchReturnReportPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await AchReturnReport(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<AchReturnReportDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "ACH Return Report", "ACH", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.TraceNumber, r.ReturnCode, r.Description,
+            r.Amount.ToString("C", CultureInfo.InvariantCulture),
+            r.Action, r.Processed ? "Yes" : "No",
+        }).ToArray();
+        var doc = new ReportDocument(header, "ACH Return Report", $"{data.TotalCount} returns",
+            new (string[], string[][])[] { (new[] { "Trace #", "Code", "Description", "Amount", "Action", "Processed" }, rows) },
+            data.TotalAmount, "Total Amount");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "AchReturnReport.pdf");
+    }
+
+    [HttpGet("reports/new-hire-report/pdf")]
+    public async Task<ActionResult> NewHireReportPdfAsync([FromQuery] Guid companyId, [FromQuery] int? days, CancellationToken ct)
+    {
+        var result = await NewHireReport(companyId, days, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<NewHireReportDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "New Hire Report", "Hire", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.EmployeeCode, r.EmployeeName,
+            r.HireDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.State, r.SubmissionStatus,
+        }).ToArray();
+        var doc = new ReportDocument(header, "New Hire Report", $"{data.LookbackDays}-day lookback — {data.Rows.Count} hires",
+            new (string[], string[][])[] { (new[] { "Code", "Name", "Hire Date", "State", "Status" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "NewHireReport.pdf");
+    }
+
+    [HttpGet("reports/workers-comp-premium/pdf")]
+    public async Task<ActionResult> WorkersCompPremiumPdfAsync([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken ct)
+    {
+        var result = await WorkersCompPremium(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<WorkersCompPremiumDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Workers Comp Premium", "WC Prem", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.ClassCode, r.Description, r.State,
+            r.PayrollBasis.ToString("C", CultureInfo.InvariantCulture),
+            r.EstimatedPremium.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Workers Comp Premium",
+            $"{data.Rows.Count} class codes",
+            new (string[], string[][])[] { (new[] { "Class Code", "Description", "State", "Payroll Basis", "Est Premium" }, rows) },
+            data.TotalEstimatedPremium, "Total Estimated Premium");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WorkersCompPremium.pdf");
+    }
+
+    [HttpGet("reports/multi-state-withholding/pdf")]
+    public async Task<ActionResult> MultiStateWithholdingPdfAsync([FromQuery] Guid employeeId, [FromQuery] decimal taxableWages, CancellationToken ct)
+    {
+        var result = await MultiStateWithholding(employeeId, taxableWages, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<MultiStateWithholdingDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Multi-State Withholding", "MSWH", DateTimeOffset.UtcNow);
+        var rows = data.States.Select(s => new[]
+        {
+            s.State, s.StateWithholding.ToString("C", CultureInfo.InvariantCulture),
+            s.Exempt ? "Yes" : "No",
+        }).ToArray();
+        rows = rows.Append(new[]
+        {
+            "Federal", data.FederalWithholding.ToString("C", CultureInfo.InvariantCulture), "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Multi-State Withholding",
+            $"Taxable Wages: {data.TaxableWages.ToString("C", CultureInfo.InvariantCulture)}",
+            new (string[], string[][])[] { (new[] { "State", "Withholding", "Exempt" }, rows) },
+            data.FederalWithholding + data.States.Sum(s => s.StateWithholding), "Total Withholding");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "MultiStateWithholding.pdf");
+    }
+
+    [HttpGet("reports/time-expense-by-project/pdf")]
+    public async Task<ActionResult> TimeExpenseByProjectPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    {
+        var result = await TimeExpenseByProject(companyId, from, to, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<TimeExpenseByProjectDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Time & Expense by Project", "T&E", DateTimeOffset.UtcNow);
+        var rows = data.Rows.Select(r => new[]
+        {
+            r.ProjectId?.ToString().Substring(0, 8) ?? "—",
+            r.Hours.ToString("F2", CultureInfo.InvariantCulture),
+            r.LaborCost.ToString("C", CultureInfo.InvariantCulture),
+            r.Expenses.ToString("C", CultureInfo.InvariantCulture),
+            r.BillableAmount.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Time & Expense by Project",
+            $"{data.Rows.Count} projects",
+            new (string[], string[][])[] { (new[] { "Project", "Hours", "Labor Cost", "Expenses", "Billable" }, rows) },
+            data.Rows.Sum(r => r.LaborCost + r.Expenses), "Total Cost");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "TimeExpenseByProject.pdf");
+    }
 }
 
 // DTOs

@@ -4,7 +4,7 @@ import { FileText, BookOpen, CalendarDays, ShieldCheck, FileDown } from 'lucide-
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
-import { getCompanySetupReport, getChartOfAccountsReport, getFiscalCalendarReport, getSecurityMatrixReport, getCompanySetupReportPdf, getChartOfAccountsReportPdf, getFiscalCalendarReportPdf, getAuditTrailReportPdf } from '@api/platform'
+import { getCompanySetupReport, getChartOfAccountsReport, getFiscalCalendarReport, getSecurityMatrixReport, getCompanySetupReportPdf, getChartOfAccountsReportPdf, getFiscalCalendarReportPdf, getAuditTrailReportPdf, getSecurityMatrixReportPdf } from '@api/platform'
 
 type ReportKey = 'company-setup' | 'chart-of-accounts' | 'fiscal-calendar' | 'security-matrix'
 
@@ -131,7 +131,7 @@ const pdfLoaders: Record<string, () => Promise<Blob>> = {
   'company-setup': async () => getCompanySetupReportPdf(),
   'chart-of-accounts': async () => getChartOfAccountsReportPdf(),
   'fiscal-calendar': async () => getFiscalCalendarReportPdf(),
-  'security-matrix': async () => getAuditTrailReportPdf(),
+  'security-matrix': async () => getSecurityMatrixReportPdf(),
 }
 
 function PrintReportButton({ tab }: { tab: string }) {

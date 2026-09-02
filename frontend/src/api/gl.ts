@@ -298,6 +298,18 @@ export function getGeneralLedgerDetailPdf(): Promise<Blob> {
 export function getAccountDistributionPdf(): Promise<Blob> {
   return blob('/gl/reports/account-distribution/pdf', { companyId: companyId() })
 }
+export function getBudgetVsActualPdf(budgetId: string): Promise<Blob> {
+  return blob('/gl/reports/budget-vs-actual/pdf', { companyId: companyId(), budgetId })
+}
+export function getConsolidatedTrialBalancePdf(): Promise<Blob> {
+  return blob('/gl/reports/consolidated-trial-balance/pdf', { parentCompanyId: companyId() })
+}
+export function getIntercompanyBalancePdf(): Promise<Blob> {
+  return blob('/gl/reports/intercompany-balance/pdf', { companyId: companyId() })
+}
+export function getMultiCurrencyRevaluationPdf(fiscalPeriodId: string, revaluationDate: string): Promise<Blob> {
+  return blob('/gl/reports/multi-currency-revaluation/pdf', { companyId: companyId(), fiscalPeriodId, revaluationDate })
+}
 
 // --- Multi-Currency Revaluation engine ---
 export function previewRevaluation(data: RevaluationPreviewRequest): Promise<RevaluationPreview> {

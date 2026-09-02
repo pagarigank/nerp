@@ -335,4 +335,31 @@ public class ReportController : ControllerBase
             new (string[], string[][])[] { (new[] { "Date", "Action", "Entity", "Entity ID", "Performed By" }, tableRows) }, null, null);
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "AuditTrail.pdf");
     }
+
+    [HttpGet("security-matrix/pdf")]
+    public async Task<ActionResult> SecurityMatrixPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var report = await GetSecurityMatrixReport(companyId, ct);
+        var ok = report.Result as OkObjectResult;
+        var data = ok?.Value as SecurityMatrixReportDto;
+        if (data == null) return NotFound();
+        var header = MkHeader(data.CompanyName, "Security Matrix", "Security");
+        var roleRows = data.RolePermissions.Select(rp => new[]
+        {
+            rp.RoleName, rp.IsActive ? "Active" : "Inactive",
+            rp.Permissions.Count.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var userRows = data.UserRoles.Select(ur => new[]
+        {
+            ur.UserName, ur.DisplayName ?? "—", ur.IsActive ? "Active" : "Inactive",
+            ur.Roles.Count.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Security Matrix", $"{data.CompanyName} — {data.Roles.Count} roles, {data.Users.Count} users",
+            new (string[], string[][])[]
+            {
+                (new[] { "Role", "Status", "Permissions" }, roleRows),
+                (new[] { "User", "Display Name", "Status", "Roles" }, userRows),
+            }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "SecurityMatrix.pdf");
+    }
 }

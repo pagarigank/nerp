@@ -27,6 +27,10 @@ import {
   getUnpostedTransactionsPdf,
   getGeneralLedgerDetailPdf,
   getAccountDistributionPdf,
+  getBudgetVsActualPdf,
+  getConsolidatedTrialBalancePdf,
+  getIntercompanyBalancePdf,
+  getMultiCurrencyRevaluationPdf,
 } from '@api/gl'
 import { getFiscalPeriods, getCompanies } from '@api/platform'
 import type {
@@ -193,11 +197,11 @@ export function GlReportsPage() {
     balanceSheet: getBalanceSheetPdf,
     incomeStatement: getIncomeStatementPdf,
     cashFlow: getCashFlowPdf,
-    budgetVsActual: async () => new Blob(),
+    budgetVsActual: async () => getBudgetVsActualPdf(''),
     accountDistribution: getAccountDistributionPdf,
-    consolidatedTrialBalance: async () => new Blob(),
-    intercompanyBalance: async () => new Blob(),
-    multiCurrencyRevaluation: async () => new Blob(),
+    consolidatedTrialBalance: getConsolidatedTrialBalancePdf,
+    intercompanyBalance: getIntercompanyBalancePdf,
+    multiCurrencyRevaluation: async () => getMultiCurrencyRevaluationPdf('', ''),
   }
 
   const printReport = async () => {

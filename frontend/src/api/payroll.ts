@@ -627,3 +627,60 @@ export function getWageBaseReportPdf(companyId: string, year: number) {
 export function getForm940Pdf(companyId: string, year: number) {
   return blob('/payroll/reports/form-940/pdf', { companyId, year })
 }
+export function getPtoReportPdf(companyId: string) {
+  return blob('/payroll/reports/pto/pdf', { companyId })
+}
+export function getDirectDepositPdf(companyId: string, runId?: string) {
+  return blob('/payroll/reports/direct-deposit/pdf', runId ? { companyId, runId } : { companyId })
+}
+export function getPositivePayPdf(companyId: string) {
+  return blob('/payroll/reports/positive-pay/pdf', { companyId })
+}
+export function getForm1099NecPdf(companyId: string, year: number) {
+  return blob('/payroll/reports/1099-nec/pdf', { companyId, year })
+}
+export function getUnionReportPdf(companyId: string) {
+  return blob('/payroll/reports/union/pdf', { companyId })
+}
+export function getWorkersCompReportPdf(companyId: string) {
+  return blob('/payroll/reports/workers-comp/pdf', { companyId })
+}
+export function getTaxLiabilityPdf(companyId: string, year: number, quarter?: number) {
+  return blob('/payroll/reports/tax-liability/pdf', quarter ? { companyId, year, quarter } : { companyId, year })
+}
+export function getDeductionRegisterPdf(companyId: string) {
+  return blob('/payroll/reports/deduction-register/pdf', { companyId })
+}
+export function getCertifiedPayrollPdf(companyId: string) {
+  return blob('/payroll/reports/certified-payroll/pdf', { companyId })
+}
+export function getEmployeeEarningsPdf(companyId: string, year: number) {
+  return blob('/payroll/reports/employee-earnings/pdf', { companyId, year })
+}
+export function getW2ReconciliationPdf(companyId: string, year: number) {
+  return blob('/payroll/reports/w2-reconciliation/pdf', { companyId, year })
+}
+export function getForm941ReconciliationPdf(companyId: string, year: number, quarter: number) {
+  return blob('/payroll/reports/form-941-reconciliation/pdf', { companyId, year, quarter })
+}
+export function getPayrollAccrualPdf(companyId: string) {
+  return blob('/payroll/reports/payroll-accrual/pdf', { companyId })
+}
+export function getEftpsSchedulePdf(companyId: string) {
+  return blob('/payroll/reports/eftps-schedule/pdf', { companyId })
+}
+export function getAchReturnReportPdf(companyId: string) {
+  return blob('/payroll/reports/ach-return-report/pdf', { companyId })
+}
+export function getNewHireReportPdf(companyId: string) {
+  return blob('/payroll/reports/new-hire-report/pdf', { companyId })
+}
+export function getWorkersCompPremiumPdf(companyId: string, year?: number) {
+  return blob('/payroll/reports/workers-comp-premium/pdf', year ? { companyId, year } : { companyId })
+}
+export function getMultiStateWithholdingPdf(employeeId: string, taxableWages: number) {
+  return blob('/payroll/reports/multi-state-withholding/pdf', { employeeId, taxableWages })
+}
+export function getTimeExpenseByProjectPdf(companyId: string) {
+  return blob('/payroll/reports/time-expense-by-project/pdf', { companyId })
+}

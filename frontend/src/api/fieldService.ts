@@ -235,3 +235,6 @@ export function getTravelExpensePdf(companyIdParam?: string) {
 export function getWorkOrderStatusPdf(companyIdParam?: string) {
   return blob(`${MOD}/reports/work-order-status/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
 }
+export function getFirstTimeFixPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/first-time-fix/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}

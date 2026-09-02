@@ -398,6 +398,67 @@ public class CashReportsController : ControllerBase
             records.Sum(n => n.Amount), "Total NSF");
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "NsfReport.pdf");
     }
+
+    [HttpGet("outstanding-checks/pdf")]
+    public async Task<ActionResult> OutstandingChecksPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid bankAccountId, CancellationToken ct)
+    {
+        var report = await _agingJob.RunAsync(companyId, bankAccountId, ct);
+        var header = await GetHeaderAsync(companyId, "Outstanding Checks", "Aging", ct);
+        var tableRows = report.Buckets.Select(b => new[]
+        {
+            b.Bucket, b.CheckCount.ToString(CultureInfo.InvariantCulture),
+            b.Amount.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Outstanding Checks", $"{report.AccountName} — as of {report.AsOfDate:yyyy-MM-dd}",
+            new[] { (new[] { "Bucket", "Checks", "Amount" }, tableRows) },
+            report.Buckets.Sum(b => b.Amount), "Total Outstanding");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "OutstandingChecks.pdf");
+    }
+
+    [HttpGet("reconciliation-detail/pdf")]
+    public async Task<ActionResult> ReconciliationDetailPdfAsync([FromQuery] Guid sessionId, CancellationToken ct)
+    {
+        var session = await _context.ReconciliationSessions.FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+        if (session == null) return NotFound();
+        var account = await _context.BankAccounts.FirstOrDefaultAsync(a => a.Id == session.BankAccountId, ct);
+        var statement = await _context.BankStatements.FirstOrDefaultAsync(s => s.Id == session.BankStatementId, ct);
+        var lines = await _context.BankStatementLines.Where(l => l.BankStatementId == session.BankStatementId).OrderBy(l => l.TransactionDate).ToListAsync(ct);
+        var header = await GetHeaderAsync(account?.CompanyId ?? Guid.Empty, "Reconciliation Detail", "Recon", ct);
+        var tableRows = lines.Select(l => new[]
+        {
+            l.TransactionDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            l.Amount.ToString("C", CultureInfo.InvariantCulture),
+            l.Description ?? "—",
+            l.CheckNumber ?? "—",
+            l.Status.ToString(),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Reconciliation Detail",
+            $"{account?.AccountName ?? "—"} — Statement {statement?.StatementNumber ?? "—"}",
+            new[] { (new[] { "Date", "Amount", "Description", "Check #", "Status" }, tableRows) },
+            session.EndingBalance, "Ending Balance");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ReconciliationDetail.pdf");
+    }
+
+    [HttpGet("bank-activity/pdf")]
+    public async Task<ActionResult> BankActivityPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid bankAccountId, [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to, CancellationToken ct)
+    {
+        var result = await GetBankActivityAsync(companyId, bankAccountId, from, to, ct);
+        var data = result.Value as IReadOnlyList<ReconciliationDetailLineResponse>;
+        if (data == null) return NotFound();
+        var header = await GetHeaderAsync(companyId, "Bank Activity", "Activity", ct);
+        var tableRows = data.Select(l => new[]
+        {
+            l.TransactionDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            l.Amount.ToString("C", CultureInfo.InvariantCulture),
+            l.Description ?? "—",
+            l.CheckNumber ?? "—",
+            l.Status,
+        }).ToArray();
+        var doc = new ReportDocument(header, "Bank Activity", $"{data.Count} transactions",
+            new[] { (new[] { "Date", "Amount", "Description", "Check #", "Status" }, tableRows) },
+            data.Sum(l => l.Amount), "Net Activity");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BankActivity.pdf");
+    }
 }
 
 public record CashForecastResponse(

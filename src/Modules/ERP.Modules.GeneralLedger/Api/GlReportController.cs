@@ -906,4 +906,88 @@ public class GlReportController : ControllerBase
             data.TotalDebit, "Total Debits");
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "AccountDistribution.pdf");
     }
+
+    [HttpGet("budget-vs-actual/pdf")]
+    public async Task<ActionResult> BudgetVsActualPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid budgetId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetBudgetVsActual(companyId, budgetId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Budget vs Actual", "BvA", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.AccountDescription,
+            l.BudgetAmount.ToString("C", CultureInfo.InvariantCulture),
+            l.ActualAmount.ToString("C", CultureInfo.InvariantCulture),
+            l.Variance.ToString("C", CultureInfo.InvariantCulture),
+            $"{l.VariancePercent}%",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Budget vs Actual",
+            $"{data.CompanyName} — {data.BudgetName}",
+            new[] { (new[] { "Account", "Description", "Budget", "Actual", "Variance", "Var %" }, tableRows) },
+            data.TotalBudget, "Total Budget");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BudgetVsActual.pdf");
+    }
+
+    [HttpGet("consolidated-trial-balance/pdf")]
+    public async Task<ActionResult> ConsolidatedTrialBalancePdfAsync([FromQuery] Guid parentCompanyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetConsolidatedTrialBalance(parentCompanyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(parentCompanyId, "Consolidated Trial Balance", "CTB", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.CompanyName, l.AccountNumber, l.AccountDescription,
+            l.Debit.ToString("C", CultureInfo.InvariantCulture),
+            l.Credit.ToString("C", CultureInfo.InvariantCulture),
+            l.EndingBalance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var companyCount = data.Lines.Select(l => l.CompanyId).Distinct().Count();
+        var doc = new ReportDocument(header, "Consolidated Trial Balance",
+            $"{companyCount} companies",
+            new[] { (new[] { "Company", "Account", "Description", "Debit", "Credit", "Balance" }, tableRows) },
+            data.TotalDebit, "Total Debits");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ConsolidatedTrialBalance.pdf");
+    }
+
+    [HttpGet("intercompany-balance/pdf")]
+    public async Task<ActionResult> IntercompanyBalancePdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetIntercompanyBalance(companyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Intercompany Balance", "IC", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.FromCompanyName, l.ToCompanyName, $"{l.FromAccountNumber} → {l.ToAccountNumber}",
+            l.Balance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Intercompany Balance",
+            $"{data.Lines.Count} balances",
+            new[] { (new[] { "From", "To", "IC Accounts", "Balance" }, tableRows) },
+            data.Lines.Sum(l => Math.Abs(l.Balance)), "Total Balance");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "IntercompanyBalance.pdf");
+    }
+
+    [HttpGet("multi-currency-revaluation/pdf")]
+    public async Task<ActionResult> MultiCurrencyRevaluationPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid fiscalPeriodId, [FromQuery] DateTimeOffset revaluationDate, CancellationToken ct)
+    {
+        var report = await GetMultiCurrencyRevaluation(companyId, fiscalPeriodId, revaluationDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Multi-Currency Revaluation", "Reval", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.Currency,
+            l.OriginalBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.RevaluedBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.GainLoss.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Multi-Currency Revaluation",
+            $"{data.Lines.Count} accounts",
+            new[] { (new[] { "Account", "Currency", "Original", "Revalued", "Gain/Loss" }, tableRows) },
+            data.TotalGainLoss, "Estimated Gain/Loss");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "MultiCurrencyRevaluation.pdf");
+    }
 }

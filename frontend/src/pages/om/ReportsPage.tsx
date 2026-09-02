@@ -39,6 +39,8 @@ import {
   getShippingLogPdf,
   getFreightAnalysis,
   getFreightAnalysisPdf,
+  getCommissionRunsPdf,
+  getCustomerOrderHistoryPdf,
   getSalesOrders,
   getPackingSlipPdf,
   getShippingListPdf,
@@ -70,6 +72,8 @@ type ReportKey =
   | 'sales-trend'
   | 'shipping-log'
   | 'freight-analysis'
+  | 'commission-runs'
+  | 'customer-order-history'
 
 const money = (n: number) => `$${n.toFixed(2)}`
 
@@ -191,6 +195,8 @@ export function ReportsPage() {
     'sales-trend': (_id) => getSalesTrendReportPdf(),
     'shipping-log': (_id) => getShippingLogPdf(),
     'freight-analysis': (_id) => getFreightAnalysisPdf(),
+    'commission-runs': (_id) => getCommissionRunsPdf(),
+    'customer-order-history': (_id) => getCustomerOrderHistoryPdf(''),
   }
 
   const openPdf = (key: ReportKey) => {

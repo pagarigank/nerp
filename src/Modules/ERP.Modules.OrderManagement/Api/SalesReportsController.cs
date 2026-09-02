@@ -585,4 +585,62 @@ public class SalesReportsController : ControllerBase
             freightTotal, "Total Freight Cost");
         return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "FreightAnalysis.pdf");
     }
+
+    [HttpGet("commission-runs/pdf")]
+    public async Task<ActionResult> CommissionRunsPdfAsync(CancellationToken cancellationToken)
+    {
+        var result = await CommissionRunsAsync(cancellationToken);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<IReadOnlyList<CommissionRunRow>>;
+        var data = resp?.Data;
+        if (data == null)
+        {
+            return NotFound();
+        }
+
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            Guid.Empty, null, "Commission Runs", "Commissions", null, cancellationToken);
+        var tableRows = data.Select(r => new[]
+        {
+            r.RunNumber,
+            r.PeriodStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.PeriodEnd.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.RepCount.ToString(CultureInfo.InvariantCulture),
+            r.TotalRevenue.ToString("C", CultureInfo.InvariantCulture),
+            r.TotalCommission.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Commission Runs", $"{data.Count} runs",
+            new[] { (new[] { "Run #", "Period Start", "Period End", "Reps", "Revenue", "Commission" }, tableRows) },
+            data.Sum(r => r.TotalCommission), "Total Commission");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CommissionRuns.pdf");
+    }
+
+    [HttpGet("customer-order-history/pdf")]
+    public async Task<ActionResult> CustomerOrderHistoryPdfAsync(
+        [FromQuery] Guid? companyId, [FromQuery] Guid? customerId, CancellationToken cancellationToken)
+    {
+        if (companyId is null)
+            return BadRequest(ApiResponse<string>.Failure(new[] { "companyId is required." }));
+        if (customerId is null)
+            return BadRequest(ApiResponse<string>.Failure(new[] { "customerId is required." }));
+        var rows = await _reportService.GetCustomerOrderHistoryAsync(companyId.Value, customerId.Value, cancellationToken);
+        var header = await _customerRead.GetDocumentHeaderAsync(
+            companyId.Value, customerId, "Customer Order History", "Order History", null, cancellationToken);
+        var custNames = await ResolveCustomerNamesAsync(new[] { customerId }, cancellationToken);
+        var tableRows = rows.Select(r => new[]
+        {
+            r.OrderNumber,
+            r.OrderDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.Status,
+            r.OrderValue.ToString("C", CultureInfo.InvariantCulture),
+            r.OrderedQty.ToString("N0", CultureInfo.InvariantCulture),
+            r.ShippedQty.ToString("N0", CultureInfo.InvariantCulture),
+            r.RemainingQty.ToString("N0", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Customer Order History",
+            $"{CName(custNames, customerId)} — {rows.Count} orders",
+            new[] { (new[] { "Order #", "Date", "Status", "Value", "Ordered", "Shipped", "Remaining" }, tableRows) },
+            rows.Sum(r => r.OrderValue), "Total Order Value");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CustomerOrderHistory.pdf");
+    }
 }

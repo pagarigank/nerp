@@ -371,6 +371,15 @@ export function getReconciliationSummaryPdf(): Promise<Blob> {
 export function getNsfReportPdf(): Promise<Blob> {
   return blob('/cash/reports/nsf-report/pdf', { companyId: companyId() })
 }
+export function getOutstandingChecksPdf(bankAccountId: string): Promise<Blob> {
+  return blob('/cash/reports/outstanding-checks/pdf', { companyId: companyId(), bankAccountId })
+}
+export function getReconciliationDetailPdf(sessionId: string): Promise<Blob> {
+  return blob('/cash/reports/reconciliation-detail/pdf', { sessionId })
+}
+export function getBankActivityPdf(bankAccountId: string): Promise<Blob> {
+  return blob('/cash/reports/bank-activity/pdf', { companyId: companyId(), bankAccountId })
+}
 
 export function deleteBankContact(bankAccountId: string, contactId: string): Promise<void> {
   return del(`/cash/bank-accounts/${bankAccountId}/contacts/${contactId}`)
