@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, Play, Printer } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
@@ -204,11 +205,9 @@ export function GlReportsPage() {
     multiCurrencyRevaluation: async () => getMultiCurrencyRevaluationPdf('', ''),
   }
 
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const printReport = async () => {
-    try {
-      const b = await pdfLoaders[activeReport]()
-      if (b.size > 0) window.open(URL.createObjectURL(b), '_blank')
-    } catch { /* ignore */ }
+    setPdfTarget({ title: activeReport, loader: pdfLoaders[activeReport] })
   }
 
   return (
@@ -339,6 +338,16 @@ export function GlReportsPage() {
             </CardContent>
           </Card>
         ) : null
+      )}
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
       )}
     </div>
   )

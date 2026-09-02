@@ -1,5 +1,6 @@
 import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, Download, PiggyBank, TrendingDown, TrendingUp, Scale, FileDown } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
@@ -28,10 +29,9 @@ export function CashReportsPage() {
   const [agingAccountId, setAgingAccountId] = useState('')
   const [positivePayAccountId, setPositivePayAccountId] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
-  const [pdfLoading, setPdfLoading] = useState<string | null>(null)
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const downloadPdf = async (key: string, fn: () => Promise<Blob>) => {
-    setPdfLoading(key)
-    try { const b = await fn(); window.open(URL.createObjectURL(b), '_blank') } catch (e) { setError(getErrorMessage(e)) } finally { setPdfLoading(null) }
+    setPdfTarget({ title: key, loader: fn })
   }
 
   const { data: positions = [], isLoading: positionLoading } = useQuery({
@@ -337,6 +337,16 @@ export function CashReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { FileDown } from 'lucide-react'
 import { getSlaCompliance, getTechnicianUtilization, getOpenAging, getContractStatus, getPmDue, getFirstTimeFix, getRevenueProfitability, getWarrantyExpiration, getPartsUsage, getTravelExpense, getWorkOrderStatusReport, getSlaCompliancePdf, getTechnicianUtilizationPdf, getOpenAgingPdf, getContractStatusPdf, getPmDuePdf, getRevenueProfitabilityPdf, getWarrantyExpirationPdf, getPartsUsagePdf, getTravelExpensePdf, getWorkOrderStatusPdf, getFirstTimeFixPdf } from '@api/fieldService'
@@ -21,12 +22,13 @@ export function ReportsPage() {
 
   const s = (d: any) => (d?.data ?? d ?? [])
   const ftfRow = (ftf.data as any)?.data ?? ftf.data
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Field Service Reports</h2>
-        <PrintAllButton />
+        <PrintAllButton onPdf={(title, loader) => setPdfTarget({ title, loader })} />
       </div>
       {ftfRow && <div className="rounded border p-4 bg-white">First-Time Fix: {ftfRow.ratePercent ?? ftfRow.RatePercent ?? 0}% ({ftfRow.firstTimeFixed ?? ftfRow.FirstTimeFixed ?? 0}/{ftfRow.totalCompleted ?? ftfRow.TotalCompleted ?? 0})</div>}
       <ReportSection title="SLA Compliance" data={s(sla.data)} cols={[{ key: 'priority', header: 'Priority' }, { key: 'total', header: 'Total' }, { key: 'breached', header: 'Breached' }]} />
@@ -39,6 +41,16 @@ export function ReportsPage() {
       <ReportSection title="Travel / Expense" data={s(travel.data)} cols={[{ key: 'workOrderNumber', header: 'WO' }, { key: 'travelCost', header: 'Travel' }, { key: 'expenseTotal', header: 'Expenses' }]} />
       <ReportSection title="Contract Status" data={s(contracts.data)} cols={[{ key: 'contractNumber', header: 'Contract' }, { key: 'status', header: 'Status' }]} />
       <ReportSection title="PM Due" data={s(pm.data)} cols={[{ key: 'code', header: 'Code' }, { key: 'nextDue', header: 'Due' }]} />
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }
@@ -62,20 +74,10 @@ const pdfLoaders: Record<string, () => Promise<Blob>> = {
   firstTimeFix: async () => getFirstTimeFixPdf(),
 }
 
-function PrintAllButton() {
-  const [loading, setLoading] = useState(false)
-  const handlePrint = async () => {
-    setLoading(true)
-    try {
-      const b = await pdfLoaders['sla']()
-      const url = URL.createObjectURL(b)
-      window.open(url, '_blank')
-    } catch (e) { alert(getErrorMessage(e)) }
-    finally { setLoading(false) }
-  }
+function PrintAllButton({ onPdf }: { onPdf: (title: string, loader: () => Promise<Blob>) => void }) {
   return (
-    <Button variant="outline" onClick={handlePrint} disabled={loading}>
-      <FileDown className="h-4 w-4 mr-1" />{loading ? 'Loading…' : 'Print Report'}
+    <Button variant="outline" onClick={() => onPdf('SLA Compliance', pdfLoaders['sla'])}>
+      <FileDown className="h-4 w-4 mr-1" />Print Report
     </Button>
   )
 }

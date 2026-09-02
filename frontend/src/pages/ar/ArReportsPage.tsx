@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, AlertCircle, Printer } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
@@ -39,11 +40,9 @@ export function ArReportsPage() {
     'finance-charge': getArFinanceChargeReportPdf,
   }
 
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const printReport = async () => {
-    try {
-      const b = await pdfLoaders[active]()
-      window.open(URL.createObjectURL(b), '_blank')
-    } catch { /* ignore */ }
+    setPdfTarget({ title: active, loader: pdfLoaders[active] })
   }
 
   return (
@@ -109,6 +108,16 @@ export function ArReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }

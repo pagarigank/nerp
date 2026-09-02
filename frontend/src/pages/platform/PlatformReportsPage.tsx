@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, BookOpen, CalendarDays, ShieldCheck, FileDown } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
@@ -17,6 +18,7 @@ const reports: { key: ReportKey; name: string; icon: typeof FileText; descriptio
 
 export function PlatformReportsPage() {
   const [active, setActive] = useState<ReportKey>('company-setup')
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
 
   const companySetup = useQuery({ queryKey: ['platform', 'reports', 'company-setup'], queryFn: () => getCompanySetupReport(), enabled: active === 'company-setup' })
   const chartOfAccounts = useQuery({ queryKey: ['platform', 'reports', 'chart-of-accounts'], queryFn: () => getChartOfAccountsReport(), enabled: active === 'chart-of-accounts' })
@@ -44,7 +46,7 @@ export function PlatformReportsPage() {
 
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{current.name}</h3>
-        <PrintReportButton tab={active} />
+        <PrintReportButton tab={active} onPdf={(title, loader) => setPdfTarget({ title, loader })} />
       </div>
 
       <Card>
@@ -104,6 +106,16 @@ export function PlatformReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }
@@ -134,22 +146,10 @@ const pdfLoaders: Record<string, () => Promise<Blob>> = {
   'security-matrix': async () => getSecurityMatrixReportPdf(),
 }
 
-function PrintReportButton({ tab }: { tab: string }) {
-  const [loading, setLoading] = useState(false)
-  const handlePrint = async () => {
-    const loader = pdfLoaders[tab]
-    if (!loader) return
-    setLoading(true)
-    try {
-      const b = await loader()
-      const url = URL.createObjectURL(b)
-      window.open(url, '_blank')
-    } catch (e) { alert(getErrorMessage(e)) }
-    finally { setLoading(false) }
-  }
+function PrintReportButton({ tab, onPdf }: { tab: string; onPdf: (title: string, loader: () => Promise<Blob>) => void }) {
   return (
-    <Button variant="outline" onClick={handlePrint} disabled={loading}>
-      <FileDown className="h-4 w-4 mr-1" />{loading ? 'Loading…' : 'Print Report'}
+    <Button variant="outline" onClick={() => onPdf(tab, pdfLoaders[tab])}>
+      <FileDown className="h-4 w-4 mr-1" />Print Report
     </Button>
   )
 }

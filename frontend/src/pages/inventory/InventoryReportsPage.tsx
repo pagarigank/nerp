@@ -1,5 +1,6 @@
 // Inventory Reports (Phase 7) — all 12 reports wired to the Inventory report API.
 import { useEffect, useMemo, useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import {
   Package,
   DollarSign,
@@ -141,14 +142,9 @@ export function InventoryReportsPage() {
     'stock-card': getStockCardPdf,
   }
 
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const printReport = async () => {
-    try {
-      const blob = await pdfLoaders[active]()
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    } catch {
-      // PDF generation failed — ignore
-    }
+    setPdfTarget({ title: active, loader: pdfLoaders[active] })
   }
 
   return (
@@ -218,6 +214,16 @@ export function InventoryReportsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
       )}
     </div>
   )

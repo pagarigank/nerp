@@ -724,6 +724,7 @@ export function ManualChecksTab({ qc }: { qc: any }) {
 export function ReportsTab({ qc }: { qc: any }) {
   const company = currentCompanyId()
   const [year, setYear] = useState('2026')
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const y = Number(year)
   const regQ = useQuery({ queryKey: ['payroll', 'report', 'register', company, y], queryFn: () => getPayrollRegister(company, y) })
   const sumQ = useQuery({ queryKey: ['payroll', 'report', 'summary', company, y], queryFn: () => getPayrollSummary(company, y) })
@@ -742,7 +743,7 @@ export function ReportsTab({ qc }: { qc: any }) {
       </div>
       {(sumQ.data as any) && (
         <div>
-          <div className="flex items-center justify-between mb-1"><span className="text-sm font-semibold">Payroll Summary</span><PdfButton label="PDF" onClick={() => getPayrollSummaryPdf(company, y).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+          <div className="flex items-center justify-between mb-1"><span className="text-sm font-semibold">Payroll Summary</span><PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Payroll Summary', loader: () => getPayrollSummaryPdf(company, y) })} /></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <div className="border rounded p-2">YTD Gross<br /><b>{MONEY((sumQ.data as any).totalGross)}</b></div>
             <div className="border rounded p-2">EE Tax<br /><b>{MONEY((sumQ.data as any).totalEmployeeTax)}</b></div>
@@ -753,19 +754,19 @@ export function ReportsTab({ qc }: { qc: any }) {
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="border rounded p-2">
-          <div className="font-semibold mb-1 flex items-center justify-between">Payroll Register <PdfButton label="PDF" onClick={() => getPayrollRegisterPdf(company, y).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+          <div className="font-semibold mb-1 flex items-center justify-between">Payroll Register <PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Payroll Register', loader: () => getPayrollRegisterPdf(company, y) })} /></div>
           <DataTable columns={[{ key: 'payDate', header: 'Pay Date', render: (r: any) => r.payDate?.slice(0, 10) }, { key: 'status', header: 'Status' }, { key: 'totalGross', header: 'Gross', render: (r: any) => MONEY(r.totalGross) }, { key: 'lineCount', header: 'Lines' }]} data={(regQ.data as any)?.data || []} loading={regQ.isLoading} />
         </div>
         <div className="border rounded p-2">
-          <div className="font-semibold mb-1 flex items-center justify-between">Labor Distribution <PdfButton label="PDF" onClick={() => getLaborDistributionPdf(company, y).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+          <div className="font-semibold mb-1 flex items-center justify-between">Labor Distribution <PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Labor Distribution', loader: () => getLaborDistributionPdf(company, y) })} /></div>
           <DataTable columns={[{ key: 'employeeId', header: 'Employee' }, { key: 'regularHours', header: 'Reg' }, { key: 'overtimeHours', header: 'OT' }, { key: 'grossWages', header: 'Gross', render: (r: any) => MONEY(r.grossWages) }]} data={(labQ.data as any)?.data || []} loading={labQ.isLoading} />
         </div>
         <div className="border rounded p-2">
-          <div className="font-semibold mb-1 flex items-center justify-between">Garnishment Register <PdfButton label="PDF" onClick={() => getGarnishmentRegisterPdf(company).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+          <div className="font-semibold mb-1 flex items-center justify-between">Garnishment Register <PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Garnishment Register', loader: () => getGarnishmentRegisterPdf(company) })} /></div>
           <DataTable columns={[{ key: 'type', header: 'Type' }, { key: 'priority', header: 'Prio' }, { key: 'disposableIncomePercent', header: '% DI' }]} data={(garQ.data as any)?.data || []} loading={garQ.isLoading} />
         </div>
         <div className="border rounded p-2">
-          <div className="font-semibold mb-1 flex items-center justify-between">Wage Base <PdfButton label="PDF" onClick={() => getWageBaseReportPdf(company, y).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+          <div className="font-semibold mb-1 flex items-center justify-between">Wage Base <PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Wage Base', loader: () => getWageBaseReportPdf(company, y) })} /></div>
           <DataTable columns={[{ key: 'employeeId', header: 'Employee' }, { key: 'ytdWages', header: 'YTD', render: (r: any) => MONEY(r.ytdWages) }, { key: 'ssPct', header: '% SS Cap' }, { key: 'futaMet', header: 'FUTA Met', render: (r: any) => (r.futaMet ? 'Yes' : 'No') }]} data={(wbQ.data as any)?.data || []} loading={wbQ.isLoading} />
         </div>
         <div className="border rounded p-2">
@@ -778,7 +779,7 @@ export function ReportsTab({ qc }: { qc: any }) {
         </div>
       </div>
       {(f940Q.data as any) && (
-        <div className="border rounded p-2 text-sm flex items-center justify-between"><span>Form 940 — FUTA wages: <b>{MONEY((f940Q.data as any).futaWages)}</b> | FUTA tax: <b>{MONEY((f940Q.data as any).futaTax)}</b></span><PdfButton label="PDF" onClick={() => getForm940Pdf(company, y).then(b => window.open(URL.createObjectURL(b), '_blank'))} /></div>
+        <div className="border rounded p-2 text-sm flex items-center justify-between"><span>Form 940 — FUTA wages: <b>{MONEY((f940Q.data as any).futaWages)}</b> | FUTA tax: <b>{MONEY((f940Q.data as any).futaTax)}</b></span><PdfButton label="PDF" onPdf={() => setPdfTarget({ title: 'Form 940', loader: () => getForm940Pdf(company, y) })} /></div>
       )}
 
       {/* Batch E: compliance & statutory reporting */}
@@ -994,14 +995,22 @@ function BatchFReportsSection({ company, year }: { company: string; year: number
           <p className={NOTE}>{wcpQ.data?.note}</p>
         </div>
       </div>
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }
 
-function PdfButton({ label, onClick }: { label: string; onClick: () => Promise<void> }) {
-  const [loading, setLoading] = useState(false)
-  const run = async () => { setLoading(true); try { await onClick() } catch (e) { alert(getErrorMessage(e)) } finally { setLoading(false) } }
-  return <Button size="sm" variant="outline" onClick={run} disabled={loading}><FileDown className="h-3 w-3 mr-1" />{loading ? '…' : label}</Button>
+function PdfButton({ label, onPdf }: { label: string; onPdf: () => void }) {
+  return <Button size="sm" variant="outline" onClick={onPdf}><FileDown className="h-3 w-3 mr-1" />{label}</Button>
 }
 
 function ComplianceSection({ qc, company, year }: { qc: any; company: string; year: number }) {

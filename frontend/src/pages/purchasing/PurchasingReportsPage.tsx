@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, TrendingUp, Package, Link2, BarChart3, Trophy, AlertTriangle, Table2, Clock, Printer } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
@@ -70,14 +71,9 @@ export function PurchasingReportsPage() {
     'over-receipt': getOverReceiptExceptionReportPdf,
   }
 
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
   const printReport = async () => {
-    try {
-      const blob = await pdfLoaders[active]()
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    } catch {
-      // PDF generation failed — ignore
-    }
+    setPdfTarget({ title: active, loader: pdfLoaders[active] })
   }
 
   return (
@@ -332,6 +328,16 @@ export function PurchasingReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }

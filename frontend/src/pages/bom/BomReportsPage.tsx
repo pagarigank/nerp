@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { PdfPreviewModal } from '@components/PdfPreviewModal'
 import { BarChart3, FileDown } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
@@ -30,6 +31,7 @@ export function BomReportsPage() {
   const [tab, setTab] = useState<'listing' | 'history' | 'accuracy'>('listing')
   const [jobResult, setJobResult] = useState<string | null>(null)
   const [jobError, setJobError] = useState<string | null>(null)
+  const [pdfTarget, setPdfTarget] = useState<{ title: string; loader: () => Promise<Blob> } | null>(null)
 
   const validationMutation = useMutation({
     mutationFn: runBomValidation,
@@ -70,7 +72,7 @@ export function BomReportsPage() {
           <Button variant="outline" onClick={() => { setJobResult(null); setJobError(null); rollupMutation.mutate() }} disabled={rollupMutation.isPending}>
             Cost Roll-Up
           </Button>
-          <PrintReportButton tab={tab} />
+          <PrintReportButton tab={tab} onPdf={(title, loader) => setPdfTarget({ title, loader })} />
         </div>
       </div>
 
@@ -108,6 +110,16 @@ export function BomReportsPage() {
       {tab === 'revision' && <RevisionHistoryReport itemMap={itemMap} />}
       {tab === 'variance' && <VarianceReport itemMap={itemMap} />}
       {tab === 'utilization' && <UtilizationReport />}
+
+      {pdfTarget && (
+        <PdfPreviewModal
+          entityId=""
+          title={pdfTarget.title}
+          loader={() => pdfTarget.loader()}
+          open={true}
+          onClose={() => setPdfTarget(null)}
+        />
+      )}
     </div>
   )
 }
@@ -282,16 +294,14 @@ const pdfLoaders: Record<string, () => Promise<Blob>> = {
   utilization: async () => (await import('@api/bom')).getWorkCenterUtilizationPdf(),
 }
 
-function PrintReportButton({ tab }: { tab: string }) {
+function PrintReportButton({ tab, onPdf }: { tab: string; onPdf: (title: string, loader: () => Promise<Blob>) => void }) {
   const [loading, setLoading] = useState(false)
   const handlePrint = async () => {
     const loader = pdfLoaders[tab]
     if (!loader) return
     setLoading(true)
     try {
-      const b = await loader()
-      const url = URL.createObjectURL(b)
-      window.open(url, '_blank')
+      onPdf(tab, loader)
     } catch (e) { alert(getErrorMessage(e)) }
     finally { setLoading(false) }
   }
