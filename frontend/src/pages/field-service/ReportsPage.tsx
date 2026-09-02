@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getSlaCompliance, getTechnicianUtilization, getOpenAging, getContractStatus, getPmDue, getFirstTimeFix, getRevenueProfitability, getWarrantyExpiration, getPartsUsage, getTravelExpense, getWorkOrderStatusReport } from '@api/fieldService'
+import { FileDown } from 'lucide-react'
+import { getSlaCompliance, getTechnicianUtilization, getOpenAging, getContractStatus, getPmDue, getFirstTimeFix, getRevenueProfitability, getWarrantyExpiration, getPartsUsage, getTravelExpense, getWorkOrderStatusReport, getSlaCompliancePdf, getTechnicianUtilizationPdf, getOpenAgingPdf, getContractStatusPdf, getPmDuePdf, getRevenueProfitabilityPdf, getWarrantyExpirationPdf, getPartsUsagePdf, getTravelExpensePdf, getWorkOrderStatusPdf } from '@api/fieldService'
 import { DataTable } from '@components/ui/DataTable'
+import { Button } from '@components/ui/Button'
+import { getErrorMessage } from '@api/client'
 
 export function ReportsPage() {
   const sla = useQuery({ queryKey: ['fs-sla'], queryFn: () => getSlaCompliance() })
@@ -20,7 +24,10 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">Field Service Reports</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Field Service Reports</h2>
+        <PrintAllButton />
+      </div>
       {ftfRow && <div className="rounded border p-4 bg-white">First-Time Fix: {ftfRow.ratePercent ?? ftfRow.RatePercent ?? 0}% ({ftfRow.firstTimeFixed ?? ftfRow.FirstTimeFixed ?? 0}/{ftfRow.totalCompleted ?? ftfRow.TotalCompleted ?? 0})</div>}
       <ReportSection title="SLA Compliance" data={s(sla.data)} cols={[{ key: 'priority', header: 'Priority' }, { key: 'total', header: 'Total' }, { key: 'breached', header: 'Breached' }]} />
       <ReportSection title="Technician Utilization" data={s(util.data)} cols={[{ key: 'technicianId', header: 'Technician' }, { key: 'workOrders', header: 'WOs' }, { key: 'laborHours', header: 'Hours' }, { key: 'billableTotal', header: 'Billable' }]} />
@@ -39,4 +46,35 @@ export function ReportsPage() {
 function ReportSection({ title, data, cols }: any) {
   if (!data?.length) return <div className="rounded border p-4"><h3 className="font-semibold mb-2">{title}</h3><p className="text-sm text-gray-500">No data.</p></div>
   return <div className="rounded border p-4 bg-white"><h3 className="font-semibold mb-2">{title}</h3><DataTable data={data} columns={cols as any} /></div>
+}
+
+const pdfLoaders: Record<string, () => Promise<Blob>> = {
+  sla: async () => getSlaCompliancePdf(),
+  util: async () => getTechnicianUtilizationPdf(),
+  aging: async () => getOpenAgingPdf(),
+  contracts: async () => getContractStatusPdf(),
+  pm: async () => getPmDuePdf(),
+  rev: async () => getRevenueProfitabilityPdf(),
+  warranty: async () => getWarrantyExpirationPdf(),
+  parts: async () => getPartsUsagePdf(),
+  travel: async () => getTravelExpensePdf(),
+  status: async () => getWorkOrderStatusPdf(),
+}
+
+function PrintAllButton() {
+  const [loading, setLoading] = useState(false)
+  const handlePrint = async () => {
+    setLoading(true)
+    try {
+      const b = await pdfLoaders['sla']()
+      const url = URL.createObjectURL(b)
+      window.open(url, '_blank')
+    } catch (e) { alert(getErrorMessage(e)) }
+    finally { setLoading(false) }
+  }
+  return (
+    <Button variant="outline" onClick={handlePrint} disabled={loading}>
+      <FileDown className="h-4 w-4 mr-1" />{loading ? 'Loading…' : 'Print Report'}
+    </Button>
+  )
 }

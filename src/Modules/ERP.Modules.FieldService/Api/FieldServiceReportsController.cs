@@ -5,11 +5,16 @@
 #pragma warning disable SA1408
 #pragma warning disable SA1513
 
+using System.Globalization;
 using ERP.Modules.FieldService.Domain.Entities;
 using ERP.Modules.FieldService.Infrastructure;
+using ERP.Reporting;
 using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.FieldService.Api;
 
@@ -161,6 +166,214 @@ public class FieldServiceReportsController : ControllerBase
     {
         var rows = await _context.WorkOrders.Where(w => w.CompanyId == companyId).GroupBy(w => w.Status).Select(g => new WorkOrderStatusRow { Status = g.Key.ToString(), Count = g.Count(), TotalBillable = g.Sum(w => w.BillableTotal) }).ToListAsync(cancellationToken);
         return Ok(ApiResponse<List<WorkOrderStatusRow>>.Success(rows));
+    }
+
+    // ---- PDF endpoints ----
+
+    [HttpGet("sla-compliance/pdf")]
+    public async Task<ActionResult> SlaCompliancePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await SlaCompliance(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<SlaComplianceRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "SLA Compliance", "SLA", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.Priority, r.Total.ToString(CultureInfo.InvariantCulture),
+            r.Completed.ToString(CultureInfo.InvariantCulture),
+            r.Breached.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "SLA Compliance", null,
+            new (string[], string[][])[] { (new[] { "Priority", "Total", "Completed", "Breached" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "SlaCompliance.pdf");
+    }
+
+    [HttpGet("technician-utilization/pdf")]
+    public async Task<ActionResult> TechnicianUtilizationPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await TechnicianUtilization(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<TechnicianUtilizationRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Technician Utilization", "Util", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.TechnicianId.ToString().Substring(0, 8),
+            r.WorkOrders.ToString(CultureInfo.InvariantCulture),
+            r.LaborHours.ToString(CultureInfo.InvariantCulture),
+            r.BillableTotal.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Technician Utilization", null,
+            new (string[], string[][])[] { (new[] { "Technician", "Work Orders", "Labor Hours", "Billable" }, rows) },
+            data.Sum(r => r.BillableTotal), "Total Billable");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "TechnicianUtilization.pdf");
+    }
+
+    [HttpGet("open-aging/pdf")]
+    public async Task<ActionResult> OpenAgingPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await OpenAging(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<OpenWoAgingRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Open WO Aging", "Aging", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.WorkOrderNumber, r.Status,
+            r.AgeDays.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Open Work Order Aging", $"{data.Count} open work orders",
+            new (string[], string[][])[] { (new[] { "WO #", "Status", "Age Days" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "OpenWoAging.pdf");
+    }
+
+    [HttpGet("contract-status/pdf")]
+    public async Task<ActionResult> ContractStatusPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await ContractStatus(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<ContractStatusRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Contract Status", "Contracts", DateTimeOffset.UtcNow);
+        var rows = data.Select(c => new[]
+        {
+            c.ContractNumber, c.Name, c.Status,
+            c.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            c.IsExpired ? "Expired" : "Active",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Contract Status", $"{data.Count} contracts",
+            new (string[], string[][])[] { (new[] { "Contract #", "Name", "Status", "End Date", "Expired" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ContractStatus.pdf");
+    }
+
+    [HttpGet("pm-due/pdf")]
+    public async Task<ActionResult> PmDuePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await PmDue(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<PmDueRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "PM Due", "PM", DateTimeOffset.UtcNow);
+        var rows = data.Select(p => new[]
+        {
+            p.Code, p.Description,
+            p.NextDue?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Preventive Maintenance Due", $"{data.Count} items due",
+            new (string[], string[][])[] { (new[] { "Code", "Description", "Next Due" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PmDue.pdf");
+    }
+
+    [HttpGet("revenue-profitability/pdf")]
+    public async Task<ActionResult> RevenueProfitabilityPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await RevenueProfitability(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<RevenueProfitabilityRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Revenue / Profitability", "Rev", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.TechnicianId?.ToString().Substring(0, 8) ?? "—",
+            r.Revenue.ToString("C", CultureInfo.InvariantCulture),
+            r.Cost.ToString("C", CultureInfo.InvariantCulture),
+            r.Profit.ToString("C", CultureInfo.InvariantCulture),
+            r.WorkOrders.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Revenue / Profitability", null,
+            new (string[], string[][])[] { (new[] { "Technician", "Revenue", "Cost", "Profit", "WOs" }, rows) },
+            data.Sum(r => r.Profit), "Total Profit");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "RevenueProfitability.pdf");
+    }
+
+    [HttpGet("warranty-expiration/pdf")]
+    public async Task<ActionResult> WarrantyExpirationPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await WarrantyExpiration(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<WarrantyExpirationRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Warranty Expiration", "Warranty", DateTimeOffset.UtcNow);
+        var rows = data.Select(w => new[]
+        {
+            w.AssetTag, w.WarrantyEnd.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            w.DaysRemaining.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Warranty Expiration (90 days)", $"{data.Count} assets",
+            new (string[], string[][])[] { (new[] { "Asset Tag", "Expires", "Days Left" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WarrantyExpiration.pdf");
+    }
+
+    [HttpGet("parts-usage/pdf")]
+    public async Task<ActionResult> PartsUsagePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await PartsUsage(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<PartsUsageRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Parts Usage", "Parts", DateTimeOffset.UtcNow);
+        var rows = data.Select(p => new[]
+        {
+            p.ItemId?.ToString().Substring(0, 8) ?? "—",
+            p.TotalQuantity.ToString(CultureInfo.InvariantCulture),
+            p.TotalCost.ToString("C", CultureInfo.InvariantCulture),
+            p.UsageCount.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Parts Usage", null,
+            new (string[], string[][])[] { (new[] { "Item", "Quantity", "Cost", "Usage Count" }, rows) },
+            data.Sum(p => p.TotalCost), "Total Cost");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PartsUsage.pdf");
+    }
+
+    [HttpGet("travel-expense/pdf")]
+    public async Task<ActionResult> TravelExpensePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await TravelExpense(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<TravelExpenseRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Travel / Expense", "Travel", DateTimeOffset.UtcNow);
+        var rows = data.Select(t => new[]
+        {
+            t.WorkOrderNumber,
+            t.TravelCost.ToString("C", CultureInfo.InvariantCulture),
+            t.ExpenseTotal.ToString("C", CultureInfo.InvariantCulture),
+            t.BillableTotal.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Travel / Expense", null,
+            new (string[], string[][])[] { (new[] { "WO #", "Travel", "Expenses", "Billable" }, rows) },
+            data.Sum(t => t.ExpenseTotal), "Total Expenses");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "TravelExpense.pdf");
+    }
+
+    [HttpGet("work-order-status/pdf")]
+    public async Task<ActionResult> WorkOrderStatusPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await WorkOrderStatusReport(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<WorkOrderStatusRow>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Field Service", null, null, null, "USD", null, null, null, "Work Order Status", "WO Status", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.Status, r.Count.ToString(CultureInfo.InvariantCulture),
+            r.TotalBillable.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Work Order Status", null,
+            new (string[], string[][])[] { (new[] { "Status", "Count", "Total Billable" }, rows) },
+            data.Sum(r => r.TotalBillable), "Total Billable");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WorkOrderStatus.pdf");
     }
 }
 

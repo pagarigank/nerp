@@ -1,5 +1,5 @@
 // Field Service Management module API client (Phase 12).
-import { get, post } from './client'
+import { get, post, put, del, blob } from './client'
 import { companyId as defaultCompanyId } from './inventory'
 
 const MOD = '/field-service'
@@ -202,4 +202,36 @@ export function getTravelExpense(companyIdParam?: string) {
 }
 export function getWorkOrderStatusReport(companyIdParam?: string) {
   return get<any[]>(`${MOD}/reports/work-order-status`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+
+// --- PDF Report functions ---
+export function getSlaCompliancePdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/sla-compliance/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getTechnicianUtilizationPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/technician-utilization/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getOpenAgingPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/open-aging/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getContractStatusPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/contract-status/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getPmDuePdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/pm-due/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getRevenueProfitabilityPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/revenue-profitability/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWarrantyExpirationPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/warranty-expiration/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getPartsUsagePdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/parts-usage/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getTravelExpensePdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/travel-expense/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWorkOrderStatusPdf(companyIdParam?: string) {
+  return blob(`${MOD}/reports/work-order-status/pdf`, { companyId: companyIdParam ?? defaultCompanyId() })
 }

@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using ReportDocument = ERP.Modules.OrderManagement.Reporting.Documents.ReportDocument;
 
 namespace ERP.Modules.OrderManagement.Api;
 

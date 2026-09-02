@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Play } from 'lucide-react'
+import { AlertCircle, Play, Printer } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
@@ -15,6 +15,13 @@ import {
   getForm1099Summary,
   getCheckRegister,
   getApAccountDistribution,
+  getAgingReportPdf,
+  getVendorTrialBalancePdf,
+  getBatchRegisterPdf,
+  getCashRequirementsPdf,
+  getForm1099SummaryPdf,
+  getCheckRegisterPdf,
+  getApAccountDistributionPdf,
 } from '@api/ap'
 import type {
   ApAccountDistributionReport,
@@ -124,10 +131,30 @@ export function ApReportsPage() {
     setRunId(id => id + 1)
   }
 
+  const pdfLoaders: Record<ReportKey, () => Promise<Blob>> = {
+    'aging': getAgingReportPdf,
+    'vendorTrialBalance': getVendorTrialBalancePdf,
+    'batchRegister': getBatchRegisterPdf,
+    'cashRequirements': getCashRequirementsPdf,
+    'form1099': getForm1099SummaryPdf,
+    'checkRegister': getCheckRegisterPdf,
+    'accountDistribution': getApAccountDistributionPdf,
+  }
+
+  const printReport = async () => {
+    try {
+      const b = await pdfLoaders[activeReport]()
+      window.open(URL.createObjectURL(b), '_blank')
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader title="AP Reports" description="Generate and view Accounts Payable reports for the current company." />
+        <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap gap-2">
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {reportOptions.map(option => (

@@ -1,5 +1,5 @@
 // Payroll module API client (Phase 11).
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 import { companyId as defaultCompanyId } from './inventory'
 
 // --- Employees ---
@@ -606,4 +606,24 @@ export function verifyDirectDeposit(employeeId: string, id: string) {
 export function getTaxFilingExport(kind: string, companyId: string, year: number, quarter?: number) {
   const q = quarter ? `&quarter=${quarter}` : ''
   return get(`/payroll/tax-filing-export/${kind}?companyId=${companyId}&year=${year}${q}`)
+}
+
+// --- PDF Report functions ---
+export function getPayrollRegisterPdf(companyId: string, year?: number) {
+  return blob('/payroll/reports/payroll-register/pdf', year ? { companyId, year } : { companyId })
+}
+export function getPayrollSummaryPdf(companyId: string, year: number) {
+  return blob('/payroll/reports/payroll-summary/pdf', { companyId, year })
+}
+export function getLaborDistributionPdf(companyId: string, year?: number) {
+  return blob('/payroll/reports/labor-distribution/pdf', year ? { companyId, year } : { companyId })
+}
+export function getGarnishmentRegisterPdf(companyId: string) {
+  return blob('/payroll/reports/garnishment-register/pdf', { companyId })
+}
+export function getWageBaseReportPdf(companyId: string, year: number) {
+  return blob('/payroll/reports/wage-base/pdf', { companyId, year })
+}
+export function getForm940Pdf(companyId: string, year: number) {
+  return blob('/payroll/reports/form-940/pdf', { companyId, year })
 }

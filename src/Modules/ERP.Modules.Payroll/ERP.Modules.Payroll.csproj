@@ -6,12 +6,14 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
     <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
     <ProjectReference Include="..\\ERP.Modules.ProjectAccounting\\ERP.Modules.ProjectAccounting.csproj" />
     <ProjectReference Include="..\\ERP.Modules.AccountsPayable\\ERP.Modules.AccountsPayable.csproj" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />

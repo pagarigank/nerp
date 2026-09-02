@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, FileDown } from 'lucide-react'
 import { DataTable, type DataTableColumn } from '@components/ui/DataTable'
 import { Button } from '@components/ui/Button'
 import { getErrorMessage } from '@api/client'
@@ -70,6 +70,7 @@ export function BomReportsPage() {
           <Button variant="outline" onClick={() => { setJobResult(null); setJobError(null); rollupMutation.mutate() }} disabled={rollupMutation.isPending}>
             Cost Roll-Up
           </Button>
+          <PrintReportButton tab={tab} />
         </div>
       </div>
 
@@ -269,4 +270,34 @@ function UtilizationReport() {
   ]
 
   return <DataTable data={utils as WorkCenterUtilItem[]} columns={columns} isLoading={isLoading} emptyMessage="No work center utilization data found." />
+}
+
+const pdfLoaders: Record<string, () => Promise<Blob>> = {
+  listing: async () => (await import('@api/bom')).getBomListingPdf(),
+  history: async () => (await import('@api/bom')).getBuildHistoryPdf(),
+  accuracy: async () => (await import('@api/bom')).getBomAccuracyPdf(),
+  shortage: async () => (await import('@api/bom')).getComponentShortagePdf(),
+  revision: async () => (await import('@api/bom')).getRevisionHistoryPdf(),
+  variance: async () => (await import('@api/bom')).getBuildVariancePdf(),
+  utilization: async () => (await import('@api/bom')).getWorkCenterUtilizationPdf(),
+}
+
+function PrintReportButton({ tab }: { tab: string }) {
+  const [loading, setLoading] = useState(false)
+  const handlePrint = async () => {
+    const loader = pdfLoaders[tab]
+    if (!loader) return
+    setLoading(true)
+    try {
+      const b = await loader()
+      const url = URL.createObjectURL(b)
+      window.open(url, '_blank')
+    } catch (e) { alert(getErrorMessage(e)) }
+    finally { setLoading(false) }
+  }
+  return (
+    <Button variant="outline" onClick={handlePrint} disabled={loading}>
+      <FileDown className="h-4 w-4 mr-1" />{loading ? 'Loading…' : 'Print Report'}
+    </Button>
+  )
 }

@@ -2,11 +2,17 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using Asp.Versioning;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
+using ERP.Reporting;
+using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.AccountsReceivable.Api;
 
@@ -16,10 +22,17 @@ namespace ERP.Modules.AccountsReceivable.Api;
 public class ArReportController : ControllerBase
 {
     private readonly ArDbContext _context;
+    private readonly ICustomerReadService _customerRead;
 
-    public ArReportController(ArDbContext context)
+    public ArReportController(ArDbContext context, ICustomerReadService customerRead)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _customerRead = customerRead ?? throw new ArgumentNullException(nameof(customerRead));
+    }
+
+    private async Task<CompanyDocumentHeader> GetHeaderAsync(Guid companyId, string title, string number, CancellationToken ct)
+    {
+        return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
     }
 
     [HttpGet("aging")]
@@ -263,5 +276,108 @@ public class ArReportController : ControllerBase
             lines.Sum(l => l.Amount),
             lines.Count,
             DateTimeOffset.UtcNow));
+    }
+
+    // ---- PDF endpoints ----
+
+    [HttpGet("aging/pdf")]
+    public async Task<ActionResult> AgingPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var report = await GetAgingAsync(companyId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "AR Aging Report", "AR Aging", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.CustomerName,
+            l.CurrentBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.Days1To30.ToString("C", CultureInfo.InvariantCulture),
+            l.Days31To60.ToString("C", CultureInfo.InvariantCulture),
+            l.Days61To90.ToString("C", CultureInfo.InvariantCulture),
+            l.Over90Days.ToString("C", CultureInfo.InvariantCulture),
+            l.TotalDue.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "AR Aging", $"As of {data.AsOfDate:yyyy-MM-dd}",
+            new[] { (new[] { "Customer", "Current", "1-30", "31-60", "61-90", "90+", "Total" }, tableRows) },
+            data.TotalDue, "Total Due");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ARAging.pdf");
+    }
+
+    [HttpGet("customer-trial-balance/pdf")]
+    public async Task<ActionResult> CustomerTrialBalancePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var report = await GetCustomerTrialBalanceAsync(companyId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Customer Trial Balance", "CTB", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.CustomerName,
+            l.BeginningBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.Debits.ToString("C", CultureInfo.InvariantCulture),
+            l.Credits.ToString("C", CultureInfo.InvariantCulture),
+            l.EndingBalance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Customer Trial Balance", $"As of {data.AsOfDate:yyyy-MM-dd}",
+            new[] { (new[] { "Customer", "Beginning", "Debits", "Credits", "Ending" }, tableRows) },
+            data.TotalEndingBalance, "Total Ending Balance");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CustomerTrialBalance.pdf");
+    }
+
+    [HttpGet("cash-receipts-journal/pdf")]
+    public async Task<ActionResult> CashReceiptsJournalPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetCashReceiptsJournalAsync(companyId, fromDate, toDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Cash Receipts Journal", "CRJ", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.ReceiptReference, l.CustomerName, l.ReceiptDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            l.Amount.ToString("C", CultureInfo.InvariantCulture), l.PaymentMethod, l.Status,
+        }).ToArray();
+        var doc = new ReportDocument(header, "Cash Receipts Journal",
+            $"{data.FromDate:yyyy-MM-dd} to {data.ToDate:yyyy-MM-dd}",
+            new[] { (new[] { "Reference", "Customer", "Date", "Amount", "Method", "Status" }, tableRows) },
+            data.TotalAmount, "Total Receipts");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CashReceiptsJournal.pdf");
+    }
+
+    [HttpGet("sales-journal/pdf")]
+    public async Task<ActionResult> SalesJournalPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetSalesJournalAsync(companyId, fromDate, toDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Sales Journal", "SJ", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.InvoiceNumber, l.CustomerName, l.InvoiceDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            l.Amount.ToString("C", CultureInfo.InvariantCulture), l.Status,
+        }).ToArray();
+        var doc = new ReportDocument(header, "Sales Journal",
+            $"{data.FromDate:yyyy-MM-dd} to {data.ToDate:yyyy-MM-dd}",
+            new[] { (new[] { "Invoice", "Customer", "Date", "Amount", "Status" }, tableRows) },
+            data.TotalAmount, "Total Sales");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "SalesJournal.pdf");
+    }
+
+    [HttpGet("finance-charge/pdf")]
+    public async Task<ActionResult> FinanceChargePdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetFinanceChargeReportAsync(companyId, fromDate, toDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Finance Charge Report", "Finance Charges", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.ChargeNumber, l.CustomerName, l.ChargeDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            l.Amount.ToString("C", CultureInfo.InvariantCulture),
+            (l.AnnualRate * 100).ToString("F2") + "%", l.Status,
+        }).ToArray();
+        var doc = new ReportDocument(header, "Finance Charges", $"As of {data.AsOfDate:yyyy-MM-dd}",
+            new[] { (new[] { "Charge #", "Customer", "Date", "Amount", "Rate", "Status" }, tableRows) },
+            data.TotalCharges, "Total Charges");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "FinanceCharges.pdf");
     }
 }

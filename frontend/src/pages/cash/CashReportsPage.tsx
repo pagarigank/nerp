@@ -1,7 +1,7 @@
 import { currentCompanyId } from '@/api/company'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Download, PiggyBank, TrendingDown, TrendingUp, Scale } from 'lucide-react'
+import { AlertCircle, Download, PiggyBank, TrendingDown, TrendingUp, Scale, FileDown } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
@@ -16,6 +16,10 @@ import {
   getReconciliationSummary,
   getPositivePay,
   getBankAccounts,
+  getCashPositionPdf,
+  getCashForecastPdf,
+  getReconciliationSummaryPdf,
+  getNsfReportPdf,
   } from '@api/cash'
 import { reconciliationStatusMap } from './statusMaps'
 
@@ -24,6 +28,11 @@ export function CashReportsPage() {
   const [agingAccountId, setAgingAccountId] = useState('')
   const [positivePayAccountId, setPositivePayAccountId] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState<string | null>(null)
+  const downloadPdf = async (key: string, fn: () => Promise<Blob>) => {
+    setPdfLoading(key)
+    try { const b = await fn(); window.open(URL.createObjectURL(b), '_blank') } catch (e) { setError(getErrorMessage(e)) } finally { setPdfLoading(null) }
+  }
 
   const { data: positions = [], isLoading: positionLoading } = useQuery({
     queryKey: ['cash', 'reports', 'cashPosition'],
@@ -138,6 +147,7 @@ export function CashReportsPage() {
         <CardHeader
           title="Cash Position"
           description={`Total cash on hand: ${formatCurrency(totalCash)}`}
+          action={<Button size="sm" variant="outline" onClick={() => downloadPdf('cash-pos', getCashPositionPdf)} disabled={pdfLoading === 'cash-pos'}><FileDown className="h-3 w-3 mr-1" />{pdfLoading === 'cash-pos' ? '…' : 'PDF'}</Button>}
         />
         <CardContent>
           {positionLoading ? (
@@ -190,6 +200,7 @@ export function CashReportsPage() {
           <CardHeader
             title="Outstanding Checks"
             description="Aging of issued checks not yet cleared by the bank"
+            action={<Button size="sm" variant="outline" onClick={() => downloadPdf('nsf', getNsfReportPdf)} disabled={pdfLoading === 'nsf'}><FileDown className="h-3 w-3 mr-1" />{pdfLoading === 'nsf' ? '…' : 'PDF'}</Button>}
           />
           <CardContent>
             <div className="mb-4">
@@ -264,11 +275,11 @@ export function CashReportsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader
-          title="Reconciliation Summary"
-          description="Most recent reconciliation per bank account"
-        />
+      <Card>          <CardHeader
+            title="Reconciliation Summary"
+            description="Most recent reconciliation per bank account"
+            action={<Button size="sm" variant="outline" onClick={() => downloadPdf('recon', getReconciliationSummaryPdf)} disabled={pdfLoading === 'recon'}><FileDown className="h-3 w-3 mr-1" />{pdfLoading === 'recon' ? '…' : 'PDF'}</Button>}
+          />
         <CardContent>
           {summaryLoading ? (
             <SkeletonTable columns={8} />

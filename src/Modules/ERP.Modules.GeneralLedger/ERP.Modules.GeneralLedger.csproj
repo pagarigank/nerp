@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AssemblyName>ERP.Modules.GeneralLedger</AssemblyName>
     <RootNamespace>ERP.Modules.GeneralLedger</RootNamespace>
-    <NoWarn>$(NoWarn);SA1000;CA1848;CA1031;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001</NoWarn>
+    <NoWarn>$(NoWarn);SA1000;CA1848;CA1031;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001;SA1512;SA1501;SA1117;CA1305;SA1513;SA1500;CA1822;S3267</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
@@ -24,5 +25,6 @@
     <PackageReference Include="FluentValidation" Version="11.10.0" />
     <PackageReference Include="MediatR" Version="12.4.1" />
     <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
   </ItemGroup>
 </Project>

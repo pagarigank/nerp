@@ -2,14 +2,17 @@
   <PropertyGroup>
     <AssemblyName>ERP.Modules.BillOfMaterials</AssemblyName>
     <RootNamespace>ERP.Modules.BillOfMaterials</RootNamespace>
+    <NoWarn>CS1591;SA1501;SA1117;SA1500;SA1512;CA1822;S2325;SA1210;SA1201;CA1305</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
     <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
     <ProjectReference Include="..\\ERP.Modules.Inventory\\ERP.Modules.Inventory.csproj" />
     <ProjectReference Include="..\\ERP.Modules.Purchasing\\ERP.Modules.Purchasing.csproj" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />

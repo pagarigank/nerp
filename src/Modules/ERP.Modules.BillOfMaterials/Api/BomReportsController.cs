@@ -2,12 +2,17 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using ERP.Modules.BillOfMaterials.Domain.Entities;
 using ERP.Modules.BillOfMaterials.Infrastructure;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Reporting;
 using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 using InvInventoryContext = ERP.Modules.Inventory.Infrastructure.InventoryDbContext;
 
 namespace ERP.Modules.BillOfMaterials.Api;
@@ -336,6 +341,130 @@ public class BomReportsController : ControllerBase
         }
 
         return Ok(ApiResponse<List<WorkCenterUtilizationDto>>.Success(util));
+    }
+
+    // ---- PDF endpoints ----
+
+    [HttpGet("listing/pdf")]
+    public async Task<ActionResult> ListingPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetListing(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "BOM Listing", "Listing", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(b => new[]
+        {
+            b.ParentItemId.ToString().Substring(0, 8), b.Revision, b.Status,
+            b.Components.Count.ToString(CultureInfo.InvariantCulture), $"{b.YieldPercentage}%",
+        }).ToArray();
+        var doc = new ReportDocument(header, "BOM Listing", $"{data.Count} BOMs",
+            new (string[], string[][])[] { (new[] { "Parent", "Rev", "Status", "Components", "Yield %" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BomListing.pdf");
+    }
+
+    [HttpGet("build-history/pdf")]
+    public async Task<ActionResult> BuildHistoryPdfAsync([FromQuery] Guid? companyId, [FromQuery] Guid? parentItemId, CancellationToken ct)
+    {
+        var result = await GetBuildHistory(companyId, parentItemId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Build History", "History", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(b => new[]
+        {
+            b.BuildNumber, b.TransactionType, b.ParentItemId.ToString().Substring(0, 8),
+            b.QuantityBuilt.ToString(CultureInfo.InvariantCulture), b.Status, b.BuildDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Build History", $"{data.Count} builds",
+            new (string[], string[][])[] { (new[] { "Build #", "Type", "Parent", "Qty", "Status", "Date" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BuildHistory.pdf");
+    }
+
+    [HttpGet("accuracy/pdf")]
+    public async Task<ActionResult> AccuracyPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetAccuracy(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "BOM Accuracy", "Accuracy", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(b => new[]
+        {
+            b.ParentItemId.ToString().Substring(0, 8), b.Revision, b.Status,
+            b.IssueCount.ToString(CultureInfo.InvariantCulture), string.Join("; ", b.Issues),
+        }).ToArray();
+        var doc = new ReportDocument(header, "BOM Accuracy", $"{data.Count} BOMs with issues",
+            new (string[], string[][])[] { (new[] { "Parent", "Rev", "Status", "Issues", "Details" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BomAccuracy.pdf");
+    }
+
+    [HttpGet("component-shortage/pdf")]
+    public async Task<ActionResult> ComponentShortagePdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetComponentShortage(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Component Shortage", "Shortage", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(c => new[]
+        {
+            c.BuildNumber, c.ComponentItemId.ToString().Substring(0, 8),
+            c.RequiredQuantity.ToString(CultureInfo.InvariantCulture), c.OnHandQuantity.ToString(CultureInfo.InvariantCulture), c.ShortQuantity.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Component Shortage", $"{data.Count} shortages",
+            new (string[], string[][])[] { (new[] { "Build #", "Component", "Required", "On Hand", "Short" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ComponentShortage.pdf");
+    }
+
+    [HttpGet("revision-history/pdf")]
+    public async Task<ActionResult> RevisionHistoryPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetRevisionHistory(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Revision History", "Revisions", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(r => new[]
+        {
+            r.BomHeaderId.ToString().Substring(0, 8), r.Revision, r.ChangeDescription,
+            r.EffectiveDate?.ToString("yyyy-MM-dd") ?? "—",
+            r.ChangedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Revision History", $"{data.Count} revisions",
+            new (string[], string[][])[] { (new[] { "BOM", "Rev", "Description", "Effective", "Changed" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BomRevisionHistory.pdf");
+    }
+
+    [HttpGet("build-variance/pdf")]
+    public async Task<ActionResult> BuildVariancePdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetBuildVariance(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Build Variance", "Variance", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(v => new[]
+        {
+            v.BuildNumber, v.ParentItemId.ToString().Substring(0, 8),
+            v.QuantityBuilt.ToString(CultureInfo.InvariantCulture), v.ActualYield?.ToString() ?? "—",
+            v.TotalStandardCost.ToString("C", CultureInfo.InvariantCulture), v.TotalVarianceCost.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Build Variance", $"{data.Count} builds",
+            new (string[], string[][])[] { (new[] { "Build #", "Parent", "Qty Built", "Actual Yield", "Std Cost", "Variance" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BuildVariance.pdf");
+    }
+
+    [HttpGet("work-center-utilization/pdf")]
+    public async Task<ActionResult> WorkCenterUtilizationPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
+    {
+        var result = await GetWorkCenterUtilization(companyId, ct);
+        var data = result.Value?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "WC Utilization", "Utilization", DateTimeOffset.UtcNow);
+        var tableRows = data.Select(w => new[]
+        {
+            w.Code, w.Name, w.CapacityHoursPerMonth.ToString(CultureInfo.InvariantCulture),
+            w.PlannedHours.ToString(CultureInfo.InvariantCulture), $"{w.UtilizationPercentage}%",
+            w.CostRatePerHour.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Work Center Utilization", $"{data.Count} work centers",
+            new (string[], string[][])[] { (new[] { "Code", "Name", "Capacity Hrs", "Planned Hrs", "Utilization", "Rate/Hr" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WcUtilization.pdf");
     }
 }
 

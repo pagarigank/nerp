@@ -178,6 +178,23 @@ export function getArFinanceChargeReport(asOfDate?: string, companyIdParam?: str
   return get('/ar/reports/finance-charge', { asOfDate, companyId: companyIdParam ?? companyId() })
 }
 
+// --- AR Report PDFs ---
+export function getArAgingReportPdf(): Promise<Blob> {
+  return blob('/ar/reports/aging/pdf', { companyId: companyId() })
+}
+export function getCustomerTrialBalancePdf(): Promise<Blob> {
+  return blob('/ar/reports/customer-trial-balance/pdf', { companyId: companyId() })
+}
+export function getCashReceiptsJournalPdf(): Promise<Blob> {
+  return blob('/ar/reports/cash-receipts-journal/pdf', { companyId: companyId() })
+}
+export function getSalesJournalPdf(): Promise<Blob> {
+  return blob('/ar/reports/sales-journal/pdf', { companyId: companyId() })
+}
+export function getArFinanceChargeReportPdf(): Promise<Blob> {
+  return blob('/ar/reports/finance-charge/pdf', { companyId: companyId() })
+}
+
 // --- Phase 4: Collections ---
 export function getCollectionNotes(companyIdParam?: string): Promise<CollectionNote[]> {
   return get('/ar/collection-notes', { companyId: companyIdParam ?? companyId() })

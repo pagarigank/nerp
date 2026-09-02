@@ -49,7 +49,7 @@ import type {
   OutstandingDeposits,
 } from '@/types/cash'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 function companyId(): string {
@@ -356,6 +356,20 @@ export function getCashForecastHorizon(companyIdParam?: string): Promise<CashFor
 
 export function getOutstandingDeposits(companyIdParam?: string): Promise<OutstandingDeposits> {
   return get('/cash/reports/outstanding-deposits', { companyId: companyIdParam ?? companyId() })
+}
+
+// --- Cash Report PDFs ---
+export function getCashPositionPdf(): Promise<Blob> {
+  return blob('/cash/reports/cash-position/pdf', { companyId: companyId() })
+}
+export function getCashForecastPdf(): Promise<Blob> {
+  return blob('/cash/reports/cash-forecast/pdf', { companyId: companyId() })
+}
+export function getReconciliationSummaryPdf(): Promise<Blob> {
+  return blob('/cash/reports/reconciliation-summary/pdf', { companyId: companyId() })
+}
+export function getNsfReportPdf(): Promise<Blob> {
+  return blob('/cash/reports/nsf-report/pdf', { companyId: companyId() })
 }
 
 export function deleteBankContact(bankAccountId: string, contactId: string): Promise<void> {

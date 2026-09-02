@@ -11,6 +11,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Layers,
+  Printer,
 } from 'lucide-react'
 import { getErrorMessage } from '@api/client'
 import {
@@ -26,6 +27,20 @@ import {
   getInventoryTurnover,
   getCycleCountVariance,
   getCycleCountSummary,
+  getValuationReportPdf,
+  getReorderReportPdf,
+  getTransactionHistoryPdf,
+  getStockOutReportPdf,
+  getNegativeReportPdf,
+  getSlowMovingReportPdf,
+  getAbcAnalysisPdf,
+  getLotTraceabilityPdf,
+  getSerialTraceabilityPdf,
+  getInventoryTurnoverPdf,
+  getCycleCountVariancePdf,
+  getCycleCountSummaryPdf,
+  getGlTieOutPdf,
+  getStockCardPdf,
 } from '@api/inventory'
 
 type ReportKey =
@@ -41,6 +56,8 @@ type ReportKey =
   | 'inventory-turnover'
   | 'cycle-count-variance'
   | 'cycle-count-summary'
+  | 'gl-tie-out'
+  | 'stock-card'
 
 const money = (n: number) => `$${Number(n).toFixed(2)}`
 const pct = (n: number) => `${Number(n).toFixed(1)}%`
@@ -58,6 +75,8 @@ const tabs: { key: ReportKey; label: string; icon: typeof Package }[] = [
   { key: 'inventory-turnover', label: 'Turnover', icon: RefreshCw },
   { key: 'cycle-count-variance', label: 'Count Variance', icon: Layers },
   { key: 'cycle-count-summary', label: 'Count Summary', icon: BarChart3 },
+  { key: 'gl-tie-out', label: 'GL Tie-Out', icon: FileText },
+  { key: 'stock-card', label: 'Stock Card', icon: FileText },
 ]
 
 export function InventoryReportsPage() {
@@ -102,13 +121,52 @@ export function InventoryReportsPage() {
 
   const columns = useMemo(() => reportColumns(active), [active])
 
+  const pdfLoaders: Record<ReportKey, () => Promise<Blob>> = {
+    'valuation': getValuationReportPdf,
+    'reorder': getReorderReportPdf,
+    'transactions': getTransactionHistoryPdf,
+    'stock-out': getStockOutReportPdf,
+    'negative': getNegativeReportPdf,
+    'slow-moving': getSlowMovingReportPdf,
+    'abc-analysis': getAbcAnalysisPdf,
+    'lot-traceability': getLotTraceabilityPdf,
+    'serial-traceability': getSerialTraceabilityPdf,
+    'inventory-turnover': () => getInventoryTurnoverPdf(
+      new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString(),
+      new Date().toISOString()
+    ),
+    'cycle-count-variance': getCycleCountVariancePdf,
+    'cycle-count-summary': getCycleCountSummaryPdf,
+    'gl-tie-out': getGlTieOutPdf,
+    'stock-card': getStockCardPdf,
+  }
+
+  const printReport = async () => {
+    try {
+      const blob = await pdfLoaders[active]()
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch {
+      // PDF generation failed — ignore
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Reports</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Generate inventory reports and analytics
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Reports</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Generate inventory reports and analytics
+          </p>
+        </div>
+        <button
+          onClick={printReport}
+          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Print Report
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -194,6 +252,8 @@ function reportColumns(key: ReportKey): string[] {
     'inventory-turnover': ['Item', 'Description', 'COGS', 'Avg Inventory', 'Turnover'],
     'cycle-count-variance': ['Count', 'Item', 'Warehouse', 'System', 'Counted', 'Variance', 'Variance $', '%', 'Notes'],
     'cycle-count-summary': ['Warehouse', 'Lines', 'System', 'Counted', 'Variance', 'Variance $'],
+    'gl-tie-out': ['Account', 'Description', 'GL Balance', 'Inv Balance', 'Variance'],
+    'stock-card': ['Item', 'Warehouse', 'Qty', 'Unit Cost', 'Extended', 'Last Txn'],
   }
   return map[key]
 }

@@ -1,6 +1,6 @@
 // Bill of Materials module API client (Phase 9).
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 import { companyId as defaultCompanyId } from './inventory'
 
 // --- BOM Headers ---
@@ -172,4 +172,27 @@ export function getBuildVariance(companyIdParam?: string) {
 }
 export function getWorkCenterUtilization(companyIdParam?: string) {
   return get('/bom/reports/work-center-utilization', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+
+// --- PDF Report functions ---
+export function getBomListingPdf(companyIdParam?: string) {
+  return blob('/bom/reports/listing/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getBuildHistoryPdf(companyIdParam?: string) {
+  return blob('/bom/reports/build-history/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getBomAccuracyPdf(companyIdParam?: string) {
+  return blob('/bom/reports/accuracy/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getComponentShortagePdf(companyIdParam?: string) {
+  return blob('/bom/reports/component-shortage/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getRevisionHistoryPdf(companyIdParam?: string) {
+  return blob('/bom/reports/revision-history/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getBuildVariancePdf(companyIdParam?: string) {
+  return blob('/bom/reports/build-variance/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
+}
+export function getWorkCenterUtilizationPdf(companyIdParam?: string) {
+  return blob('/bom/reports/work-center-utilization/pdf', { companyId: companyIdParam ?? defaultCompanyId() })
 }

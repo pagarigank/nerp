@@ -2,14 +2,20 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using Asp.Versioning;
 using ERP.Modules.AccountsPayable.Infrastructure;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.CashManagement.Domain.Entities;
 using ERP.Modules.CashManagement.Infrastructure;
+using ERP.Reporting;
+using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.CashManagement.Api;
 
@@ -24,6 +30,7 @@ public class CashReportsController : ControllerBase
     private readonly ICashPositionJob _cashPositionJob;
     private readonly IOutstandingCheckAgingJob _agingJob;
     private readonly IPositivePayService _positivePayService;
+    private readonly ICustomerReadService _customerRead;
 
     public CashReportsController(
         CashDbContext context,
@@ -31,7 +38,8 @@ public class CashReportsController : ControllerBase
         ArDbContext arContext,
         ICashPositionJob cashPositionJob,
         IOutstandingCheckAgingJob agingJob,
-        IPositivePayService positivePayService)
+        IPositivePayService positivePayService,
+        ICustomerReadService customerRead)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _apContext = apContext ?? throw new ArgumentNullException(nameof(apContext));
@@ -39,6 +47,7 @@ public class CashReportsController : ControllerBase
         _cashPositionJob = cashPositionJob ?? throw new ArgumentNullException(nameof(cashPositionJob));
         _agingJob = agingJob ?? throw new ArgumentNullException(nameof(agingJob));
         _positivePayService = positivePayService ?? throw new ArgumentNullException(nameof(positivePayService));
+        _customerRead = customerRead ?? throw new ArgumentNullException(nameof(customerRead));
     }
 
     [HttpGet("cash-position")]
@@ -278,6 +287,116 @@ public class CashReportsController : ControllerBase
             totalCash - openPayables + openReceivables);
 
         return Ok(forecast);
+    }
+
+    // ---- PDF endpoints ----
+
+    private async Task<CompanyDocumentHeader> GetHeaderAsync(Guid companyId, string title, string number, CancellationToken ct)
+    {
+        return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
+    }
+
+    [HttpGet("cash-position/pdf")]
+    public async Task<ActionResult> CashPositionPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var positions = await _cashPositionJob.RunAsync(companyId, ct);
+        var header = await GetHeaderAsync(companyId, "Cash Position", "Cash Position", ct);
+        var tableRows = positions.Select(p => new[]
+        {
+            p.AccountCode, p.AccountName, p.AccountNumber,
+            p.CurrentBalance.ToString("C", CultureInfo.InvariantCulture),
+            p.CurrencyCode, p.OutstandingChecks.ToString("C", CultureInfo.InvariantCulture),
+            p.OutstandingDeposits.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var totalCash = positions.Sum(p => p.CurrentBalance);
+        var doc = new ReportDocument(header, "Cash Position", $"As of {DateTimeOffset.Now:yyyy-MM-dd}",
+            new[] { (new[] { "Code", "Name", "Account #", "Balance", "Currency", "Out. Checks", "Out. Deposits" }, tableRows) },
+            totalCash, "Total Cash");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CashPosition.pdf");
+    }
+
+    [HttpGet("cash-forecast/pdf")]
+    public async Task<ActionResult> CashForecastPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var positions = await _cashPositionJob.RunAsync(companyId, ct);
+        var totalCash = positions.Sum(p => p.CurrentBalance);
+        var openPayables = await _apContext.Vouchers
+            .Where(v => v.VoucherBatchId != Guid.Empty && !v.SelectedForPayment)
+            .SumAsync(v => v.TotalAmount, ct);
+        var openInvoiceIds = await _arContext.Invoices
+            .Where(i => i.Status == InvoiceStatus.Open || i.Status == InvoiceStatus.PartiallyPaid)
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+        var openInvoiced = await _arContext.InvoiceLines
+            .Where(l => l.InvoiceId != null && openInvoiceIds.Contains(l.InvoiceId.Value))
+            .SumAsync(l => (l.Quantity * l.UnitPrice) + l.TaxAmount - l.DiscountAmount, ct);
+        var openApplied = await _arContext.CashReceiptApplications
+            .Where(a => openInvoiceIds.Contains(a.InvoiceId))
+            .SumAsync(a => a.AppliedAmount, ct);
+        var openReceivables = decimal.Round(openInvoiced - openApplied, 2, MidpointRounding.AwayFromZero);
+        var header = await GetHeaderAsync(companyId, "Cash Forecast", "Forecast", ct);
+        var tableRows = new[] {
+            new[] { "Current Cash", totalCash.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Open Payables", openPayables.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Open Receivables", openReceivables.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "After Payables", (totalCash - openPayables).ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "After Collections", (totalCash - openPayables + openReceivables).ToString("C", CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "Cash Forecast", $"As of {DateTimeOffset.Now:yyyy-MM-dd}",
+            new[] { (new[] { "Item", "Amount" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CashForecast.pdf");
+    }
+
+    [HttpGet("reconciliation-summary/pdf")]
+    public async Task<ActionResult> ReconciliationSummaryPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? bankAccountId, CancellationToken ct)
+    {
+        var accounts = await _context.BankAccounts
+            .Where(a => a.CompanyId == companyId && (!bankAccountId.HasValue || a.Id == bankAccountId.Value))
+            .OrderBy(a => a.AccountCode)
+            .ToListAsync(ct);
+        var header = await GetHeaderAsync(companyId, "Reconciliation Summary", "Recon Summary", ct);
+        var allRows = new List<string[]>();
+        foreach (var account in accounts)
+        {
+            var session = await _context.ReconciliationSessions
+                .Where(s => s.BankAccountId == account.Id)
+                .OrderByDescending(s => s.StatementDate)
+                .FirstOrDefaultAsync(ct);
+            if (session == null) continue;
+            allRows.Add(new[]
+            {
+                account.AccountName, session.StatementDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                session.BeginningBalance.ToString("C", CultureInfo.InvariantCulture),
+                session.EndingBalance.ToString("C", CultureInfo.InvariantCulture),
+                (session.Variance ?? 0m).ToString("C", CultureInfo.InvariantCulture),
+                session.Status.ToString(),
+            });
+        }
+        var doc = new ReportDocument(header, "Reconciliation Summary", $"As of {DateTimeOffset.Now:yyyy-MM-dd}",
+            new[] { (new[] { "Account", "Statement Date", "Beginning", "Ending", "Variance", "Status" }, allRows.ToArray()) },
+            null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ReconciliationSummary.pdf");
+    }
+
+    [HttpGet("nsf-report/pdf")]
+    public async Task<ActionResult> NsfReportPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var records = await _context.NsfRecords
+            .Where(n => n.CompanyId == companyId)
+            .OrderByDescending(n => n.ReturnedDate)
+            .ToListAsync(ct);
+        var header = await GetHeaderAsync(companyId, "NSF Report", "NSF", ct);
+        var tableRows = records.Select(n => new[]
+        {
+            n.NsfNumber, n.Amount.ToString("C", CultureInfo.InvariantCulture),
+            n.ReturnedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            n.BankReference ?? "—", n.Reason ?? "—",
+            (n.NsfFeeAmount ?? 0m).ToString("C", CultureInfo.InvariantCulture), n.Status.ToString(),
+        }).ToArray();
+        var doc = new ReportDocument(header, "NSF Report", $"As of {DateTimeOffset.Now:yyyy-MM-dd}",
+            new[] { (new[] { "NSF #", "Amount", "Returned", "Bank Ref", "Reason", "Fee", "Status" }, tableRows) },
+            records.Sum(n => n.Amount), "Total NSF");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "NsfReport.pdf");
     }
 }
 

@@ -2,13 +2,19 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using Asp.Versioning;
 using ERP.Modules.GeneralLedger.Domain.Entities;
 using ERP.Modules.GeneralLedger.Infrastructure;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Reporting;
+using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.GeneralLedger.Api;
 
@@ -20,12 +26,19 @@ public class GlReportController : ControllerBase
     private readonly GlDbContext _glContext;
     private readonly PlatformDbContext _platformContext;
     private readonly IRevaluationService _revaluationService;
+    private readonly ICustomerReadService _customerRead;
 
-    public GlReportController(GlDbContext glContext, PlatformDbContext platformContext, IRevaluationService revaluationService)
+    public GlReportController(GlDbContext glContext, PlatformDbContext platformContext, IRevaluationService revaluationService, ICustomerReadService customerRead)
     {
         _glContext = glContext ?? throw new ArgumentNullException(nameof(glContext));
         _platformContext = platformContext ?? throw new ArgumentNullException(nameof(platformContext));
         _revaluationService = revaluationService ?? throw new ArgumentNullException(nameof(revaluationService));
+        _customerRead = customerRead ?? throw new ArgumentNullException(nameof(customerRead));
+    }
+
+    private async Task<CompanyDocumentHeader> GetHeaderAsync(Guid companyId, string title, string number, CancellationToken ct)
+    {
+        return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
     }
 
     [HttpGet("trial-balance")]
@@ -756,5 +769,141 @@ public class GlReportController : ControllerBase
             preview.EstimatedGainLoss,
             lines,
             DateTimeOffset.UtcNow));
+    }
+
+    // ---- PDF endpoints ----
+
+    [HttpGet("trial-balance/pdf")]
+    public async Task<ActionResult> TrialBalancePdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetTrialBalance(companyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Trial Balance", "TB", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.AccountDescription, l.AccountType.ToString(),
+            l.Debit.ToString("C", CultureInfo.InvariantCulture),
+            l.Credit.ToString("C", CultureInfo.InvariantCulture),
+            l.EndingBalance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Trial Balance", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Account", "Description", "Type", "Debit", "Credit", "Balance" }, tableRows) },
+            data.TotalDebit, "Total Debits");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "TrialBalance.pdf");
+    }
+
+    [HttpGet("balance-sheet/pdf")]
+    public async Task<ActionResult> BalanceSheetPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetBalanceSheet(companyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Balance Sheet", "BS", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.AccountDescription,
+            l.Balance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Balance Sheet", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Account", "Description", "Balance" }, tableRows) },
+            data.TotalAmount, "Total");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "BalanceSheet.pdf");
+    }
+
+    [HttpGet("income-statement/pdf")]
+    public async Task<ActionResult> IncomeStatementPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetIncomeStatement(companyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Income Statement", "IS", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.AccountDescription,
+            l.Balance.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Income Statement", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Account", "Description", "Amount" }, tableRows) },
+            data.TotalAmount, "Total");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "IncomeStatement.pdf");
+    }
+
+    [HttpGet("cash-flow/pdf")]
+    public async Task<ActionResult> CashFlowPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
+    {
+        var report = await GetCashFlow(companyId, fiscalPeriodId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Cash Flow Statement", "CF", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.Category, l.AccountNumber, l.AccountDescription,
+            l.Amount.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Cash Flow", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Category", "Account", "Description", "Amount" }, tableRows) },
+            data.NetCashChange, "Net Change");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CashFlow.pdf");
+    }
+
+    [HttpGet("unposted-transactions/pdf")]
+    public async Task<ActionResult> UnpostedTransactionsPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var report = await GetUnpostedTransactions(companyId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Unposted Transactions", "Unposted", ct);
+        var tableRows = data.Batches.Select(b => new[]
+        {
+            b.BatchNumber, b.Description, b.PostingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            b.Status, b.LineCount.ToString(),
+            b.TotalDebits.ToString("C", CultureInfo.InvariantCulture),
+            b.TotalCredits.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Unposted Transactions", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Batch #", "Description", "Date", "Status", "Lines", "Debits", "Credits" }, tableRows) },
+            null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "UnpostedTransactions.pdf");
+    }
+
+    [HttpGet("general-ledger-detail/pdf")]
+    public async Task<ActionResult> GeneralLedgerDetailPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetGeneralLedgerDetail(companyId, fiscalPeriodId, fromDate, toDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "General Ledger Detail", "GL Detail", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.PostingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), l.BatchNumber,
+            l.AccountNumber, l.Reference ?? "—",
+            l.Debit.ToString("C", CultureInfo.InvariantCulture),
+            l.Credit.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "General Ledger Detail", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Date", "Batch", "Account", "Reference", "Debit", "Credit" }, tableRows) },
+            data.TotalDebit, "Total Debits");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "GeneralLedgerDetail.pdf");
+    }
+
+    [HttpGet("account-distribution/pdf")]
+    public async Task<ActionResult> AccountDistributionPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetAccountDistribution(companyId, fiscalPeriodId, fromDate, toDate, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = await GetHeaderAsync(companyId, "Account Distribution", "Distribution", ct);
+        var tableRows = data.Lines.Select(l => new[]
+        {
+            l.AccountNumber, l.AccountDescription, l.TransactionCount.ToString(),
+            l.Debit.ToString("C", CultureInfo.InvariantCulture),
+            l.Credit.ToString("C", CultureInfo.InvariantCulture),
+            l.NetChange.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Account Distribution", $"{data.CompanyName} — As of {data.GeneratedOn:yyyy-MM-dd}",
+            new[] { (new[] { "Account", "Description", "Txns", "Debit", "Credit", "Net" }, tableRows) },
+            data.TotalDebit, "Total Debits");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "AccountDistribution.pdf");
     }
 }

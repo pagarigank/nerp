@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, AlertCircle } from 'lucide-react'
+import { FileText, AlertCircle, Printer } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { getErrorMessage } from '@api/client'
-import { getArAgingReport, getCustomerTrialBalance, getCashReceiptsJournal, getSalesJournal, getArFinanceChargeReport } from '@api/ar'
+import { getArAgingReport, getCustomerTrialBalance, getCashReceiptsJournal, getSalesJournal, getArFinanceChargeReport, getArAgingReportPdf, getCustomerTrialBalancePdf, getCashReceiptsJournalPdf, getSalesJournalPdf, getArFinanceChargeReportPdf } from '@api/ar'
 import type { ArAgingReport, CustomerTrialBalanceReport, CashReceiptsJournalReport, SalesJournalReport, FinanceChargeReport } from '@/types/ar'
 
 type ReportKey = 'aging' | 'customer-trial-balance' | 'cash-receipts-journal' | 'sales-journal' | 'finance-charge'
@@ -31,6 +31,21 @@ export function ArReportsPage() {
 
   const current = reports.find(r => r.key === active)!
 
+  const pdfLoaders: Record<ReportKey, () => Promise<Blob>> = {
+    'aging': getArAgingReportPdf,
+    'customer-trial-balance': getCustomerTrialBalancePdf,
+    'cash-receipts-journal': getCashReceiptsJournalPdf,
+    'sales-journal': getSalesJournalPdf,
+    'finance-charge': getArFinanceChargeReportPdf,
+  }
+
+  const printReport = async () => {
+    try {
+      const b = await pdfLoaders[active]()
+      window.open(URL.createObjectURL(b), '_blank')
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="space-y-6">
       {formError && (
@@ -38,9 +53,14 @@ export function ArReportsPage() {
           <AlertCircle className="h-5 w-5" /> <span>{formError}</span>
         </div>
       )}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AR Reports</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Receivables reporting and analytics</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AR Reports</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Receivables reporting and analytics</p>
+        </div>
+        <button onClick={printReport} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+          <Printer className="h-4 w-4" /> Print Report
+        </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

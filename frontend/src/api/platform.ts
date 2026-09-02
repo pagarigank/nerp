@@ -60,7 +60,7 @@ import type {
   RoleMatrix,
 } from '@/types/platform'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 export function companyId(): string {
@@ -483,4 +483,18 @@ export function approveAccessRequest(id: string, roleId?: string | null, notes?:
 
 export function rejectAccessRequest(id: string, notes?: string | null): Promise<AccessRequest> {
   return post(`/platform/access-requests/${id}/reject`, { roleId: null, notes: notes ?? null })
+}
+
+// --- PDF Report functions ---
+export function getCompanySetupReportPdf() {
+  return blob('/platform/reports/company-setup/pdf', { companyId: companyId() })
+}
+export function getChartOfAccountsReportPdf() {
+  return blob('/platform/reports/chart-of-accounts/pdf', { companyId: companyId(), activeOnly: true })
+}
+export function getFiscalCalendarReportPdf() {
+  return blob('/platform/reports/fiscal-calendar/pdf', { companyId: companyId() })
+}
+export function getAuditTrailReportPdf() {
+  return blob('/platform/reports/audit-trail/pdf', { companyId: companyId() })
 }

@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AssemblyName>ERP.Modules.Inventory</AssemblyName>
     <RootNamespace>ERP.Modules.Inventory</RootNamespace>
-    <NoWarn>SA1000;CA1848;CA1031;CA1812;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001;S1144;SA1117;S3267;SA1501;CA1860;S101;SA1210;SA1201</NoWarn>
+    <NoWarn>SA1000;CA1848;CA1031;CA1812;S2139;S6608;CS1591;SA1200;SA1600;SA1602;SA1309;SA1516;SA1413;SA1636;SA1202;SA1309;SA1010;CA1711;SA1127;CA1063;S3881;CA1051;SA1401;CA1716;SA1313;SA1633;SA1101;SA1502;SA1128;SA1503;S6602;S6964;CA1062;SA1116;CA1854;CA1024;CA1816;S6605;SA1116;CA2007;S6605;SA1010;CA1861;SA0001;S1144;SA1117;S3267;SA1501;CA1860;S101;SA1210;SA1201;SA1512;SA1204;S1172;SA1500;SA1117;CA1305;SA1611;SA1615</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -15,6 +15,7 @@
     <ProjectReference Include="..\ERP.Modules.GeneralLedger\ERP.Modules.GeneralLedger.csproj" />
     <ProjectReference Include="..\ERP.Modules.Purchasing\ERP.Modules.Purchasing.csproj" />
     <ProjectReference Include="..\ERP.Modules.OrderManagement\ERP.Modules.OrderManagement.csproj" />
+    <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
@@ -24,5 +25,6 @@
     <PackageReference Include="MediatR" Version="12.4.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
   </ItemGroup>
 </Project>

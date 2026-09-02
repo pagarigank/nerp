@@ -1,6 +1,6 @@
 // Inventory module API client (Phase 7).
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 export function companyId(): string {
@@ -404,6 +404,50 @@ export function consumeConsignment(id: string, quantity: number, unitCost: numbe
 // --- Inventory GL Tie-Out (464) ---
 export function getGlTieOut(): Promise<import('@/types/inventory').InventoryGlTieOutRow[]> {
   return get('/inventory/reports/gl-tie-out', { companyId: companyId() })
+}
+
+// --- Report PDFs ---
+export function getValuationReportPdf(warehouseId?: string, itemId?: string): Promise<Blob> {
+  return blob('/inventory/reports/valuation/pdf', { companyId: companyId(), warehouseId, itemId })
+}
+export function getReorderReportPdf(): Promise<Blob> {
+  return blob('/inventory/reports/reorder/pdf', { companyId: companyId() })
+}
+export function getTransactionHistoryPdf(from?: string, to?: string, itemId?: string, warehouseId?: string): Promise<Blob> {
+  return blob('/inventory/reports/transactions/pdf', { companyId: companyId(), from, to, itemId, warehouseId })
+}
+export function getStockOutReportPdf(): Promise<Blob> {
+  return blob('/inventory/reports/stock-out/pdf', { companyId: companyId() })
+}
+export function getNegativeReportPdf(): Promise<Blob> {
+  return blob('/inventory/reports/negative/pdf', { companyId: companyId() })
+}
+export function getSlowMovingReportPdf(monthsThreshold = 12): Promise<Blob> {
+  return blob('/inventory/reports/slow-moving/pdf', { companyId: companyId(), monthsThreshold })
+}
+export function getAbcAnalysisPdf(): Promise<Blob> {
+  return blob('/inventory/reports/abc-analysis/pdf', { companyId: companyId() })
+}
+export function getLotTraceabilityPdf(itemId?: string): Promise<Blob> {
+  return blob('/inventory/reports/lot-traceability/pdf', { companyId: companyId(), itemId })
+}
+export function getSerialTraceabilityPdf(itemId?: string): Promise<Blob> {
+  return blob('/inventory/reports/serial-traceability/pdf', { companyId: companyId(), itemId })
+}
+export function getInventoryTurnoverPdf(from: string, to: string): Promise<Blob> {
+  return blob('/inventory/reports/inventory-turnover/pdf', { companyId: companyId(), from, to })
+}
+export function getCycleCountVariancePdf(): Promise<Blob> {
+  return blob('/inventory/reports/cycle-count-variance/pdf', { companyId: companyId() })
+}
+export function getCycleCountSummaryPdf(): Promise<Blob> {
+  return blob('/inventory/reports/cycle-count-summary/pdf', { companyId: companyId() })
+}
+export function getGlTieOutPdf(): Promise<Blob> {
+  return blob('/inventory/reports/gl-tie-out/pdf', { companyId: companyId() })
+}
+export function getStockCardPdf(): Promise<Blob> {
+  return blob('/inventory/reports/stock-card/pdf', { companyId: companyId() })
 }
 
 // --- Cycle Count Scheduling (465) ---

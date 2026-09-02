@@ -1,6 +1,6 @@
 // Purchasing module API client (Phase 6).
 import { useAuthStore } from '@stores/authStore'
-import { get, post } from './client'
+import { get, post, blob } from './client'
 
 export function companyId(): string {
   const current = useAuthStore.getState().currentCompany
@@ -255,4 +255,33 @@ export interface ReorderScanReport {
 
 export function runReorderScan(): Promise<ReorderScanReport> {
   return post('/purchasing/requisitions/run-reorder-scan')
+}
+
+// --- Report PDFs ---
+export function getOpenPOReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/open-po/pdf', { companyId: companyId() })
+}
+export function getRequisitionStatusReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/requisition-status/pdf', { companyId: companyId() })
+}
+export function getReceivingReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/receiving-report/pdf', { companyId: companyId() })
+}
+export function getCommittedCostReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/committed-cost/pdf', { companyId: companyId() })
+}
+export function getPOStatusReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/po-status/pdf', { companyId: companyId() })
+}
+export function getVendorPerformanceReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/vendor-performance/pdf', { companyId: companyId() })
+}
+export function getPurchaseAnalysisReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/purchase-analysis/pdf', { companyId: companyId() })
+}
+export function getPriceVarianceReportPdf(threshold?: number): Promise<Blob> {
+  return blob('/purchasing/reports/price-variance/pdf', { companyId: companyId(), threshold })
+}
+export function getOverReceiptExceptionReportPdf(): Promise<Blob> {
+  return blob('/purchasing/reports/over-receipt-exceptions/pdf', { companyId: companyId() })
 }

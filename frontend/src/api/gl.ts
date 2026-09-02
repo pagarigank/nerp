@@ -49,7 +49,7 @@ import type {
   AccountInquiryDto,
 } from '@/types/gl'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put, del } from './client'
+import { get, post, put, del, blob } from './client'
 
 
 function companyId(): string {
@@ -274,6 +274,29 @@ export function getMultiCurrencyRevaluation(params?: { companyId?: string | unde
     fiscalPeriodId: params?.fiscalPeriodId,
     revaluationDate: params?.revaluationDate,
   })
+}
+
+// --- GL Report PDFs ---
+export function getTrialBalancePdf(): Promise<Blob> {
+  return blob('/gl/reports/trial-balance/pdf', { companyId: companyId() })
+}
+export function getBalanceSheetPdf(): Promise<Blob> {
+  return blob('/gl/reports/balance-sheet/pdf', { companyId: companyId() })
+}
+export function getIncomeStatementPdf(): Promise<Blob> {
+  return blob('/gl/reports/income-statement/pdf', { companyId: companyId() })
+}
+export function getCashFlowPdf(): Promise<Blob> {
+  return blob('/gl/reports/cash-flow/pdf', { companyId: companyId() })
+}
+export function getUnpostedTransactionsPdf(): Promise<Blob> {
+  return blob('/gl/reports/unposted-transactions/pdf', { companyId: companyId() })
+}
+export function getGeneralLedgerDetailPdf(): Promise<Blob> {
+  return blob('/gl/reports/general-ledger-detail/pdf', { companyId: companyId() })
+}
+export function getAccountDistributionPdf(): Promise<Blob> {
+  return blob('/gl/reports/account-distribution/pdf', { companyId: companyId() })
 }
 
 // --- Multi-Currency Revaluation engine ---

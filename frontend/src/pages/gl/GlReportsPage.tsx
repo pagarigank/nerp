@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Play } from 'lucide-react'
+import { AlertCircle, Play, Printer } from 'lucide-react'
 import { formatCurrency, formatDate } from '@utils/helpers'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
@@ -20,6 +20,13 @@ import {
   getIntercompanyBalance,
   getMultiCurrencyRevaluation,
   getBudgets,
+  getTrialBalancePdf,
+  getBalanceSheetPdf,
+  getIncomeStatementPdf,
+  getCashFlowPdf,
+  getUnpostedTransactionsPdf,
+  getGeneralLedgerDetailPdf,
+  getAccountDistributionPdf,
 } from '@api/gl'
 import { getFiscalPeriods, getCompanies } from '@api/platform'
 import type {
@@ -179,10 +186,35 @@ export function GlReportsPage() {
     setRunId(id => id + 1)
   }
 
+  const pdfLoaders: Record<ReportKey, () => Promise<Blob>> = {
+    trialBalance: getTrialBalancePdf,
+    generalLedger: getGeneralLedgerDetailPdf,
+    unposted: getUnpostedTransactionsPdf,
+    balanceSheet: getBalanceSheetPdf,
+    incomeStatement: getIncomeStatementPdf,
+    cashFlow: getCashFlowPdf,
+    budgetVsActual: async () => new Blob(),
+    accountDistribution: getAccountDistributionPdf,
+    consolidatedTrialBalance: async () => new Blob(),
+    intercompanyBalance: async () => new Blob(),
+    multiCurrencyRevaluation: async () => new Blob(),
+  }
+
+  const printReport = async () => {
+    try {
+      const b = await pdfLoaders[activeReport]()
+      if (b.size > 0) window.open(URL.createObjectURL(b), '_blank')
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Financial Reports" description="Generate and view GL reports for the current company." />
+        <CardHeader title="Financial Reports" description="Generate and view GL reports for the current company.">
+          <button onClick={printReport} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+            <Printer className="h-4 w-4" /> Print Report
+          </button>
+        </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {reportOptions.map(option => (

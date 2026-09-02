@@ -2,12 +2,17 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using Asp.Versioning;
 using ERP.Modules.Platform.Api;
 using ERP.Modules.Platform.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
+using ERP.Reporting;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.Platform.Api;
 
@@ -22,6 +27,9 @@ public class ReportController : ControllerBase
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }
+
+    private static CompanyDocumentHeader MkHeader(string company, string title, string number) =>
+        new(company, null, null, null, "USD", null, null, null, title, number, DateTimeOffset.UtcNow);
 
     [HttpGet("company-setup")]
     public async Task<ActionResult<CompanySetupReportDto>> GetCompanySetupReport(
@@ -248,5 +256,83 @@ public class ReportController : ControllerBase
             pageSize,
             auditLogs.Select(al => new AuditLogDto(al.Id, al.Action, al.EntityType, al.EntityId, al.PerformedBy, al.PerformedOn, al.IpAddress, al.UserAgent, al.CorrelationId, al.OldValues, al.NewValues)).ToList(),
             DateTimeOffset.UtcNow));
+    }
+
+    // ---- PDF endpoints ----
+    [HttpGet("company-setup/pdf")]
+    public async Task<ActionResult> CompanySetupPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var report = await GetCompanySetupReport(companyId, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = MkHeader(data.Company.Name, "Company Setup", "Setup");
+        var tableRows = new[] {
+            new[] { "Name", data.Company.Name },
+            new[] { "Legal Name", data.Company.LegalName ?? "—" },
+            new[] { "Currency", data.Company.BaseCurrency },
+            new[] { "Tax ID", data.Company.TaxId ?? "—" },
+            new[] { "Address", data.Company.Address ?? "—" },
+            new[] { "Active", data.Company.IsActive ? "Yes" : "No" },
+            new[] { "Fiscal Years", data.FiscalYears.Count.ToString(CultureInfo.InvariantCulture) },
+            new[] { "Users", data.Users.Count.ToString(CultureInfo.InvariantCulture) },
+            new[] { "Roles", data.Roles.Count.ToString(CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "Company Setup", $"Generated {data.GeneratedOn:yyyy-MM-dd}",
+            new (string[], string[][])[] { (new[] { "Field", "Value" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "CompanySetup.pdf");
+    }
+
+    [HttpGet("chart-of-accounts/pdf")]
+    public async Task<ActionResult> ChartOfAccountsPdfAsync([FromQuery] Guid companyId, [FromQuery] bool activeOnly, CancellationToken ct)
+    {
+        var report = await GetChartOfAccountsReport(companyId, activeOnly, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = MkHeader(data.CompanyName, "Chart of Accounts", "COA");
+        var tableRows = data.Accounts.Select(a => new[]
+        {
+            a.AccountNumber, a.Description, a.AccountType.ToString(),
+            a.NormalBalance.ToString(), a.IsActive ? "Active" : "Inactive",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Chart of Accounts", $"{data.CompanyName} — {tableRows.Length} accounts",
+            new (string[], string[][])[] { (new[] { "Account #", "Description", "Type", "Normal Balance", "Status" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "ChartOfAccounts.pdf");
+    }
+
+    [HttpGet("fiscal-calendar/pdf")]
+    public async Task<ActionResult> FiscalCalendarPdfAsync([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken ct)
+    {
+        var report = await GetFiscalCalendarReport(companyId, year, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = MkHeader(data.CompanyName, "Fiscal Calendar", "Calendar");
+        var tableRows = data.FiscalYears.SelectMany(fy => fy.Periods.Select(p => new[]
+        {
+            $"FY {fy.FiscalYear.Year}", $"P{p.PeriodNumber}", p.Description,
+            p.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            p.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            p.Status.ToString(),
+        })).ToArray();
+        var doc = new ReportDocument(header, "Fiscal Calendar", $"{data.CompanyName}",
+            new (string[], string[][])[] { (new[] { "Year", "Period", "Description", "Start", "End", "Status" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "FiscalCalendar.pdf");
+    }
+
+    [HttpGet("audit-trail/pdf")]
+    public async Task<ActionResult> AuditTrailPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
+    {
+        var report = await GetAuditTrailReport(companyId, fromDate, toDate, null, null, 1, 100, ct);
+        if (report.Value == null) return NotFound();
+        var data = report.Value;
+        var header = MkHeader(data.CompanyName, "Audit Trail", "Audit");
+        var tableRows = data.Entries.Select(l => new[]
+        {
+            l.PerformedOn.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+            l.Action, l.EntityType,            l.EntityId.ToString().Substring(0, 8),
+            l.PerformedBy ?? "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Audit Trail", $"{data.CompanyName} — {data.TotalCount} entries",
+            new (string[], string[][])[] { (new[] { "Date", "Action", "Entity", "Entity ID", "Performed By" }, tableRows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "AuditTrail.pdf");
     }
 }

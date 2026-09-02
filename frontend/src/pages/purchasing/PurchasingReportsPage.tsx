@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, TrendingUp, Package, Link2, BarChart3, Trophy, AlertTriangle, Table2, Clock } from 'lucide-react'
+import { FileText, TrendingUp, Package, Link2, BarChart3, Trophy, AlertTriangle, Table2, Clock, Printer } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import {
@@ -13,6 +13,15 @@ import {
   getPurchaseAnalysisReport,
   getPriceVarianceReport,
   getOverReceiptExceptionReport,
+  getOpenPOReportPdf,
+  getRequisitionStatusReportPdf,
+  getReceivingReportPdf,
+  getCommittedCostReportPdf,
+  getPOStatusReportPdf,
+  getVendorPerformanceReportPdf,
+  getPurchaseAnalysisReportPdf,
+  getPriceVarianceReportPdf,
+  getOverReceiptExceptionReportPdf,
 } from '@api/purchasing'
 
 type ReportKey =
@@ -49,11 +58,42 @@ export function PurchasingReportsPage() {
 
   const current = reports.find(r => r.key === active)!
 
+  const pdfLoaders: Record<ReportKey, () => Promise<Blob>> = {
+    'open-po': getOpenPOReportPdf,
+    'requisition-status': getRequisitionStatusReportPdf,
+    'receiving-report': getReceivingReportPdf,
+    'committed-cost': getCommittedCostReportPdf,
+    'po-status': getPOStatusReportPdf,
+    'vendor-performance': getVendorPerformanceReportPdf,
+    'purchase-analysis': getPurchaseAnalysisReportPdf,
+    'price-variance': () => getPriceVarianceReportPdf(),
+    'over-receipt': getOverReceiptExceptionReportPdf,
+  }
+
+  const printReport = async () => {
+    try {
+      const blob = await pdfLoaders[active]()
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch {
+      // PDF generation failed — ignore
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Purchasing Reports</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Generate purchasing reports and analytics</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Purchasing Reports</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Generate purchasing reports and analytics</p>
+        </div>
+        <button
+          onClick={printReport}
+          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Print Report
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

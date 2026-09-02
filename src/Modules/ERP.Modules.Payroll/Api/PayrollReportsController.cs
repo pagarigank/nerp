@@ -2,11 +2,16 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using ERP.Modules.Payroll.Domain.Entities;
 using ERP.Modules.Payroll.Infrastructure;
+using ERP.Reporting;
 using ERP.Shared.Kernel.Api;
+using ERP.Shared.Kernel.Documents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace ERP.Modules.Payroll.Api;
 
@@ -1011,6 +1016,140 @@ public class PayrollReportsController : ControllerBase
         _context.ManualChecks.Add(final);
         await _context.SaveChangesAsync(cancellationToken);
         return Ok(ApiResponse<Guid>.Success(final.Id));
+    }
+
+    // ---- PDF endpoints ----
+
+    [HttpGet("reports/payroll-register/pdf")]
+    public async Task<ActionResult> PayrollRegisterPdfAsync([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken ct)
+    {
+        var result = await PayrollRegister(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<PayrollRegisterRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Payroll Register", "Register", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.PayDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            r.Status,
+            r.TotalGross.ToString("C", CultureInfo.InvariantCulture),
+            r.TotalNet.ToString("C", CultureInfo.InvariantCulture),
+            r.LineCount.ToString(CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Payroll Register", $"{data.Count} runs",
+            new (string[], string[][])[] { (new[] { "Pay Date", "Status", "Gross", "Net", "Lines" }, rows) },
+            data.Sum(r => r.TotalGross), "Total Gross");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PayrollRegister.pdf");
+    }
+
+    [HttpGet("reports/payroll-summary/pdf")]
+    public async Task<ActionResult> PayrollSummaryPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await PayrollSummary(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<PayrollSummaryDto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Payroll Summary", "Summary", DateTimeOffset.UtcNow);
+        var rows = new[]
+        {
+            new[] { "Total Gross", data.TotalGross.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Employee Tax", data.TotalEmployeeTax.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Employer Tax", data.TotalEmployerTax.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Deductions", data.TotalDeductions.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Net Pay", data.TotalNet.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "Employees", data.EmployeeCount.ToString(CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "Payroll Summary", $"Year {data.Year}",
+            new (string[], string[][])[] { (new[] { "Field", "Value" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "PayrollSummary.pdf");
+    }
+
+    [HttpGet("reports/labor-distribution/pdf")]
+    public async Task<ActionResult> LaborDistributionPdfAsync([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken ct)
+    {
+        var result = await LaborDistribution(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<LaborDistributionRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Labor Distribution", "Labor", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.EmployeeId.ToString().Substring(0, 8),
+            r.RegularHours.ToString(CultureInfo.InvariantCulture),
+            r.OvertimeHours.ToString(CultureInfo.InvariantCulture),
+            r.GrossWages.ToString("C", CultureInfo.InvariantCulture),
+            r.EmployerTax.ToString("C", CultureInfo.InvariantCulture),
+        }).ToArray();
+        var doc = new ReportDocument(header, "Labor Distribution", $"{data.Count} employees",
+            new (string[], string[][])[] { (new[] { "Employee", "Reg Hrs", "OT Hrs", "Gross Wages", "ER Tax" }, rows) },
+            data.Sum(r => r.GrossWages), "Total Gross");
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "LaborDistribution.pdf");
+    }
+
+    [HttpGet("reports/garnishment-register/pdf")]
+    public async Task<ActionResult> GarnishmentRegisterPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
+    {
+        var result = await GarnishmentRegister(companyId, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<GarnishmentRegisterRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Garnishment Register", "Garnish", DateTimeOffset.UtcNow);
+        var rows = data.Select(g => new[]
+        {
+            g.EmployeeId.ToString().Substring(0, 8), g.Type,
+            g.Priority.ToString(CultureInfo.InvariantCulture),
+            g.FixedAmount?.ToString("C", CultureInfo.InvariantCulture) ?? "—",
+            g.CaseNumber ?? "—",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Garnishment Register", $"{data.Count} active garnishments",
+            new (string[], string[][])[] { (new[] { "Employee", "Type", "Priority", "Fixed Amt", "Case #" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "GarnishmentRegister.pdf");
+    }
+
+    [HttpGet("reports/wage-base/pdf")]
+    public async Task<ActionResult> WageBaseReportPdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await WageBaseReport(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<List<WageBaseRowDto>>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Wage Base Report", "WageBase", DateTimeOffset.UtcNow);
+        var rows = data.Select(r => new[]
+        {
+            r.EmployeeId.ToString().Substring(0, 8),
+            r.YtdWages.ToString("C", CultureInfo.InvariantCulture),
+            $"{r.SsPct}%",
+            r.SsRemaining.ToString("C", CultureInfo.InvariantCulture),
+            r.FutaMet ? "Yes" : "No",
+        }).ToArray();
+        var doc = new ReportDocument(header, "Wage Base Report", $"Year {year}",
+            new (string[], string[][])[] { (new[] { "Employee", "YTD Wages", "SS %", "SS Remaining", "FUTA Met" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "WageBaseReport.pdf");
+    }
+
+    [HttpGet("reports/form-940/pdf")]
+    public async Task<ActionResult> Form940PdfAsync([FromQuery] Guid companyId, [FromQuery] int year, CancellationToken ct)
+    {
+        var result = await Form940(companyId, year, ct);
+        var ok = result.Result as OkObjectResult;
+        var resp = ok?.Value as ApiResponse<Form940Dto>;
+        var data = resp?.Data;
+        if (data == null) return NotFound();
+        var header = new CompanyDocumentHeader("Payroll", null, null, null, "USD", null, null, null, "Form 940 (FUTA)", "940", DateTimeOffset.UtcNow);
+        var rows = new[]
+        {
+            new[] { "Total Wages", data.TotalWages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "FUTA Wages", data.FutaWages.ToString("C", CultureInfo.InvariantCulture) },
+            new[] { "FUTA Tax", data.FutaTax.ToString("C", CultureInfo.InvariantCulture) },
+        };
+        var doc = new ReportDocument(header, "Form 940", $"Year {year}",
+            new (string[], string[][])[] { (new[] { "Field", "Amount" }, rows) }, null, null);
+        return File(DocumentGenerator.GeneratePdf(doc), "application/pdf", "Form940.pdf");
     }
 }
 

@@ -44,7 +44,7 @@ import type {
   FourWayMatchResult,
 } from '@/types/ap'
 import { useAuthStore } from '@stores/authStore'
-import { get, post, put } from './client'
+import { get, post, put, blob } from './client'
 
 
 function companyId(): string {
@@ -195,6 +195,29 @@ export function getApAccountDistribution(params?: { companyId?: string; fromDate
     fromDate: params?.fromDate,
     toDate: params?.toDate,
   })
+}
+
+// --- AP Report PDFs ---
+export function getAgingReportPdf(): Promise<Blob> {
+  return blob('/ap/reports/aging/pdf', { companyId: companyId() })
+}
+export function getVendorTrialBalancePdf(): Promise<Blob> {
+  return blob('/ap/reports/vendor-trial-balance/pdf', { companyId: companyId() })
+}
+export function getBatchRegisterPdf(): Promise<Blob> {
+  return blob('/ap/reports/batch-register/pdf', { companyId: companyId() })
+}
+export function getCashRequirementsPdf(): Promise<Blob> {
+  return blob('/ap/reports/cash-requirements/pdf', { companyId: companyId(), daysAhead: 30 })
+}
+export function getForm1099SummaryPdf(): Promise<Blob> {
+  return blob('/ap/reports/1099-summary/pdf', { companyId: companyId(), taxYear: new Date().getFullYear() })
+}
+export function getCheckRegisterPdf(): Promise<Blob> {
+  return blob('/ap/reports/check-register/pdf', { companyId: companyId() })
+}
+export function getApAccountDistributionPdf(): Promise<Blob> {
+  return blob('/ap/reports/account-distribution/pdf', { companyId: companyId() })
 }
 
 // --- Three-Way Match ---

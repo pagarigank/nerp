@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, BookOpen, CalendarDays, ShieldCheck } from 'lucide-react'
+import { FileText, BookOpen, CalendarDays, ShieldCheck, FileDown } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
-import { getCompanySetupReport, getChartOfAccountsReport, getFiscalCalendarReport, getSecurityMatrixReport } from '@api/platform'
+import { Button } from '@components/ui/Button'
+import { getErrorMessage } from '@api/client'
+import { getCompanySetupReport, getChartOfAccountsReport, getFiscalCalendarReport, getSecurityMatrixReport, getCompanySetupReportPdf, getChartOfAccountsReportPdf, getFiscalCalendarReportPdf, getAuditTrailReportPdf } from '@api/platform'
 
 type ReportKey = 'company-setup' | 'chart-of-accounts' | 'fiscal-calendar' | 'security-matrix'
 
@@ -38,6 +40,11 @@ export function PlatformReportsPage() {
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{r.description}</p>
           </button>
         ))}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{current.name}</h3>
+        <PrintReportButton tab={active} />
       </div>
 
       <Card>
@@ -117,5 +124,32 @@ function Section({ title, rows }: { title: string; rows: string[][] }) {
           </tbody>
         </table></div>}
     </div>
+  )
+}
+
+const pdfLoaders: Record<string, () => Promise<Blob>> = {
+  'company-setup': async () => getCompanySetupReportPdf(),
+  'chart-of-accounts': async () => getChartOfAccountsReportPdf(),
+  'fiscal-calendar': async () => getFiscalCalendarReportPdf(),
+  'security-matrix': async () => getAuditTrailReportPdf(),
+}
+
+function PrintReportButton({ tab }: { tab: string }) {
+  const [loading, setLoading] = useState(false)
+  const handlePrint = async () => {
+    const loader = pdfLoaders[tab]
+    if (!loader) return
+    setLoading(true)
+    try {
+      const b = await loader()
+      const url = URL.createObjectURL(b)
+      window.open(url, '_blank')
+    } catch (e) { alert(getErrorMessage(e)) }
+    finally { setLoading(false) }
+  }
+  return (
+    <Button variant="outline" onClick={handlePrint} disabled={loading}>
+      <FileDown className="h-4 w-4 mr-1" />{loading ? 'Loading…' : 'Print Report'}
+    </Button>
   )
 }
