@@ -106,6 +106,7 @@ export function PdfPreviewModal({
         )}
         {state.status === 'ready' && state.url && (
           <>
+            <div className="print-header hidden">{title}</div>
             <iframe
               ref={iframeRef}
               title={title}
