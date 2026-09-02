@@ -2,6 +2,8 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ERP.Modules.Platform.Infrastructure;
@@ -69,6 +71,23 @@ public sealed class CustomerReadService : ICustomerReadService
             DocumentTitle: documentTitle,
             DocumentNumber: documentNumber,
             DocumentDate: documentDate);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetCustomerNamesAsync(
+        IEnumerable<Guid> customerIds,
+        CancellationToken cancellationToken = default)
+    {
+        var idList = customerIds.Where(id => id != Guid.Empty).Distinct().ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var customers = await _arContext.Customers
+            .AsNoTracking()
+            .Where(c => idList.Contains(c.Id))
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync(cancellationToken);
+
+        return customers.ToDictionary(c => c.Id, c => c.Name);
     }
 
     private static string? BuildAddress(string? line1, string? city, string? state, string? zip, string? country)

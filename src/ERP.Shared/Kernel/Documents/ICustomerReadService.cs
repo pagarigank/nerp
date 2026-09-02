@@ -22,4 +22,12 @@ public interface ICustomerReadService
         string documentNumber,
         DateTimeOffset? documentDate,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Bulk-resolves customer IDs to display names for report PDFs.</summary>
+    /// <param name="customerIds">The customer IDs to resolve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A dictionary mapping customer IDs to their display names.</returns>
+    Task<IReadOnlyDictionary<Guid, string>> GetCustomerNamesAsync(
+        IEnumerable<Guid> customerIds,
+        CancellationToken cancellationToken = default);
 }

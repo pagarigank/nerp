@@ -15,19 +15,31 @@ import {
   LineChart,
   History,
   Route,
+  Printer,
 } from 'lucide-react'
 import { IconButton } from '@components/ui/Button'
 import {
   getOpenOrdersReport,
+  getOpenOrdersReportPdf,
   getBackordersReport,
+  getBackordersReportPdf,
   getShipmentRegisterReport,
+  getShipmentRegisterReportPdf,
   getSalesAnalysisReport,
+  getSalesAnalysisReportPdf,
   getCreditHoldsReport,
+  getCreditHoldsReportPdf,
   getDropShipStatusReport,
+  getDropShipStatusReportPdf,
   getSalesTaxReport,
+  getSalesTaxReportPdf,
   getSalesTrendReport,
+  getSalesTrendReportPdf,
   getShippingLog,
+  getShippingLogPdf,
   getFreightAnalysis,
+  getFreightAnalysisPdf,
+  getSalesOrders,
   getPackingSlipPdf,
   getShippingListPdf,
 } from '@/api/orderManagement'
@@ -79,23 +91,34 @@ export function ReportsPage() {
   const [items, setItems] = useState<Map<string, { code: string; desc: string }>>(new Map())
   const [pdfTarget, setPdfTarget] = useState<{ id: string; title: string; loader: (id: string) => Promise<Blob> } | null>(null)
 
+  const [soMap, setSoMap] = useState<Map<string, string>>(new Map())
+
   const customerName = (id?: string | null) => (id ? customers.get(id) ?? id : '—')
   const itemDisplay = (id: string) => {
     const it = items.get(id)
     if (!it) return id
     return `${it.code}${it.desc ? ` — ${it.desc}` : ''}`
   }
+  const orderNumber = (id?: string | null) => (id ? soMap.get(id) ?? id : '—')
 
   useEffect(() => {
+    let mounted = true
     void (async () => {
       try {
-        const [cust, it] = await Promise.all([getCustomers(), getItems()])
-        setCustomers(new Map(cust.map((c) => [c.id, c.name])))
-        setItems(new Map(it.map((i) => [i.id, { code: i.itemCode, desc: i.description ?? i.longDescription ?? '' }])))
+        const [cust, it, sos] = await Promise.all([
+          getCustomers(),
+          getItems(),
+          getSalesOrders(),
+        ])
+        if (!mounted) return
+        setCustomers(new Map(cust.map((c: any) => [c.id, c.name])))
+        setItems(new Map(it.map((i: any) => [i.id, { code: i.itemCode, desc: i.description ?? i.longDescription ?? '' }])))
+        setSoMap(new Map(sos.map((s: any) => [s.id, s.orderNumber])))
       } catch {
         // masters optional — fall back to raw IDs
       }
     })()
+    return () => { mounted = false }
   }, [])
 
   useEffect(() => {
@@ -157,6 +180,27 @@ export function ReportsPage() {
     { key: 'freight-analysis', label: 'Freight Analysis', icon: Route },
   ]
 
+  const reportPdfLoader: Record<ReportKey, (id: string) => Promise<Blob>> = {
+    'open-orders': (_id) => getOpenOrdersReportPdf(),
+    'backorders': (_id) => getBackordersReportPdf(),
+    'shipment-register': (_id) => getShipmentRegisterReportPdf(),
+    'sales-analysis': (_id) => getSalesAnalysisReportPdf(),
+    'credit-holds': (_id) => getCreditHoldsReportPdf(),
+    'drop-ship-status': (_id) => getDropShipStatusReportPdf(),
+    'sales-tax': (_id) => getSalesTaxReportPdf(),
+    'sales-trend': (_id) => getSalesTrendReportPdf(),
+    'shipping-log': (_id) => getShippingLogPdf(),
+    'freight-analysis': (_id) => getFreightAnalysisPdf(),
+  }
+
+  const openPdf = (key: ReportKey) => {
+    setPdfTarget({
+      id: 'report',
+      title: `${tabs.find((t) => t.key === key)?.label ?? key} Report`,
+      loader: reportPdfLoader[key],
+    })
+  }
+
   return (
     <div className="p-6">
       <div className="mb-4 flex items-center gap-2">
@@ -183,6 +227,17 @@ export function ReportsPage() {
 
       {loading && <p className="text-sm text-gray-500">Loading…</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-sm text-gray-500">{tabs.find((t) => t.key === active)?.label} Report</span>
+        <button
+          onClick={() => openPdf(active)}
+          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Print Report
+        </button>
+      </div>
 
       {!loading && !error && active === 'open-orders' && (
         <ReportTable
@@ -216,7 +271,7 @@ export function ReportsPage() {
       )}
 
       {!loading && !error && active === 'shipment-register' &&
-        shipRegisterWithActions(shipmentReg, customerName, setPdfTarget)}
+        shipRegisterWithActions(shipmentReg, customerName, orderNumber, setPdfTarget)}
 
       {!loading && !error && active === 'sales-analysis' && (
         <ReportTable
@@ -286,7 +341,7 @@ export function ReportsPage() {
       )}
 
       {!loading && !error && active === 'shipping-log' &&
-        shippingLogWithActions(shippingLog, customerName, setPdfTarget)}
+        shippingLogWithActions(shippingLog, customerName, orderNumber, setPdfTarget)}
 
       {!loading && !error && active === 'freight-analysis' && (
         <ReportTable
@@ -353,6 +408,7 @@ function ShipRegisterRowActions({ shipmentNumber, shipmentId, onPdf }: {
 function shipRegisterWithActions(
   rows: ShipmentRegisterRow[],
   customerName: (id?: string | null) => string,
+  orderNumber: (id?: string | null) => string,
   onPdf: (t: { id: string; title: string; loader: (id: string) => Promise<Blob> }) => void,
 ) {
   const headers = ['Shipment', 'Order', 'Customer', 'Date', 'Status', 'Freight', 'Value', '']
@@ -379,7 +435,7 @@ function shipRegisterWithActions(
             rows.map((r) => (
               <tr key={r.shipmentId}>
                 <td className="px-4 py-2 text-sm">{r.shipmentNumber}</td>
-                <td className="px-4 py-2 text-sm">{r.salesOrderId ?? '—'}</td>
+                <td className="px-4 py-2 text-sm">{orderNumber(r.salesOrderId)}</td>
                 <td className="px-4 py-2 text-sm">{customerName(r.customerId)}</td>
                 <td className="px-4 py-2 text-sm">{new Date(r.shipDate).toLocaleDateString()}</td>
                 <td className="px-4 py-2 text-sm">{r.status}</td>
@@ -398,6 +454,7 @@ function shipRegisterWithActions(
 function shippingLogWithActions(
   rows: ShippingLogRow[],
   customerName: (id?: string | null) => string,
+  orderNumber: (id?: string | null) => string,
   onPdf: (t: { id: string; title: string; loader: (id: string) => Promise<Blob> }) => void,
 ) {
   const headers = ['Shipment', 'Order', 'Customer', 'Date', 'Carrier', 'Tracking', 'Freight', 'Value', '']
@@ -424,7 +481,7 @@ function shippingLogWithActions(
             rows.map((r) => (
               <tr key={r.shipmentId}>
                 <td className="px-4 py-2 text-sm">{r.shipmentNumber}</td>
-                <td className="px-4 py-2 text-sm">{r.salesOrderId ?? '—'}</td>
+                <td className="px-4 py-2 text-sm">{orderNumber(r.salesOrderId)}</td>
                 <td className="px-4 py-2 text-sm">{customerName(r.customerId)}</td>
                 <td className="px-4 py-2 text-sm">{new Date(r.shipDate).toLocaleDateString()}</td>
                 <td className="px-4 py-2 text-sm">{r.carrier}</td>

@@ -1,3 +1,7 @@
+// <copyright file="orderManagement.ts" company="ERP Project">
+// Copyright (c) ERP Project. All rights reserved.
+// </copyright>
+
 import type {
   CreateReturnRequest,
   CreateSalesOrderRequest,
@@ -194,32 +198,56 @@ export function deleteTaxCode(id: string): Promise<string> {
   return del(`/om/tax-codes/${id}`)
 }
 
-// Sales reports
+// Sales reports (data + PDF)
 export function getOpenOrdersReport(): Promise<import('@/types/orderManagement').OpenOrderRow[]> {
   return get('/om/reports/open-orders', { companyId: companyId() })
+}
+export function getOpenOrdersReportPdf(): Promise<Blob> {
+  return blob('/om/reports/open-orders/pdf', { companyId: companyId() })
 }
 export function getBackordersReport(): Promise<import('@/types/orderManagement').BackorderRow[]> {
   return get('/om/reports/backorders', { companyId: companyId() })
 }
+export function getBackordersReportPdf(): Promise<Blob> {
+  return blob('/om/reports/backorders/pdf', { companyId: companyId() })
+}
 export function getShipmentRegisterReport(from?: string, to?: string): Promise<import('@/types/orderManagement').ShipmentRegisterRow[]> {
   return get('/om/reports/shipment-register', { companyId: companyId(), from, to })
+}
+export function getShipmentRegisterReportPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/shipment-register/pdf', { companyId: companyId(), from, to })
 }
 export function getSalesAnalysisReport(from?: string, to?: string): Promise<import('@/types/orderManagement').SalesAnalysisRow[]> {
   return get('/om/reports/sales-analysis', { companyId: companyId(), from, to })
 }
+export function getSalesAnalysisReportPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/sales-analysis/pdf', { companyId: companyId(), from, to })
+}
 export function getCreditHoldsReport(): Promise<import('@/types/orderManagement').CreditHoldRow[]> {
   return get('/om/reports/credit-holds', { companyId: companyId() })
+}
+export function getCreditHoldsReportPdf(): Promise<Blob> {
+  return blob('/om/reports/credit-holds/pdf', { companyId: companyId() })
 }
 export function getDropShipStatusReport(): Promise<import('@/types/orderManagement').DropShipStatusRow[]> {
   return get('/om/reports/drop-ship-status', { companyId: companyId() })
 }
+export function getDropShipStatusReportPdf(): Promise<Blob> {
+  return blob('/om/reports/drop-ship-status/pdf', { companyId: companyId() })
+}
 export function getSalesTaxReport(from?: string, to?: string): Promise<import('@/types/orderManagement').SalesTaxRow[]> {
   return get('/om/reports/sales-tax', { companyId: companyId(), from, to })
+}
+export function getSalesTaxReportPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/sales-tax/pdf', { companyId: companyId(), from, to })
 }
 
 // Additional reports
 export function getSalesTrendReport(from?: string, to?: string): Promise<import('@/types/orderManagement').SalesTrendRow[]> {
   return get('/om/reports/sales-trend', { companyId: companyId(), from, to })
+}
+export function getSalesTrendReportPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/sales-trend/pdf', { companyId: companyId(), from, to })
 }
 export function getCustomerOrderHistory(customerId: string): Promise<import('@/types/orderManagement').CustomerOrderHistoryRow[]> {
   return get('/om/reports/customer-order-history', { companyId: companyId(), customerId })
@@ -227,8 +255,14 @@ export function getCustomerOrderHistory(customerId: string): Promise<import('@/t
 export function getShippingLog(from?: string, to?: string): Promise<import('@/types/orderManagement').ShippingLogRow[]> {
   return get('/om/reports/shipping-log', { companyId: companyId(), from, to })
 }
+export function getShippingLogPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/shipping-log/pdf', { companyId: companyId(), from, to })
+}
 export function getFreightAnalysis(from?: string, to?: string): Promise<import('@/types/orderManagement').FreightAnalysisRow[]> {
   return get('/om/reports/freight-analysis', { companyId: companyId(), from, to })
+}
+export function getFreightAnalysisPdf(from?: string, to?: string): Promise<Blob> {
+  return blob('/om/reports/freight-analysis/pdf', { companyId: companyId(), from, to })
 }
 
 // Discount approval
@@ -271,6 +305,7 @@ export function getShippingListPdf(shipmentId: string, packageCount = 1): Promis
 }
 
 // ----- Phase 8 gap features -------------------------------------------------
+
 // 582 Quote-to-order conversion
 export function configureQuote(id: string, expiryDate?: string) {
   return post(`/om/sales-orders/${id}/configure-quote`, { expiryDate })

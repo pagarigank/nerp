@@ -37,6 +37,12 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<SalesReportService>();
 
+        // ICustomerReadService is registered by the Accounts Receivable module
+        // (ERP.Modules.AccountsReceivable.ServiceCollectionExtensions) and is
+        // available here through the API's combined DI container.
+        // IVendorReadService is registered by the Accounts Payable module
+        // (ERP.Modules.AccountsPayable.ServiceCollectionExtensions).
+
         // Phase 8 background jobs (items 593-596). Registered like Purchasing's
         // LateDeliveryAlertJob / ReorderPointScanJob so a Hangfire recurring job
         // can invoke RunAsync per schedule; see module docs for recommended crons.

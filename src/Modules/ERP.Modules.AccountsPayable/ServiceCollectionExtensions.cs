@@ -43,6 +43,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CashRequirementsJob>();
         services.AddScoped<AchFileJob>();
 
+        services.AddScoped<ERP.Shared.Kernel.Documents.IVendorReadService, Infrastructure.Services.VendorReadService>();
+
         return services;
     }
 }
