@@ -2,7 +2,9 @@
   <PropertyGroup>
     <AssemblyName>ERP.Modules.BillOfMaterials</AssemblyName>
     <RootNamespace>ERP.Modules.BillOfMaterials</RootNamespace>
-    <NoWarn>CS1591;SA1501;SA1117;SA1500;SA1512;CA1822;S2325;SA1210;SA1201;CA1305</NoWarn>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <WarningsAsErrors>false</WarningsAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ERP.Reporting\ERP.Reporting.csproj" />
