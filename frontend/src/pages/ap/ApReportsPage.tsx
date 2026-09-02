@@ -153,10 +153,7 @@ export function ApReportsPage() {
       <Card>
         <CardHeader title="AP Reports" description="Generate and view Accounts Payable reports for the current company." />
         <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex flex-wrap gap-2">
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {reportOptions.map(option => (
               <button
                 key={option.key}
@@ -176,7 +173,7 @@ export function ApReportsPage() {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             {config.hasDaysAhead && (
               <Input
                 label="Days Ahead"
@@ -220,6 +217,9 @@ export function ApReportsPage() {
             )}
             <Button variant="primary" size="sm" onClick={run} leftIcon={<Play className="h-4 w-4" />}>
               Run Report
+            </Button>
+            <Button variant="outline" size="sm" onClick={printReport} leftIcon={<Printer className="h-4 w-4" />}>
+              Print PDF
             </Button>
           </div>
 

@@ -115,10 +115,12 @@ public class ApReportController : ControllerBase
         var lines = new List<VendorTrialBalanceLineDto>();
         foreach (var vendor in vendors)
         {
+            var postedBatchIds = await _context.VoucherBatches
+                .Where(b => b.Status == VoucherBatchStatus.Posted && !b.DeletedOn.HasValue)
+                .Select(b => b.Id)
+                .ToListAsync(cancellationToken);
             var postedVouchers = await _context.Vouchers
-                .Where(v => v.VendorId == vendor.Id
-                    && v.VoucherBatch != null
-                    && v.VoucherBatch.Status == VoucherBatchStatus.Posted)
+                .Where(v => v.VendorId == vendor.Id && postedBatchIds.Contains(v.VoucherBatchId))
                 .ToListAsync(cancellationToken);
 
             var debits = postedVouchers.Sum(v => v.TotalAmount);
