@@ -209,6 +209,10 @@ import { ReportsCatalogPage } from '@pages/reporting/ReportsCatalogPage'
 import { ExecutiveDashboardPage } from '@pages/reporting/ExecutiveDashboardPage'
 import { ReportViewerPage } from '@pages/reporting/ReportViewerPage'
 import StatementDesignerPage from '@pages/reporting/StatementDesignerPage'
+import IntegrationDashboard from '@pages/integration/IntegrationDashboard'
+import TradingPartnersPage from '@pages/integration/TradingPartnersPage'
+import WebhooksPage from '@pages/integration/WebhooksPage'
+import ImportExportPage from '@pages/integration/ImportExportPage'
 import QuickQueryPage from '@pages/reporting/QuickQueryPage'
 import DrillBackPage from '@pages/reporting/DrillBackPage'
 import ReportSchedulerPage from '@pages/reporting/ReportSchedulerPage'
@@ -484,7 +488,12 @@ function App() {
           <Route path="usage" element={<ReportUsagePage />} />
           <Route path="sync-status" element={<DataMartStatusPage />} />
         </Route>
-        <Route path="integration/*" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold">Integration</h2><p className="mt-2 text-gray-500">Coming soon...</p></div>} />
+        <Route path="integration/*">
+          <Route index element={<IntegrationDashboard />} />
+          <Route path="partners" element={<TradingPartnersPage />} />
+          <Route path="webhooks" element={<WebhooksPage />} />
+          <Route path="import-export" element={<ImportExportPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

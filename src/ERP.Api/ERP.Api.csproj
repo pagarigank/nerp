@@ -22,7 +22,7 @@
     <ProjectReference Include="..\Modules\ERP.Modules.Payroll\ERP.Modules.Payroll.csproj" />
     <ProjectReference Include="..\Modules\ERP.Modules.FieldService\ERP.Modules.FieldService.csproj" />
     <ProjectReference Include="..\Modules\ERP.Modules.Reporting\ERP.Modules.Reporting.csproj" />
-    <!-- <ProjectReference Include="..\Modules\ERP.Modules.Integration\ERP.Modules.Integration.csproj" /> -->
+    <ProjectReference Include="..\Modules\ERP.Modules.Integration\ERP.Modules.Integration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

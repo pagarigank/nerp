@@ -506,7 +506,12 @@ export const mainNavigation: NavModule[] = [
     icon: Plug,
     color: 'lime',
     roles: ['*'],
-    sub: [],
+    sub: [
+      { label: 'Dashboard', to: '/integration' },
+      { label: 'Trading Partners', to: '/integration/partners' },
+      { label: 'Webhooks', to: '/integration/webhooks' },
+      { label: 'Import / Export', to: '/integration/import-export' },
+    ],
   },
 ]
 

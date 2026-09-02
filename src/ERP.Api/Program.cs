@@ -23,6 +23,7 @@ using ERP.Modules.CashManagement.Infrastructure;
 using ERP.Modules.FieldService;
 using ERP.Modules.GeneralLedger;
 using ERP.Modules.GeneralLedger.Infrastructure;
+using ERP.Modules.Integration;
 using ERP.Modules.Inventory;
 using ERP.Modules.Inventory.Application.BackgroundJobs;
 using ERP.Modules.OrderManagement;
@@ -343,6 +344,7 @@ public class Program
         builder.Services.AddPayrollModule(builder.Configuration);
         builder.Services.AddFieldServiceModule(builder.Configuration);
         builder.Services.AddReportingModule(builder.Configuration);
+        builder.Services.AddIntegrationModule(builder.Configuration);
 
         // Phase 15 — Performance & Scalability
         builder.Services.AddResponseCompression(options =>
@@ -709,6 +711,7 @@ public class Program
             typeof(ERP.Modules.BillOfMaterials.Infrastructure.BomDbContext),
             typeof(ERP.Modules.Payroll.Infrastructure.PayrollDbContext),
             typeof(ERP.Modules.ProjectAccounting.Infrastructure.ProjDbContext),
+            typeof(ERP.Modules.Integration.Infrastructure.IntegrationDbContext),
         })
         {
             using (var migrateScope = app.Services.CreateScope())
