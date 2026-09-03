@@ -35,15 +35,14 @@ public class ApReportController : ControllerBase
         return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
     }
 
-    [HttpGet("aging")]
-    public async Task<ActionResult<ApAgingReportDto>> GetAgingAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    // ---- Data-fetching helpers (shared by JSON + PDF endpoints) ----
+
+    private async Task<ApAgingReportDto> GetAgingDataAsync(Guid companyId, CancellationToken ct)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var vendors = await _context.Vendors
             .Where(v => !v.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = new List<ApVendorAgingLineDto>();
         foreach (var vendor in vendors)
@@ -53,7 +52,7 @@ public class ApReportController : ControllerBase
                     && !v.SelectedForPayment
                     && v.VoucherBatch != null
                     && v.VoucherBatch.Status == VoucherBatchStatus.Posted)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             if (vouchers.Count == 0)
                 continue;
@@ -93,24 +92,21 @@ public class ApReportController : ControllerBase
                 current + days1To30 + days31To60 + days61To90 + over90));
         }
 
-        return Ok(new ApAgingReportDto(
+        return new ApAgingReportDto(
             companyId,
             asOfDate,
             lines,
             lines.Sum(l => l.CurrentBalance),
             lines.Sum(l => l.TotalDue),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("vendor-trial-balance")]
-    public async Task<ActionResult<VendorTrialBalanceReportDto>> GetVendorTrialBalanceAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    private async Task<VendorTrialBalanceReportDto> GetVendorTrialBalanceDataAsync(Guid companyId, CancellationToken ct)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var vendors = await _context.Vendors
             .Where(v => !v.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = new List<VendorTrialBalanceLineDto>();
         foreach (var vendor in vendors)
@@ -118,19 +114,21 @@ public class ApReportController : ControllerBase
             var postedBatchIds = await _context.VoucherBatches
                 .Where(b => b.Status == VoucherBatchStatus.Posted && !b.DeletedOn.HasValue)
                 .Select(b => b.Id)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
             var postedVouchers = await _context.Vouchers
                 .Where(v => v.VendorId == vendor.Id && postedBatchIds.Contains(v.VoucherBatchId))
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             var debits = postedVouchers.Sum(v => v.TotalAmount);
             var credits = postedVouchers
                 .Where(v => v.SelectedForPayment)
                 .Sum(v => v.TotalAmount);
 
-            var payments = await _context.Payments
+            var paymentLines = await _context.Payments
                 .Where(p => p.VendorId == vendor.Id && p.Status == PaymentStatus.Issued)
-                .SumAsync(p => (decimal?)p.TotalAmount, cancellationToken) ?? 0;
+                .SelectMany(p => p.Lines)
+                .ToListAsync(ct);
+            var totalPayments = paymentLines.Sum(l => l.AppliedAmount);
 
             lines.Add(new VendorTrialBalanceLineDto(
                 vendor.Id,
@@ -138,30 +136,27 @@ public class ApReportController : ControllerBase
                 vendor.Name,
                 0,
                 debits,
-                payments + credits,
-                debits - payments - credits));
+                totalPayments + credits,
+                debits - totalPayments - credits));
         }
 
-        return Ok(new VendorTrialBalanceReportDto(
+        return new VendorTrialBalanceReportDto(
             companyId,
             asOfDate,
             lines,
             lines.Sum(l => l.BeginningBalance),
             lines.Sum(l => l.EndingBalance),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("batch-register")]
-    public async Task<ActionResult<ApBatchRegisterReportDto>> GetBatchRegisterAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    private async Task<ApBatchRegisterReportDto> GetBatchRegisterDataAsync(Guid companyId, CancellationToken ct)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var batches = await _context.VoucherBatches
             .Where(b => b.CompanyId == companyId && !b.DeletedOn.HasValue)
             .Include(b => b.Vouchers)
             .OrderByDescending(b => b.CreatedOn)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = batches.Select(b => new ApBatchRegisterLineDto(
             b.Id,
@@ -174,20 +169,16 @@ public class ApReportController : ControllerBase
             b.Vouchers.Sum(v => v.DiscountAmount)))
             .ToList();
 
-        return Ok(new ApBatchRegisterReportDto(
+        return new ApBatchRegisterReportDto(
             companyId,
             asOfDate,
             lines,
             batches.Count,
             lines.Sum(l => l.TotalAmount),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("cash-requirements")]
-    public async Task<ActionResult<CashRequirementsReportDto>> GetCashRequirementsAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken,
-        [FromQuery] int daysAhead = 30)
+    private async Task<CashRequirementsReportDto> GetCashRequirementsDataAsync(Guid companyId, CancellationToken ct, int daysAhead = 30)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var cutoffDate = asOfDate.AddDays(daysAhead);
@@ -198,12 +189,12 @@ public class ApReportController : ControllerBase
                 && v.VoucherBatch.Status == VoucherBatchStatus.Posted
                 && v.DueDate <= cutoffDate)
             .Include(v => v.VoucherBatch)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var vendorIds = vouchers.Select(v => v.VendorId).Distinct().ToList();
         var vendors = await _context.Vendors
             .Where(v => vendorIds.Contains(v.Id))
-            .ToDictionaryAsync(v => v.Id, cancellationToken);
+            .ToDictionaryAsync(v => v.Id, ct);
 
         var lines = vouchers.Select(v =>
         {
@@ -221,7 +212,7 @@ public class ApReportController : ControllerBase
                 v.DueDate < asOfDate);
         }).ToList();
 
-        return Ok(new CashRequirementsReportDto(
+        return new CashRequirementsReportDto(
             companyId,
             asOfDate,
             daysAhead,
@@ -229,21 +220,17 @@ public class ApReportController : ControllerBase
             lines.Where(l => !l.PastDue).Sum(l => l.NetDue),
             lines.Where(l => l.PastDue).Sum(l => l.NetDue),
             lines.Sum(l => l.NetDue),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("1099-summary")]
-    public async Task<ActionResult<Form1099ReportDto>> Get1099SummaryAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] int taxYear,
-        CancellationToken cancellationToken)
+    private async Task<Form1099ReportDto> Get1099SummaryDataAsync(Guid companyId, int taxYear, CancellationToken ct)
     {
         var yearStart = new DateTimeOffset(taxYear, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var yearEnd = new DateTimeOffset(taxYear, 12, 31, 23, 59, 59, TimeSpan.Zero);
 
         var vendors = await _context.Vendors
             .Where(v => !v.DeletedOn.HasValue && v.Form1099Category != null && v.Form1099Category != Vendor1099Category.None)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = new List<Form1099ReportLineDto>();
         foreach (var vendor in vendors)
@@ -255,7 +242,7 @@ public class ApReportController : ControllerBase
                     && v.VoucherBatch.Status == VoucherBatchStatus.Posted
                     && v.InvoiceDate >= yearStart
                     && v.InvoiceDate <= yearEnd)
-                .SumAsync(v => (decimal?)v.Form1099Amount, cancellationToken) ?? 0;
+                .SumAsync(v => (decimal?)v.Form1099Amount, ct) ?? 0;
 
             if (payments <= 0)
                 continue;
@@ -270,21 +257,16 @@ public class ApReportController : ControllerBase
                 payments * vendor.BackupWithholdingRate));
         }
 
-        return Ok(new Form1099ReportDto(
+        return new Form1099ReportDto(
             companyId,
             taxYear,
             lines,
             lines.Sum(l => l.TotalPayments),
             lines.Sum(l => l.BackupWithholding),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("check-register")]
-    public async Task<ActionResult<CheckRegisterReportDto>> GetCheckRegisterAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
-        CancellationToken cancellationToken)
+    private async Task<CheckRegisterReportDto> GetCheckRegisterDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var from = fromDate ?? DateTimeOffset.UtcNow.AddMonths(-1);
         var to = toDate ?? DateTimeOffset.UtcNow;
@@ -294,12 +276,12 @@ public class ApReportController : ControllerBase
                 && p.PaymentDate >= from
                 && p.PaymentDate <= to)
             .OrderByDescending(p => p.PaymentDate)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var vendorIds = payments.Select(p => p.VendorId).Distinct().ToList();
         var vendors = await _context.Vendors
             .Where(v => vendorIds.Contains(v.Id))
-            .ToDictionaryAsync(v => v.Id, cancellationToken);
+            .ToDictionaryAsync(v => v.Id, ct);
 
         var lines = payments.Select(p =>
         {
@@ -315,22 +297,17 @@ public class ApReportController : ControllerBase
                 p.Status.ToString());
         }).ToList();
 
-        return Ok(new CheckRegisterReportDto(
+        return new CheckRegisterReportDto(
             companyId,
             from,
             to,
             lines,
             lines.Sum(l => l.Amount),
             lines.Count,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("account-distribution")]
-    public async Task<ActionResult<ApAccountDistributionReportDto>> GetAccountDistributionAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
-        CancellationToken cancellationToken)
+    private async Task<ApAccountDistributionReportDto> GetAccountDistributionDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var from = fromDate ?? DateTimeOffset.UtcNow.AddMonths(-1);
         var to = toDate ?? DateTimeOffset.UtcNow;
@@ -350,16 +327,80 @@ public class ApReportController : ControllerBase
                 g.Sum(d => d.Debit),
                 g.Sum(d => d.Credit),
                 g.Count()))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Ok(new ApAccountDistributionReportDto(
+        return new ApAccountDistributionReportDto(
             companyId,
             from,
             to,
             distributions,
             distributions.Sum(l => l.Debit),
             distributions.Sum(l => l.Credit),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
+    }
+
+    // ---- JSON endpoints ----
+
+    [HttpGet("aging")]
+    public async Task<ActionResult<ApAgingReportDto>> GetAgingAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetAgingDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("vendor-trial-balance")]
+    public async Task<ActionResult<VendorTrialBalanceReportDto>> GetVendorTrialBalanceAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetVendorTrialBalanceDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("batch-register")]
+    public async Task<ActionResult<ApBatchRegisterReportDto>> GetBatchRegisterAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetBatchRegisterDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("cash-requirements")]
+    public async Task<ActionResult<CashRequirementsReportDto>> GetCashRequirementsAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken,
+        [FromQuery] int daysAhead = 30)
+    {
+        return Ok(await GetCashRequirementsDataAsync(companyId, cancellationToken, daysAhead));
+    }
+
+    [HttpGet("1099-summary")]
+    public async Task<ActionResult<Form1099ReportDto>> Get1099SummaryAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] int taxYear,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await Get1099SummaryDataAsync(companyId, taxYear, cancellationToken));
+    }
+
+    [HttpGet("check-register")]
+    public async Task<ActionResult<CheckRegisterReportDto>> GetCheckRegisterAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate,
+        [FromQuery] DateTimeOffset? toDate,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetCheckRegisterDataAsync(companyId, fromDate, toDate, cancellationToken));
+    }
+
+    [HttpGet("account-distribution")]
+    public async Task<ActionResult<ApAccountDistributionReportDto>> GetAccountDistributionAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate,
+        [FromQuery] DateTimeOffset? toDate,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetAccountDistributionDataAsync(companyId, fromDate, toDate, cancellationToken));
     }
 
     // ---- PDF endpoints ----
@@ -367,9 +408,7 @@ public class ApReportController : ControllerBase
     [HttpGet("aging/pdf")]
     public async Task<ActionResult> AgingPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetAgingAsync(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetAgingDataAsync(companyId, ct);
         var header = await GetHeaderAsync(companyId, "AP Aging Report", "AP Aging", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -387,9 +426,7 @@ public class ApReportController : ControllerBase
     [HttpGet("vendor-trial-balance/pdf")]
     public async Task<ActionResult> VendorTrialBalancePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetVendorTrialBalanceAsync(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetVendorTrialBalanceDataAsync(companyId, ct);
         var header = await GetHeaderAsync(companyId, "Vendor Trial Balance", "VTB", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -406,9 +443,7 @@ public class ApReportController : ControllerBase
     [HttpGet("batch-register/pdf")]
     public async Task<ActionResult> BatchRegisterPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetBatchRegisterAsync(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetBatchRegisterDataAsync(companyId, ct);
         var header = await GetHeaderAsync(companyId, "AP Batch Register", "Batch Register", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -426,9 +461,7 @@ public class ApReportController : ControllerBase
     [HttpGet("cash-requirements/pdf")]
     public async Task<ActionResult> CashRequirementsPdfAsync([FromQuery] Guid companyId, [FromQuery] int daysAhead, CancellationToken ct)
     {
-        var report = await GetCashRequirementsAsync(companyId, ct, daysAhead);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCashRequirementsDataAsync(companyId, ct, daysAhead);
         var header = await GetHeaderAsync(companyId, "Cash Requirements", "Cash Req", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -447,9 +480,7 @@ public class ApReportController : ControllerBase
     [HttpGet("1099-summary/pdf")]
     public async Task<ActionResult> Form1099PdfAsync([FromQuery] Guid companyId, [FromQuery] int taxYear, CancellationToken ct)
     {
-        var report = await Get1099SummaryAsync(companyId, taxYear, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await Get1099SummaryDataAsync(companyId, taxYear, ct);
         var header = await GetHeaderAsync(companyId, "1099 Summary", $"1099-{data.TaxYear}", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -466,9 +497,7 @@ public class ApReportController : ControllerBase
     [HttpGet("check-register/pdf")]
     public async Task<ActionResult> CheckRegisterPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetCheckRegisterAsync(companyId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCheckRegisterDataAsync(companyId, fromDate, toDate, ct);
         var header = await GetHeaderAsync(companyId, "Check Register", "Checks", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -485,9 +514,7 @@ public class ApReportController : ControllerBase
     [HttpGet("account-distribution/pdf")]
     public async Task<ActionResult> AccountDistributionPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetAccountDistributionAsync(companyId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetAccountDistributionDataAsync(companyId, fromDate, toDate, ct);
         var header = await GetHeaderAsync(companyId, "AP Account Distribution", "AP Distribution", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
