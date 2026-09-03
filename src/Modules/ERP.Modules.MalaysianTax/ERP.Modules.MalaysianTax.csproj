@@ -19,6 +19,8 @@
     <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
     <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.AccountsReceivable\ERP.Modules.AccountsReceivable.csproj" />
+    <ProjectReference Include="..\ERP.Modules.AccountsPayable\ERP.Modules.AccountsPayable.csproj" />
   </ItemGroup>
 
 </Project>

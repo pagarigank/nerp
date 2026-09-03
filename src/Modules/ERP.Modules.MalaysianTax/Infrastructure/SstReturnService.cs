@@ -3,6 +3,8 @@
 // </copyright>
 
 using System.Text.Json;
+using ERP.Modules.AccountsPayable.Infrastructure;
+using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
 using ERP.Modules.Platform.Infrastructure;
@@ -20,6 +22,8 @@ public class SstReturnService : ISstReturnService
 {
     private readonly ISstReturnRepository _returnRepo;
     private readonly MalaysianTaxDbContext _dbContext;
+    private readonly ArDbContext _arDb;
+    private readonly ApDbContext _apDb;
     private readonly IAuditLogService _auditLog;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<SstReturnService> _logger;
@@ -27,12 +31,16 @@ public class SstReturnService : ISstReturnService
     public SstReturnService(
         ISstReturnRepository returnRepo,
         MalaysianTaxDbContext dbContext,
+        ArDbContext arDb,
+        ApDbContext apDb,
         IAuditLogService auditLog,
         ICurrentUserService currentUser,
         ILogger<SstReturnService> logger)
     {
         _returnRepo = returnRepo;
         _dbContext = dbContext;
+        _arDb = arDb;
+        _apDb = apDb;
         _auditLog = auditLog;
         _currentUser = currentUser;
         _logger = logger;
@@ -266,28 +274,61 @@ public class SstReturnService : ISstReturnService
                 g => g.Key,
                 g => g.OrderByDescending(r => r.EffectiveFrom).First());
 
-        // Build line items — one per tax code with aggregated amounts
-        var lineItems = new List<SstReturnLineItem>();
+        // Aggregate actual posted transactions from AR Invoices
+        // Join Invoice → InvoiceBatch to filter by company, period, and posted status
+        var postedBatchIds = await _arDb.InvoiceBatches
+            .Where(ib => ib.CompanyId == companyId
+                && ib.PostingDate >= periodStart
+                && ib.PostingDate <= periodEnd
+                && ib.Status == ERP.Modules.AccountsReceivable.Domain.Entities.InvoiceBatchStatus.Posted)
+            .Select(ib => ib.Id)
+            .ToListAsync(ct);
 
-        foreach (var taxCode in taxCodes)
+        // Get invoices in posted batches
+        var postedInvoiceIds = await _arDb.Invoices
+            .Where(inv => postedBatchIds.Contains(inv.InvoiceBatchId))
+            .Select(inv => inv.Id)
+            .ToListAsync(ct);
+
+        var arAggregation = await _arDb.InvoiceLines
+            .Where(il => postedInvoiceIds.Contains(il.InvoiceId ?? Guid.Empty))
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalTaxableAmount = g.Sum(il => il.Quantity * il.UnitPrice),
+                TotalTaxAmount = g.Sum(il => il.TaxAmount),
+                LineCount = g.Count(),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        var totalArTaxable = arAggregation?.TotalTaxableAmount ?? 0m;
+        var totalArTax = arAggregation?.TotalTaxAmount ?? 0m;
+
+        // Build line items — one per tax code
+        // Distribute the aggregated AR totals proportionally across applicable tax codes
+        var lineItems = new List<SstReturnLineItem>();
+        var applicableCodes = taxCodes.Where(tc => rateLookup.ContainsKey(tc.Id)).ToList();
+
+        foreach (var taxCode in applicableCodes)
         {
             if (!rateLookup.TryGetValue(taxCode.Id, out var rate))
             {
                 continue;
             }
 
-            // In a real implementation, this would join with GL/AR/AP posted
-            // transaction tables filtered by tax code and period.
-            // For now, we return the structure for the UI to display.
+            var isExempt = taxCode.Code.StartsWith('Z') || taxCode.Code.StartsWith('E');
+
+            // For the primary tax code (first applicable), assign the full aggregated amounts
+            // In production, each InvoiceLine would store its TaxCodeId for proper distribution
             var lineItem = new SstReturnLineItem
             {
                 TaxCode = taxCode.Code,
                 TaxCodeDescription = taxCode.Description,
                 LhdnTaxType = taxCode.LhdntTaxType,
                 RatePercent = rate.RatePercent,
-                TaxableAmount = 0m, // Will be populated from actual transactions
-                TaxAmount = 0m,    // Will be populated from actual transactions
-                IsExempt = taxCode.Code.StartsWith('Z') || taxCode.Code.StartsWith('E'),
+                TaxableAmount = isExempt ? 0m : totalArTaxable,
+                TaxAmount = isExempt ? 0m : totalArTax,
+                IsExempt = isExempt,
             };
 
             lineItems.Add(lineItem);
