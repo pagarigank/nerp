@@ -74,7 +74,7 @@ Note: the pre-existing single-permission `POST .../permissions` and
 - [x] Frontend `platform` api client: `getPermissionCatalog`, `getAllPermissions`, `getRoleMatrix`, `setRolePermissions`
 - [x] `RolesPage` renders the page×action matrix on create/edit
 - [x] `dotnet build` + `tsc --noEmit` green; live API matrix endpoint returns 200
-- [x] DB: 56 legacy perms (incl. tax, einvoice) + 780 page-scoped perms = 836; unique index on `Code`
+- [x] DB: 58 legacy perms (incl. tax, einvoice, integration) + 868 page-scoped perms = 926; unique index on `Code`
 
 ### Phase 2 — UI enforcement (DONE)
 - [x] `hasPermission(code)` enhanced to match page-scoped (`module.page.action`) + legacy
