@@ -230,6 +230,7 @@ import { ComplianceDashboardPage } from '@pages/einvoice/ComplianceDashboardPage
 import { ReconciliationReportPage } from '@pages/einvoice/ReconciliationReportPage'
 import { ReportsPage as EInvoiceReportsPage } from '@pages/einvoice/ReportsPage'
 import { ItemExtensionsPage } from '@pages/einvoice/ItemExtensionsPage'
+import { ConsolidatedPage } from '@pages/einvoice/ConsolidatedPage'
 import { TaxCodesPage } from '@pages/tax/TaxCodesPage'
 import { TaxRatesPage } from '@pages/tax/TaxRatesPage'
 import { TaxDeterminationRulesPage } from '@pages/tax/TaxDeterminationRulesPage'
@@ -514,6 +515,7 @@ function App() {
           <Route path="reconciliation" element={<ReconciliationReportPage />} />
           <Route path="reports" element={<EInvoiceReportsPage />} />
           <Route path="item-extensions" element={<ItemExtensionsPage />} />
+          <Route path="consolidated" element={<ConsolidatedPage />} />
           <Route path="queue" element={<SubmissionStatusPage />} />
           <Route path="validation" element={<SubmissionStatusPage />} />
           <Route path="consolidated" element={<SubmissionStatusPage />} />

@@ -269,3 +269,51 @@ export function updateItemExtension(id: string, data: Partial<ItemExtension>): P
 export function deleteItemExtension(id: string): Promise<void> {
   return del(`/einvoice/item-extensions/${id}`)
 }
+
+// ---- Consolidated e-Invoice ----
+
+export interface ConsolidatedDocument {
+  id: string
+  companyId: string
+  totalAmount: number
+  taxAmount: number
+  currencyCode: string
+  status: string
+  myInvoisUuid?: string
+  validationLink?: string
+  createdAt: string
+  submittedAt?: string
+  validatedAt?: string
+}
+
+export interface ConsolidationLineItem {
+  documentId: string
+  sourceDocumentId: string
+  totalAmount: number
+  taxAmount: number
+  currencyCode: string
+  myInvoisUuid?: string
+  createdAt: string
+  batchNumber?: number
+}
+
+export interface ConsolidationPreview {
+  companyId: string
+  totalEligibleCount: number
+  totalEligibleAmount: number
+  totalEligibleTax: number
+  maxAmountPerLine: number
+  batches: ConsolidationLineItem[]
+}
+
+export function getConsolidatedDocuments(): Promise<ConsolidatedDocument[]> {
+  return get('/einvoice/consolidation/documents')
+}
+
+export function getConsolidationPreview(): Promise<ConsolidationPreview> {
+  return get('/einvoice/consolidation/eligible')
+}
+
+export function getConsolidatedSources(id: string): Promise<ConsolidationLineItem[]> {
+  return get(`/einvoice/consolidation/documents/${id}/sources`)
+}
