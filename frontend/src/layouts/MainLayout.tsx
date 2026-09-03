@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef, useMemo } from 'react'
+import { Fragment, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import {
   ChevronRight,
@@ -22,9 +22,12 @@ import {
   Clock,
   X,
   Command,
+  Rows3,
+  AlignJustify,
 } from 'lucide-react'
 import { cn } from '@utils/helpers'
 import { useAuth, useAuthStore, ALL_COMPANIES } from '@stores/authStore'
+import { useDensityStore } from '@stores/densityStore'
 import { modulePageFromRoute } from '@hooks/usePagePermission'
 import { Button } from '@components/ui/Button'
 import { Combobox, type SelectOption } from '@components/ui/Combobox'
@@ -48,6 +51,7 @@ export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const { mode: densityMode, toggleMode: toggleDensity } = useDensityStore()
   const [openModule, setOpenModule] = useState<string | null>(null)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
@@ -238,8 +242,7 @@ export function MainLayout() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+  return (      <div className={cn('min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col', densityMode === 'compact' ? 'density-compact' : 'density-comfortable')}>
       {commandOpen && (
         <div className="fixed inset-0 z-[300] flex items-start justify-center pt-[20vh] p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setCommandOpen(false)} />
@@ -499,6 +502,10 @@ export function MainLayout() {
                 <kbd className="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded font-mono"><Command className="h-3 w-3" />K</kbd>
               </button>
               <Button variant="ghost" size="sm" aria-label="Search" className="md:hidden h-8 w-8 p-0" onClick={() => setCommandOpen(true)}><Search className="h-4 w-4" /></Button>
+
+              <Button variant="ghost" size="sm" aria-label="Toggle density mode" className="hidden sm:flex h-8 w-8 p-0" onClick={toggleDensity} title={densityMode === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}>
+                {densityMode === 'comfortable' ? <AlignJustify className="h-5 w-5" /> : <Rows3 className="h-5 w-5" />}
+              </Button>
 
               <Button variant="ghost" size="sm" aria-label="Help" className="hidden sm:flex h-8 w-8 p-0 hover:rotate-12 transition-transform duration-200"><HelpCircle className="h-5 w-5" /></Button>
 

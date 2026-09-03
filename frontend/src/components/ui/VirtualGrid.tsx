@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { cn } from '@utils/helpers'
+import { useDensity } from '@stores/densityStore'
 
 interface VirtualGridProps<T> {
   data: T[]
@@ -81,18 +83,22 @@ export function VirtualGrid<T>({
 
   // Only use virtualization for large data sets
   if (data.length <= 50) {
-    return (
-      <div className={className}>
-        {header}
-        <div>
-          {data.map((item, index) => renderRow(item, index))}
-        </div>
-      </div>
-    )
-  }
+  const density = useDensity()
 
   return (
-    <div className={className}>
+    <div className={cn(density === 'compact' ? 'density-compact' : 'density-comfortable', className)}>
+      {header}
+      <div>
+        {data.map((item, index) => renderRow(item, index))}
+      </div>
+    </div>
+  )
+  }
+
+  const density = useDensity()
+
+  return (
+    <div className={cn(density === 'compact' ? 'density-compact' : 'density-comfortable', className)}>
       {header}
       <div
         ref={containerRef}

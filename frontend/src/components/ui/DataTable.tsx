@@ -7,6 +7,7 @@ import { cn } from '@utils/helpers'
 import { Search, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { LoadingSpinner } from './LoadingSpinner'
 import { Pagination } from './Pagination'
+import { useDensity } from '@stores/densityStore'
 
 export interface DataTableColumn<T = any> {
   key: string
@@ -67,6 +68,7 @@ export function DataTable<T = any>({
   rowKey,
   rowKeyField = 'id',
 }: DataTableProps<T>) {
+  const density = useDensity()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortState>(null)
   const [page, setPage] = useState(1)
@@ -129,7 +131,7 @@ export function DataTable<T = any>({
   const isEmpty = totalCount === 0
 
   return (
-    <div className={className}>
+    <div className={cn(density === 'compact' ? 'density-compact' : 'density-comfortable', className)}>
       {searchable && (
         <div className="mb-4 max-w-md">
           <div className="relative">
