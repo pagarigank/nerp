@@ -237,5 +237,34 @@ public static class PermissionCatalog
             new("usage", "Usage Analytics"),
             new("sync-status", "Sync Status"),
         }),
+        new("tax", "Malaysian Tax (SST)", new List<PageEntry>
+        {
+            new("tax-codes", "Tax Codes"),
+            new("tax-rates", "Tax Rates"),
+            new("sst-returns", "SST Returns"),
+            new("tax-rules", "Tax Determination Rules"),
+            new("exempt-supplies", "Exempt/Zero-Rated Supplies"),
+            new("local-tables", "Local Code Tables"),
+            new("tax-reports", "Tax Reports"),
+            new("sst-registration", "SST Registration"),
+            new("tax-calculator", "Tax Calculator"),
+        }),
+        new("einvoice", "e-Invoice (MyInvois)", new List<PageEntry>
+        {
+            new("taxpayer-profiles", "Company Profile"),
+            new("dashboard", "Compliance Dashboard"),
+            new("documents", "Documents"),
+            new("queue", "Document Queue"),
+            new("status", "Submission Status"),
+            new("certificates", "Digital Certificates"),
+            new("credentials", "API Credentials"),
+            new("tin-validation", "TIN Validation"),
+            new("consolidated", "Consolidated e-Invoice"),
+            new("item-extensions", "Item Extensions"),
+            new("customer-extensions", "Customer Extensions"),
+            new("vendor-extensions", "Vendor Extensions"),
+            new("reconciliation", "Reconciliation Report"),
+            new("einvoice-reports", "e-Invoice Reports"),
+        }),
     };
 }
