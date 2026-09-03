@@ -50,7 +50,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 ### 1.1 Tax (SST) Module
 - [x] `P0` Tax Code CRUD (code, description, LHDN tax type mapping `01/02/03/04/E/ZRL`) — *TAX-01*
   > **Built:** `TaxCode` entity, `ITaxCodeRepository`, `TaxCodeRepository`, `TaxCodeController` at `/api/v1.0/TaxCode`. DB table `tax.tax_code` in `MalaysianTaxDbContext`. Soft-delete enabled. Unique code constraint. Seed data for 8 default codes. `[RequirePermission("tax", "tax-codes", "view/create/edit/delete")]` on all endpoints.
-  > **Remaining gaps:** FluentValidation added (`TaxCodeValidator`). Audit log not written on changes.
+  > **Remaining gaps:** FluentValidation added (`TaxCodeValidator`). Audit log added to TaxCode, TaxRate, and ExemptSupplyCategory controllers via `IAuditLogService`.
 
 - [x] `P0` Tax Rate CRUD with effective-dating (rate %, effective_from/to, per tax code) — *TAX-02*
   > **Built:** `TaxRate` entity with `EffectiveFrom`/`EffectiveTo`, `ITaxRateRepository`, `TaxRateRepository`, `TaxRateController` at `/api/v1.0/TaxRate`. Supports `GetCurrent(taxCodeId, effectiveDate)`. DB table `tax.tax_rate` with composite index. Seed data for 6 default rates. `[RequirePermission("tax", "tax-rates", "view/create/edit/delete")]` on all endpoints.
