@@ -442,9 +442,32 @@ public class CashReportsController : ControllerBase
     [HttpGet("bank-activity/pdf")]
     public async Task<ActionResult> BankActivityPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid bankAccountId, [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to, CancellationToken ct)
     {
-        var result = await GetBankActivityAsync(companyId, bankAccountId, from, to, ct);
-        var data = result.Value as IReadOnlyList<ReconciliationDetailLineResponse>;
-        if (data == null) return NotFound();
+        var statementIds = await _context.BankStatements
+            .Where(s => s.CompanyId == companyId && s.BankAccountId == bankAccountId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        var query = _context.BankStatementLines
+            .Where(l => statementIds.Contains(l.BankStatementId));
+
+        if (from.HasValue)
+            query = query.Where(l => l.TransactionDate >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(l => l.TransactionDate <= to.Value);
+
+        var data = await query
+            .OrderBy(l => l.TransactionDate)
+            .Select(l => new ReconciliationDetailLineResponse(
+                l.TransactionDate,
+                l.Amount,
+                l.Description,
+                l.CheckNumber,
+                l.Status.ToString(),
+                l.MatchedTransactionId,
+                l.MatchedSource != null ? l.MatchedSource.ToString() : null))
+            .ToListAsync(ct);
+
         var header = await GetHeaderAsync(companyId, "Bank Activity", "Activity", ct);
         var tableRows = data.Select(l => new[]
         {

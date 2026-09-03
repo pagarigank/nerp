@@ -27,20 +27,13 @@ public class BomReportsController : ControllerBase
 
     public BomReportsController(BomDbContext bomContext, InvInventoryContext invContext)
     {
-        _bomContext = bomContext;
-        _invContext = invContext;
+        _bomContext = bomContext ?? throw new ArgumentNullException(nameof(bomContext));
+        _invContext = invContext ?? throw new ArgumentNullException(nameof(invContext));
     }
 
-    /// <summary>
-    /// Gets single-level BOM listing: parent item + immediate components with qty and cost.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of BOM listings.</returns>
-    [HttpGet("listing")]
-    public async Task<ActionResult<ApiResponse<List<BomListingDto>>>> GetListing(
-        [FromQuery] Guid? companyId,
-        CancellationToken cancellationToken)
+    // ---- Data-fetching helpers (shared by JSON + PDF endpoints) ----
+
+    private async Task<List<BomListingDto>> GetListingDataAsync(Guid? companyId, CancellationToken ct)
     {
         var query = _bomContext.BomHeaders
             .Include(h => h.Components)
@@ -48,8 +41,8 @@ public class BomReportsController : ControllerBase
 
         query = query.ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId);
 
-        var headers = await query.OrderBy(h => h.ParentItemId).ToListAsync(cancellationToken);
-        var result = headers.Select(header => new BomListingDto
+        var headers = await query.OrderBy(h => h.ParentItemId).ToListAsync(ct);
+        return headers.Select(header => new BomListingDto
         {
             BomHeaderId = header.Id,
             ParentItemId = header.ParentItemId,
@@ -66,22 +59,9 @@ public class BomReportsController : ControllerBase
                 IsCritical = c.IsCritical,
             }).ToList(),
         }).ToList();
-
-        return Ok(ApiResponse<List<BomListingDto>>.Success(result));
     }
 
-    /// <summary>
-    /// Gets build transaction history: all builds for a given parent item.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="parentItemId">Filter by parent item.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of build history entries.</returns>
-    [HttpGet("build-history")]
-    public async Task<ActionResult<ApiResponse<List<BuildHistoryDto>>>> GetBuildHistory(
-        [FromQuery] Guid? companyId,
-        [FromQuery] Guid? parentItemId,
-        CancellationToken cancellationToken)
+    private async Task<List<BuildHistoryDto>> GetBuildHistoryDataAsync(Guid? companyId, Guid? parentItemId, CancellationToken ct)
     {
         var query = _bomContext.BuildOrders
             .Include(b => b.Lines)
@@ -94,8 +74,8 @@ public class BomReportsController : ControllerBase
             query = query.Where(b => b.ParentItemId == parentItemId.Value);
         }
 
-        var orders = await query.OrderByDescending(b => b.BuildDate).ToListAsync(cancellationToken);
-        var dtos = orders.Select(b => new BuildHistoryDto
+        var orders = await query.OrderByDescending(b => b.BuildDate).ToListAsync(ct);
+        return orders.Select(b => new BuildHistoryDto
         {
             BuildOrderId = b.Id,
             BuildNumber = b.BuildNumber,
@@ -114,20 +94,9 @@ public class BomReportsController : ControllerBase
             TotalScrapCost = b.Lines.Where(l => !l.IsLabor && !l.IsOverhead)
                 .Sum(l => l.VarianceCost ?? 0),
         }).ToList();
-
-        return Ok(ApiResponse<List<BuildHistoryDto>>.Success(dtos));
     }
 
-    /// <summary>
-    /// Gets BOM accuracy report: items with issues.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of BOM accuracy issues.</returns>
-    [HttpGet("accuracy")]
-    public async Task<ActionResult<ApiResponse<List<BomAccuracyDto>>>> GetAccuracy(
-        [FromQuery] Guid? companyId,
-        CancellationToken cancellationToken)
+    private async Task<List<BomAccuracyDto>> GetAccuracyDataAsync(Guid? companyId, CancellationToken ct)
     {
         var query = _bomContext.BomHeaders
             .Include(h => h.Components)
@@ -135,7 +104,7 @@ public class BomReportsController : ControllerBase
 
         query = query.ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId);
 
-        var headers = await query.ToListAsync(cancellationToken);
+        var headers = await query.ToListAsync(ct);
         var itemIds = headers.Select(h => h.ParentItemId)
             .Concat(headers.SelectMany(h => h.Components.Select(comp => comp.ComponentItemId)))
             .Distinct()
@@ -143,7 +112,7 @@ public class BomReportsController : ControllerBase
 
         var items = await _invContext.Items
             .Where(i => itemIds.Contains(i.Id))
-            .ToDictionaryAsync(i => i.Id, cancellationToken);
+            .ToDictionaryAsync(i => i.Id, ct);
 
         var result = new List<BomAccuracyDto>();
 
@@ -189,23 +158,15 @@ public class BomReportsController : ControllerBase
             }
         }
 
-        return Ok(ApiResponse<List<BomAccuracyDto>>.Success(result));
+        return result;
     }
 
-    /// <summary>
-    /// Component Shortage Report: planned builds with missing components, qty short, impact.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of component shortage entries.</returns>
-    [HttpGet("component-shortage")]
-    public async Task<ActionResult<ApiResponse<List<ComponentShortageDto>>>> GetComponentShortage(
-        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    private async Task<List<ComponentShortageDto>> GetComponentShortageDataAsync(Guid? companyId, CancellationToken ct)
     {
         var plannedBuilds = await _bomContext.BuildOrders
             .Include(b => b.Lines)
             .Where(b => b.Status == BuildOrderStatus.Planned && (!companyId.HasValue || b.CompanyId == companyId.Value))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var result = new List<ComponentShortageDto>();
         foreach (var bo in plannedBuilds)
@@ -214,10 +175,11 @@ public class BomReportsController : ControllerBase
             {
                 var onHand = await _invContext.ItemStocks
                     .Where(s => s.ItemId == line.ComponentItemId)
-                    .SumAsync(s => s.OnHandQuantity, cancellationToken);
+                    .SumAsync(s => s.OnHandQuantity, ct);
 
                 var required = line.QuantityRequired * bo.QuantityToBuild;
                 var shortQty = required - onHand;
+
                 if (shortQty > 0)
                 {
                     result.Add(new ComponentShortageDto
@@ -235,18 +197,10 @@ public class BomReportsController : ControllerBase
             }
         }
 
-        return Ok(ApiResponse<List<ComponentShortageDto>>.Success(result));
+        return result;
     }
 
-    /// <summary>
-    /// BOM Revision History Report: all revisions for an item.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of revision history entries.</returns>
-    [HttpGet("revision-history")]
-    public async Task<ActionResult<ApiResponse<List<RevisionHistoryDto>>>> GetRevisionHistory(
-        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    private async Task<List<RevisionHistoryDto>> GetRevisionHistoryDataAsync(Guid? companyId, CancellationToken ct)
     {
         var query = _bomContext.BomRevisionHistories.AsQueryable();
         if (companyId.HasValue)
@@ -254,11 +208,11 @@ public class BomReportsController : ControllerBase
             var headerIds = await _bomContext.BomHeaders
                 .ApplyCompanyScope(HttpContext, h => h.CompanyId, companyId)
                 .Select(h => h.Id)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
             query = query.Where(r => headerIds.Contains(r.BomHeaderId));
         }
 
-        var rows = await query.OrderBy(r => r.BomHeaderId).ThenByDescending(r => r.CreatedOn)
+        return await query.OrderBy(r => r.BomHeaderId).ThenByDescending(r => r.CreatedOn)
             .Select(r => new RevisionHistoryDto
             {
                 BomHeaderId = r.BomHeaderId,
@@ -267,27 +221,17 @@ public class BomReportsController : ControllerBase
                 ReasonForChange = r.ReasonForChange,
                 EffectiveDate = r.EffectiveDate,
                 ChangedOn = r.CreatedOn.DateTime,
-            }).ToListAsync(cancellationToken);
-
-        return Ok(ApiResponse<List<RevisionHistoryDto>>.Success(rows));
+            }).ToListAsync(ct);
     }
 
-    /// <summary>
-    /// Build Variance Report: actual component consumption vs. standard, scrap %, cost variance.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of build variance entries.</returns>
-    [HttpGet("build-variance")]
-    public async Task<ActionResult<ApiResponse<List<BuildVarianceDto>>>> GetBuildVariance(
-        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    private async Task<List<BuildVarianceDto>> GetBuildVarianceDataAsync(Guid? companyId, CancellationToken ct)
     {
         var builds = await _bomContext.BuildOrders
             .Include(b => b.Lines)
             .Where(b => b.Status == BuildOrderStatus.Completed && (!companyId.HasValue || b.CompanyId == companyId.Value))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        var result = builds.Select(b => new BuildVarianceDto
+        return builds.Select(b => new BuildVarianceDto
         {
             BuildOrderId = b.Id,
             BuildNumber = b.BuildNumber,
@@ -298,30 +242,20 @@ public class BomReportsController : ControllerBase
             TotalVarianceCost = b.Lines.Sum(l => l.VarianceCost ?? 0),
             ComponentLineCount = b.Lines.Count(l => !l.IsLabor && !l.IsOverhead),
         }).ToList();
-
-        return Ok(ApiResponse<List<BuildVarianceDto>>.Success(result));
     }
 
-    /// <summary>
-    /// Work Center Utilization / Build Capacity Report.
-    /// </summary>
-    /// <param name="companyId">Filter by company.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of work center utilization entries.</returns>
-    [HttpGet("work-center-utilization")]
-    public async Task<ActionResult<ApiResponse<List<WorkCenterUtilizationDto>>>> GetWorkCenterUtilization(
-        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    private async Task<List<WorkCenterUtilizationDto>> GetWorkCenterUtilizationDataAsync(Guid? companyId, CancellationToken ct)
     {
         var wcs = await _bomContext.WorkCenters
             .Where(w => !companyId.HasValue || w.CompanyId == companyId.Value)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var util = new List<WorkCenterUtilizationDto>();
         foreach (var wc in wcs)
         {
             var lines = await _bomContext.BomComponentLines
                 .Where(c => c.WorkCenterId == wc.Id)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             var capacity = wc.CapacityHoursPerDay * 20m; // ~20 working days/month
             var estHours = lines.Sum(c => c.OperationSequence > 0 ? (decimal)c.OperationSequence / 10m : 1m) * wc.EfficiencyPercentage / 100m;
@@ -340,7 +274,69 @@ public class BomReportsController : ControllerBase
             });
         }
 
-        return Ok(ApiResponse<List<WorkCenterUtilizationDto>>.Success(util));
+        return util;
+    }
+
+    // ---- JSON endpoints ----
+
+    [HttpGet("listing")]
+    public async Task<ActionResult<ApiResponse<List<BomListingDto>>>> GetListing(
+        [FromQuery] Guid? companyId,
+        CancellationToken cancellationToken)
+    {
+        var data = await GetListingDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<BomListingDto>>.Success(data));
+    }
+
+    [HttpGet("build-history")]
+    public async Task<ActionResult<ApiResponse<List<BuildHistoryDto>>>> GetBuildHistory(
+        [FromQuery] Guid? companyId,
+        [FromQuery] Guid? parentItemId,
+        CancellationToken cancellationToken)
+    {
+        var data = await GetBuildHistoryDataAsync(companyId, parentItemId, cancellationToken);
+        return Ok(ApiResponse<List<BuildHistoryDto>>.Success(data));
+    }
+
+    [HttpGet("accuracy")]
+    public async Task<ActionResult<ApiResponse<List<BomAccuracyDto>>>> GetAccuracy(
+        [FromQuery] Guid? companyId,
+        CancellationToken cancellationToken)
+    {
+        var data = await GetAccuracyDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<BomAccuracyDto>>.Success(data));
+    }
+
+    [HttpGet("component-shortage")]
+    public async Task<ActionResult<ApiResponse<List<ComponentShortageDto>>>> GetComponentShortage(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var data = await GetComponentShortageDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<ComponentShortageDto>>.Success(data));
+    }
+
+    [HttpGet("revision-history")]
+    public async Task<ActionResult<ApiResponse<List<RevisionHistoryDto>>>> GetRevisionHistory(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var data = await GetRevisionHistoryDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<RevisionHistoryDto>>.Success(data));
+    }
+
+    [HttpGet("build-variance")]
+    public async Task<ActionResult<ApiResponse<List<BuildVarianceDto>>>> GetBuildVariance(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var data = await GetBuildVarianceDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<BuildVarianceDto>>.Success(data));
+    }
+
+    [HttpGet("work-center-utilization")]
+    public async Task<ActionResult<ApiResponse<List<WorkCenterUtilizationDto>>>> GetWorkCenterUtilization(
+        [FromQuery] Guid? companyId, CancellationToken cancellationToken)
+    {
+        var data = await GetWorkCenterUtilizationDataAsync(companyId, cancellationToken);
+        return Ok(ApiResponse<List<WorkCenterUtilizationDto>>.Success(data));
     }
 
     // ---- PDF endpoints ----
@@ -348,9 +344,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("listing/pdf")]
     public async Task<ActionResult> ListingPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetListing(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetListingDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "BOM Listing", "Listing", DateTimeOffset.UtcNow);
         var tableRows = data.Select(b => new[]
         {
@@ -365,9 +360,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("build-history/pdf")]
     public async Task<ActionResult> BuildHistoryPdfAsync([FromQuery] Guid? companyId, [FromQuery] Guid? parentItemId, CancellationToken ct)
     {
-        var result = await GetBuildHistory(companyId, parentItemId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetBuildHistoryDataAsync(companyId, parentItemId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Build History", "History", DateTimeOffset.UtcNow);
         var tableRows = data.Select(b => new[]
         {
@@ -382,9 +376,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("accuracy/pdf")]
     public async Task<ActionResult> AccuracyPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetAccuracy(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetAccuracyDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "BOM Accuracy", "Accuracy", DateTimeOffset.UtcNow);
         var tableRows = data.Select(b => new[]
         {
@@ -399,9 +392,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("component-shortage/pdf")]
     public async Task<ActionResult> ComponentShortagePdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetComponentShortage(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetComponentShortageDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Component Shortage", "Shortage", DateTimeOffset.UtcNow);
         var tableRows = data.Select(c => new[]
         {
@@ -416,9 +408,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("revision-history/pdf")]
     public async Task<ActionResult> RevisionHistoryPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetRevisionHistory(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetRevisionHistoryDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Revision History", "Revisions", DateTimeOffset.UtcNow);
         var tableRows = data.Select(r => new[]
         {
@@ -434,9 +425,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("build-variance/pdf")]
     public async Task<ActionResult> BuildVariancePdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetBuildVariance(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetBuildVarianceDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "Build Variance", "Variance", DateTimeOffset.UtcNow);
         var tableRows = data.Select(v => new[]
         {
@@ -452,9 +442,8 @@ public class BomReportsController : ControllerBase
     [HttpGet("work-center-utilization/pdf")]
     public async Task<ActionResult> WorkCenterUtilizationPdfAsync([FromQuery] Guid? companyId, CancellationToken ct)
     {
-        var result = await GetWorkCenterUtilization(companyId, ct);
-        var data = result.Value?.Data;
-        if (data == null) return NotFound();
+        var data = await GetWorkCenterUtilizationDataAsync(companyId, ct);
+        if (data.Count == 0) return NotFound();
         var header = new CompanyDocumentHeader("BOM Reports", null, null, null, "USD", null, null, null, "WC Utilization", "Utilization", DateTimeOffset.UtcNow);
         var tableRows = data.Select(w => new[]
         {
@@ -468,7 +457,7 @@ public class BomReportsController : ControllerBase
     }
 }
 
-// --- DTOs ---
+// --- DTOs --
 #pragma warning disable S6960
 
 public class BomListingDto
