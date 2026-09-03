@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
 using ERP.Modules.MalaysianTax.Infrastructure;
+using ERP.Modules.Platform.Api.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,6 +32,7 @@ public class TaxRateController : ControllerBase
     /// Get all tax rates.
     /// </summary>
     [HttpGet]
+    [RequirePermission("tax", "tax-rates", "view")]
     [ProducesResponseType(typeof(IEnumerable<TaxRate>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
@@ -67,6 +69,7 @@ public class TaxRateController : ControllerBase
     /// Create a new tax rate.
     /// </summary>
     [HttpPost]
+    [RequirePermission("tax", "tax-rates", "create")]
     [ProducesResponseType(typeof(TaxRate), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] TaxRate rate)
     {
@@ -82,6 +85,7 @@ public class TaxRateController : ControllerBase
     /// Update a tax rate.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [RequirePermission("tax", "tax-rates", "edit")]
     [ProducesResponseType(typeof(TaxRate), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] TaxRate rate)
@@ -98,6 +102,7 @@ public class TaxRateController : ControllerBase
     /// Soft delete a tax rate.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [RequirePermission("tax", "tax-rates", "delete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

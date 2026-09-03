@@ -20,6 +20,8 @@ public class MalaysianTaxDbContext : DbContext
 
     public DbSet<TaxCode> TaxCodes => Set<TaxCode>();
     public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+    public DbSet<CompanySstRegistration> CompanySstRegistrations => Set<CompanySstRegistration>();
+    public DbSet<TaxDeterminationRule> TaxDeterminationRules => Set<TaxDeterminationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +46,24 @@ public class MalaysianTaxDbContext : DbContext
             
             // Ensure only one active rate per code at a time
             entity.HasQueryFilter(tr => tr.IsActive);
+        });
+
+        // CompanySstRegistration configuration
+        modelBuilder.Entity<CompanySstRegistration>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.IsActive });
+        });
+
+        // TaxDeterminationRule configuration
+        modelBuilder.Entity<TaxDeterminationRule>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.ItemCategory);
+            entity.HasIndex(e => e.CustomerType);
+            entity.HasIndex(e => e.PlaceOfSupply);
+            entity.HasIndex(e => new { e.CompanyId, e.IsActive, e.Priority });
+            entity.HasIndex(e => e.TaxCodeId);
         });
     }
 }

@@ -25,6 +25,11 @@ public class DigitalCertificate
     [Key]
     public Guid Id { get; set; }
 
+    /// <summary>
+    /// Gets or sets the company this certificate belongs to (multi-company isolation).
+    /// </summary>
+    public Guid CompanyId { get; set; }
+
     [Required, MaxLength(100)]
     public string CertificateName { get; set; } = string.Empty;
 

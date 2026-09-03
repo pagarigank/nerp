@@ -7,38 +7,61 @@ using System.Text;
 using System.Text.Json;
 using ERP.Modules.EInvoice.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ERP.Modules.EInvoice.Infrastructure;
 
 public class MyInvoisApiClient : IMyInvoisApiClient
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<MyInvoisApiClient> _logger;
 
-    public Action<string, Exception?> LogError { get; set; } = (_, __) => { };
-
-    public MyInvoisApiClient(HttpClient httpClient, IConfiguration configuration)
+    public MyInvoisApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<MyInvoisApiClient> logger)
     {
         _httpClient = httpClient;
         _configuration = configuration;
+        _logger = logger;
+    }
+
+    private string GetBaseUrl()
+    {
+        var environment = _configuration["EInvoice:Environment"]?.ToLowerInvariant() ?? "sandbox";
+        return environment == "production"
+            ? "https://api.myinvois.hasil.gov.my"
+            : "https://preprod-api.myinvois.hasil.gov.my";
+    }
+
+    private string GetClientId()
+    {
+        return _configuration["EInvoice:ClientId"]
+            ?? throw new InvalidOperationException("EInvoice:ClientId is not configured. Set it in appsettings.json or user secrets.");
+    }
+
+    private string GetClientSecret()
+    {
+        return _configuration["EInvoice:ClientSecret"]
+            ?? throw new InvalidOperationException("EInvoice:ClientSecret is not configured. Set it in appsettings.json or user secrets.");
     }
 
     public async Task<AuthenticationResponse> AuthenticateAsync(AuthenticationRequest request, CancellationToken cancellationToken = default)
     {
+        var clientId = !string.IsNullOrEmpty(request.ClientId) ? request.ClientId : GetClientId();
+        var clientSecret = !string.IsNullOrEmpty(request.ClientSecret) ? request.ClientSecret : GetClientSecret();
+
         var content = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("grant_type", "client_credentials"),
-            new KeyValuePair<string, string>("client_id", request.ClientId),
-            new KeyValuePair<string, string>("client_secret", request.ClientSecret)
+            new KeyValuePair<string, string>("client_id", clientId),
+            new KeyValuePair<string, string>("client_secret", clientSecret)
         });
 
-        var environment = request.Environment?.ToLowerInvariant() == "production"
-            ? "prod"
-            : "sandbox";
-        var baseUrl = environment == "production"
-            ? "https://api.myinvois.hasil.gov.my"
-            : "https://preprod-api.myinvois.hasil.gov.my";
-
+        var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
 
         var response = await _httpClient.PostAsync("/connect/token", content, cancellationToken);
@@ -46,25 +69,16 @@ public class MyInvoisApiClient : IMyInvoisApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            LogError($"MyInvois authentication failed: {response.StatusCode} {json}", null);
+            _logger.LogError("MyInvois authentication failed: {StatusCode} {Response}", response.StatusCode, json);
             throw new HttpRequestException($"Authentication failed: {response.StatusCode}");
         }
 
-        return JsonSerializer.Deserialize<AuthenticationResponse>(json, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        })!;
+        return JsonSerializer.Deserialize<AuthenticationResponse>(json, JsonOptions)!;
     }
 
     public async Task<SubmissionResponse> SubmitDocumentsAsync(SubmissionRequest request, string accessToken, CancellationToken cancellationToken = default)
     {
-        var environment = _configuration["EInvoice:Environment"]?.ToLowerInvariant() == "production"
-            ? "prod"
-            : "sandbox";
-        var baseUrl = environment == "production"
-            ? "https://api.myinvois.hasil.gov.my"
-            : "https://preprod-api.myinvois.hasil.gov.my";
-
+        var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -81,25 +95,16 @@ public class MyInvoisApiClient : IMyInvoisApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            LogError($"MyInvois submission failed: {response.StatusCode} {responseJson}", null);
+            _logger.LogError("MyInvois submission failed: {StatusCode} {Response}", response.StatusCode, responseJson);
             throw new HttpRequestException($"Submission failed: {response.StatusCode}");
         }
 
-        return JsonSerializer.Deserialize<SubmissionResponse>(responseJson, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        })!;
+        return JsonSerializer.Deserialize<SubmissionResponse>(responseJson, JsonOptions)!;
     }
 
     public async Task<SubmissionStatusResponse> GetSubmissionStatusAsync(string submissionUid, string accessToken, CancellationToken cancellationToken = default)
     {
-        var environment = _configuration["EInvoice:Environment"]?.ToLowerInvariant() == "production"
-            ? "prod"
-            : "sandbox";
-        var baseUrl = environment == "production"
-            ? "https://api.myinvois.hasil.gov.my"
-            : "https://preprod-api.myinvois.hasil.gov.my";
-
+        var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -108,25 +113,16 @@ public class MyInvoisApiClient : IMyInvoisApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            LogError($"MyInvois status poll failed: {response.StatusCode} {responseJson}", null);
+            _logger.LogError("MyInvois status poll failed: {StatusCode} {Response}", response.StatusCode, responseJson);
             throw new HttpRequestException($"Status poll failed: {response.StatusCode}");
         }
 
-        return JsonSerializer.Deserialize<SubmissionStatusResponse>(responseJson, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        })!;
+        return JsonSerializer.Deserialize<SubmissionStatusResponse>(responseJson, JsonOptions)!;
     }
 
     public async Task<TinValidationResponse> ValidateTaxpayerTinAsync(string tin, string accessToken, CancellationToken cancellationToken = default)
     {
-        var environment = _configuration["EInvoice:Environment"]?.ToLowerInvariant() == "production"
-            ? "prod"
-            : "sandbox";
-        var baseUrl = environment == "production"
-            ? "https://api.myinvois.hasil.gov.my"
-            : "https://preprod-api.myinvois.hasil.gov.my";
-
+        var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -135,25 +131,16 @@ public class MyInvoisApiClient : IMyInvoisApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            LogError($"TIN validation failed: {response.StatusCode} {responseJson}", null);
+            _logger.LogError("TIN validation failed: {StatusCode} {Response}", response.StatusCode, responseJson);
             return new TinValidationResponse(false);
         }
 
-        return JsonSerializer.Deserialize<TinValidationResponse>(responseJson, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        })!;
+        return JsonSerializer.Deserialize<TinValidationResponse>(responseJson, JsonOptions)!;
     }
 
     public async Task<CancelResponse> CancelDocumentAsync(string uuid, string reason, string accessToken, CancellationToken cancellationToken = default)
     {
-        var environment = _configuration["EInvoice:Environment"]?.ToLowerInvariant() == "production"
-            ? "prod"
-            : "sandbox";
-        var baseUrl = environment == "production"
-            ? "https://api.myinvois.hasil.gov.my"
-            : "https://preprod-api.myinvois.hasil.gov.my";
-
+        var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -165,13 +152,10 @@ public class MyInvoisApiClient : IMyInvoisApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            LogError($"Document cancellation failed: {response.StatusCode} {responseJson}", null);
+            _logger.LogError("Document cancellation failed: {StatusCode} {Response}", response.StatusCode, responseJson);
             throw new HttpRequestException($"Cancellation failed: {response.StatusCode}");
         }
 
-        return JsonSerializer.Deserialize<CancelResponse>(responseJson, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        })!;
+        return JsonSerializer.Deserialize<CancelResponse>(responseJson, JsonOptions)!;
     }
 }

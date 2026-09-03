@@ -24,6 +24,11 @@ public class EInvoiceDocument
     [Key]
     public Guid Id { get; set; }
 
+    /// <summary>
+    /// Gets or sets the company this document belongs to (multi-company isolation).
+    /// </summary>
+    public Guid CompanyId { get; set; }
+
     // ERP source reference
     [Required]
     public Guid SourceDocumentId { get; set; }

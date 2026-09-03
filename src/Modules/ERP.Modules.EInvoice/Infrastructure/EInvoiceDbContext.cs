@@ -22,6 +22,10 @@ public class EInvoiceDbContext : DbContext
     public DbSet<TaxpayerProfile> TaxpayerProfiles => Set<TaxpayerProfile>();
     public DbSet<EInvoiceDocument> EInvoiceDocuments => Set<EInvoiceDocument>();
     public DbSet<DigitalCertificate> DigitalCertificates => Set<DigitalCertificate>();
+    public DbSet<EInvoiceCustomerExtension> EInvoiceCustomerExtensions => Set<EInvoiceCustomerExtension>();
+    public DbSet<EInvoiceVendorExtension> EInvoiceVendorExtensions => Set<EInvoiceVendorExtension>();
+    public DbSet<ApiCredential> ApiCredentials => Set<ApiCredential>();
+    public DbSet<EInvoiceStatusHistory> EInvoiceStatusHistories => Set<EInvoiceStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +55,37 @@ public class EInvoiceDbContext : DbContext
         {
             entity.HasIndex(e => e.Thumbprint);
             entity.HasIndex(e => new { e.NotAfter, e.IsActive });
+        });
+
+        // EInvoiceCustomerExtension configuration (schema: ar)
+        modelBuilder.Entity<EInvoiceCustomerExtension>(entity =>
+        {
+            entity.ToTable("einvoice_customer_extension", "ar");
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.TaxIdentificationNumber);
+        });
+
+        // EInvoiceVendorExtension configuration (schema: ap)
+        modelBuilder.Entity<EInvoiceVendorExtension>(entity =>
+        {
+            entity.ToTable("einvoice_vendor_extension", "ap");
+            entity.HasIndex(e => e.VendorId);
+            entity.HasIndex(e => e.TaxIdentificationNumber);
+        });
+
+        // ApiCredential configuration
+        modelBuilder.Entity<ApiCredential>(entity =>
+        {
+            entity.HasIndex(e => new { e.CompanyId, e.Environment });
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        // EInvoiceStatusHistory configuration
+        modelBuilder.Entity<EInvoiceStatusHistory>(entity =>
+        {
+            entity.HasIndex(e => e.EInvoiceDocumentId);
+            entity.HasIndex(e => e.OccurredAt);
+            entity.HasIndex(e => new { e.EInvoiceDocumentId, e.OccurredAt });
         });
     }
 }

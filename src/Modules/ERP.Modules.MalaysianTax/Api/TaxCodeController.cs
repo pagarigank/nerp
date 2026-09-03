@@ -5,6 +5,7 @@
 using Asp.Versioning;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
+using ERP.Modules.Platform.Api.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -30,6 +31,7 @@ public class TaxCodeController : ControllerBase
     /// Get all tax codes.
     /// </summary>
     [HttpGet]
+    [RequirePermission("tax", "tax-codes", "view")]
     [ProducesResponseType(typeof(IEnumerable<TaxCode>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
@@ -55,6 +57,7 @@ public class TaxCodeController : ControllerBase
     /// Create a new tax code.
     /// </summary>
     [HttpPost]
+    [RequirePermission("tax", "tax-codes", "create")]
     [ProducesResponseType(typeof(TaxCode), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] TaxCode code)
     {
@@ -75,6 +78,7 @@ public class TaxCodeController : ControllerBase
     /// Update a tax code.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [RequirePermission("tax", "tax-codes", "edit")]
     [ProducesResponseType(typeof(TaxCode), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] TaxCode code)
@@ -91,6 +95,7 @@ public class TaxCodeController : ControllerBase
     /// Soft delete a tax code.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [RequirePermission("tax", "tax-codes", "delete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

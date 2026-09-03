@@ -28,6 +28,13 @@ public static class ServiceCollectionExtensions
         // MyInvois API client and related services
         services.AddHttpClient<IMyInvoisApiClient, MyInvoisApiClient>();
         services.AddScoped<IEInvoiceService, EInvoiceService>();
+        services.AddScoped<ICertificateService, CertificateService>();
+        services.AddScoped<ITaxpayerProfileService, TaxpayerProfileService>();
+
+        // Master data extension repositories
+        services.AddScoped<IEInvoiceCustomerExtensionRepository, EInvoiceCustomerExtensionRepository>();
+        services.AddScoped<IEInvoiceVendorExtensionRepository, EInvoiceVendorExtensionRepository>();
+        services.AddScoped<IApiCredentialRepository, ApiCredentialRepository>();
 
         return services;
     }

@@ -348,6 +348,10 @@ public class Program
         builder.Services.AddReportingModule(builder.Configuration);
         builder.Services.AddIntegrationModule(builder.Configuration);
 
+        // Phase 15+ — Malaysia Tax (SST) & e-Invoice modules
+        builder.Services.AddMalaysianTaxModule(builder.Configuration);
+        builder.Services.AddEInvoiceModule(builder.Configuration);
+
         // Phase 15 — Performance & Scalability
         builder.Services.AddResponseCompression(options =>
         {
@@ -714,6 +718,8 @@ public class Program
             typeof(ERP.Modules.Payroll.Infrastructure.PayrollDbContext),
             typeof(ERP.Modules.ProjectAccounting.Infrastructure.ProjDbContext),
             typeof(ERP.Modules.Integration.Infrastructure.IntegrationDbContext),
+            typeof(ERP.Modules.MalaysianTax.Infrastructure.MalaysianTaxDbContext),
+            typeof(ERP.Modules.EInvoice.Infrastructure.EInvoiceDbContext),
         })
         {
             using (var migrateScope = app.Services.CreateScope())

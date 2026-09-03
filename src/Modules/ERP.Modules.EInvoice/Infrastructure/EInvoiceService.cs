@@ -29,10 +29,10 @@ public class EInvoiceService : IEInvoiceService
         string? tin = null,
         CancellationToken cancellationToken = default)
     {
-        // Hash-based idempotency check
+        // Hash-based idempotency check (scoped to company)
         var contentHash = ComputeContentHash(payload);
         var existingDoc = await _dbContext.EInvoiceDocuments
-            .FirstOrDefaultAsync(d => d.ContentHash == contentHash && d.Status != EInvoiceDocumentStatus.Cancelled, cancellationToken);
+            .FirstOrDefaultAsync(d => d.CompanyId == companyId && d.ContentHash == contentHash && d.Status != EInvoiceDocumentStatus.Cancelled, cancellationToken);
         
         if (existingDoc != null)
         {
@@ -46,7 +46,7 @@ public class EInvoiceService : IEInvoiceService
             };
         }
 
-        // Authenticate with MyInvois
+        // Authenticate with MyInvois (credentials read from IConfiguration)
         var authRequest = new AuthenticationRequest(
             ClientId: string.Empty,
             ClientSecret: string.Empty,
@@ -73,6 +73,7 @@ public class EInvoiceService : IEInvoiceService
         {
             var dbDocument = new EInvoiceDocument
             {
+                CompanyId = companyId,
                 SourceDocumentId = sourceDocumentId,
                 DocumentType = documentType,
                 TotalAmount = ParseAmount(payload),
@@ -81,7 +82,8 @@ public class EInvoiceService : IEInvoiceService
                 SubmissionUid = response.SubmissionUid,
                 ContentType = "JSON",
                 ContentHash = contentHash,
-                IsSandbox = false
+                IsSandbox = false,
+                SubmittedAt = DateTime.UtcNow
             };
             
             _dbContext.EInvoiceDocuments.Add(dbDocument);
@@ -135,6 +137,23 @@ public class EInvoiceService : IEInvoiceService
         };
     }
 
+    private async Task RecordStatusChange(
+        Guid documentId,
+        string? previousStatus,
+        string newStatus,
+        string actorUserId,
+        string? reason = null,
+        string? lhdnErrorCode = null,
+        string? lhdnErrorMessage = null,
+        string? myInvoisUuid = null,
+        string? validationLink = null,
+        CancellationToken ct = default)
+    {
+        var history = EInvoiceStatusHistory.Create(documentId, previousStatus, newStatus, actorUserId, reason, lhdnErrorCode, lhdnErrorMessage, myInvoisUuid, validationLink);
+        _dbContext.EInvoiceStatusHistories.Add(history);
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
     public async Task<EInvoicePollingResult> PollSubmissionStatusAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)
@@ -148,6 +167,7 @@ public class EInvoiceService : IEInvoiceService
         if (string.IsNullOrEmpty(document.SubmissionUid))
             throw new InvalidOperationException("Document has not been submitted");
 
+        // Credentials resolved via MyInvoisApiClient from IConfiguration
         var authRequest = new AuthenticationRequest(
             ClientId: string.Empty,
             ClientSecret: string.Empty,
@@ -161,7 +181,9 @@ public class EInvoiceService : IEInvoiceService
             cancellationToken);
 
         var docStatus = statusResponse.Documents.FirstOrDefault();
-        document.Status = docStatus != null ? MapStatus(docStatus.Status) : document.Status;
+        var previousStatus = document.Status.ToString();
+        var newStatus = docStatus != null ? MapStatus(docStatus.Status) : document.Status;
+        document.Status = newStatus;
         document.ValidatedAt = DateTime.UtcNow;
 
         if (!string.IsNullOrEmpty(docStatus?.ErrorMessage))
@@ -170,6 +192,9 @@ public class EInvoiceService : IEInvoiceService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Record audit trail
+        await RecordStatusChange(documentId, previousStatus, newStatus.ToString(), "system-polling", lhdnErrorCode: null, lhdnErrorMessage: docStatus?.ErrorMessage, myInvoisUuid: docStatus?.Uuid, ct: cancellationToken);
 
         return new EInvoicePollingResult
         {
@@ -195,10 +220,7 @@ public class EInvoiceService : IEInvoiceService
 
     public async Task<EInvoiceValidationResult> ValidateTinAsync(string tin, CancellationToken cancellationToken = default)
     {
-        var cert = await _dbContext.DigitalCertificates.FirstOrDefaultAsync(cancellationToken);
-        if (cert == null)
-            throw new InvalidOperationException("No certificate configured");
-
+        // Credentials resolved via MyInvoisApiClient from IConfiguration
         var authRequest = new AuthenticationRequest(
             ClientId: string.Empty,
             ClientSecret: string.Empty,
@@ -230,6 +252,7 @@ public class EInvoiceService : IEInvoiceService
         if (string.IsNullOrEmpty(document.SubmissionUid))
             throw new InvalidOperationException("Document not yet submitted");
 
+        // Credentials resolved via MyInvoisApiClient from IConfiguration
         var authRequest = new AuthenticationRequest(
             ClientId: string.Empty,
             ClientSecret: string.Empty,
@@ -245,9 +268,13 @@ public class EInvoiceService : IEInvoiceService
 
         if (cancelResult.Status == "Accepted" || cancelResult.Status == "Cancelled")
         {
+            var previousStatus = document.Status.ToString();
             document.Status = EInvoiceDocumentStatus.Cancelled;
             document.CancelledAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            // Record audit trail with cancellation reason
+            await RecordStatusChange(documentId, previousStatus, EInvoiceDocumentStatus.Cancelled.ToString(), "user", reason: reason, ct: cancellationToken);
         }
 
         return document.Status == EInvoiceDocumentStatus.Cancelled;

@@ -6,9 +6,9 @@ namespace ERP.Modules.EInvoice.Application;
 
 public interface ICertificateService
 {
-    Task<List<CertificateDto>> GetAllAsync();
+    Task<List<CertificateDto>> GetAllByCompanyIdAsync(Guid companyId);
     Task<CertificateDto?> GetByIdAsync(Guid id);
-    Task<CertificateDto> UploadAsync(byte[] fileContent, string fileName, string name, bool isActive);
+    Task<CertificateDto> UploadAsync(Guid companyId, byte[] fileContent, string fileName, string name, bool isActive);
     Task<CertificateDto> ActivateAsync(Guid id);
     Task<bool> RevokeAsync(Guid id, string reason);
 }
