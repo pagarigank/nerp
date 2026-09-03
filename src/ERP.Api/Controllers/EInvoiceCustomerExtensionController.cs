@@ -7,6 +7,7 @@ using Asp.Versioning;
 using ERP.Modules.EInvoice.Application;
 using ERP.Modules.EInvoice.Domain.Entities;
 using ERP.Modules.Platform.Api.Authorization;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERP.Api.Controllers;
@@ -36,7 +37,13 @@ public class EInvoiceCustomerExtensionController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<EInvoiceCustomerExtension>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
-        var extensions = await _repository.GetAllAsync();
+        var companyId = GetCompanyId();
+        if (companyId == Guid.Empty)
+        {
+            return BadRequest("Company context is required.");
+        }
+
+        var extensions = await _repository.GetAllByCompanyIdAsync(companyId);
         return Ok(extensions);
     }
 
@@ -149,6 +156,12 @@ public class EInvoiceCustomerExtensionController : ControllerBase
     {
         await _repository.DeleteAsync(id);
         return NoContent();
+    }
+
+    private Guid GetCompanyId()
+    {
+        var claim = User?.FindFirst("CompanyId")?.Value;
+        return Guid.TryParse(claim, out var companyId) ? companyId : Guid.Empty;
     }
 }
 

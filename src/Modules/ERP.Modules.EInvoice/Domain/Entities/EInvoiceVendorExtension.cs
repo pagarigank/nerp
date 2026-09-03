@@ -44,6 +44,9 @@ public class EInvoiceVendorExtension : AuditableAggregateRoot
         IsSubjectToEInvoice = isSubjectToEInvoice;
     }
 
+    /// <summary>Gets the company scoping identifier.</summary>
+    public Guid CompanyId { get; set; }
+
     public Guid VendorId { get; private set; }
 
     /// <summary>

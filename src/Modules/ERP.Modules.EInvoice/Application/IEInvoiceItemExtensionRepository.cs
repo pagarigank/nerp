@@ -9,6 +9,7 @@ namespace ERP.Modules.EInvoice.Application;
 public interface IEInvoiceItemExtensionRepository
 {
     Task<List<EInvoiceItemExtension>> GetAllAsync();
+    Task<List<EInvoiceItemExtension>> GetAllByCompanyIdAsync(Guid companyId);
     Task<EInvoiceItemExtension?> GetByIdAsync(Guid id);
     Task<EInvoiceItemExtension?> GetByItemIdAsync(Guid itemId);
     Task AddAsync(EInvoiceItemExtension extension);

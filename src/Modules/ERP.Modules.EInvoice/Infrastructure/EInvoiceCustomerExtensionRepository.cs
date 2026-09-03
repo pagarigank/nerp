@@ -42,6 +42,14 @@ public class EInvoiceCustomerExtensionRepository : IEInvoiceCustomerExtensionRep
             .ToListAsync(ct);
     }
 
+    public async Task<IEnumerable<EInvoiceCustomerExtension>> GetAllByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
+    {
+        return await _context.EInvoiceCustomerExtensions
+            .Where(e => !e.IsDeleted && e.CompanyId == companyId)
+            .OrderBy(e => e.CustomerId)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(EInvoiceCustomerExtension entity, CancellationToken ct = default)
     {
         // Upsert: if one already exists for this customer, update it instead

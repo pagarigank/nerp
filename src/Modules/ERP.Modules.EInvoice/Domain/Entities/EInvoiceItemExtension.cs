@@ -34,6 +34,9 @@ public class EInvoiceItemExtension : AuditableAggregateRoot
         IsSubjectToEInvoice = isSubjectToEInvoice;
     }
 
+    /// <summary>Gets the company scoping identifier.</summary>
+    public Guid CompanyId { get; set; }
+
     /// <summary>Gets the ERP Item ID this extension belongs to.</summary>
     public Guid ItemId { get; private set; }
 

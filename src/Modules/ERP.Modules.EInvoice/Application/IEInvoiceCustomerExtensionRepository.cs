@@ -14,6 +14,7 @@ public interface IEInvoiceCustomerExtensionRepository
     Task<EInvoiceCustomerExtension?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<EInvoiceCustomerExtension?> GetByCustomerIdAsync(Guid customerId, CancellationToken ct = default);
     Task<IEnumerable<EInvoiceCustomerExtension>> GetAllAsync(CancellationToken ct = default);
+    Task<IEnumerable<EInvoiceCustomerExtension>> GetAllByCompanyIdAsync(Guid companyId, CancellationToken ct = default);
     Task AddAsync(EInvoiceCustomerExtension entity, CancellationToken ct = default);
     Task UpdateAsync(EInvoiceCustomerExtension entity, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);

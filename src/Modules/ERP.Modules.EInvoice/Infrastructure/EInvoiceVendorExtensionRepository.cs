@@ -42,6 +42,14 @@ public class EInvoiceVendorExtensionRepository : IEInvoiceVendorExtensionReposit
             .ToListAsync(ct);
     }
 
+    public async Task<IEnumerable<EInvoiceVendorExtension>> GetAllByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
+    {
+        return await _context.EInvoiceVendorExtensions
+            .Where(e => !e.IsDeleted && e.CompanyId == companyId)
+            .OrderBy(e => e.VendorId)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(EInvoiceVendorExtension entity, CancellationToken ct = default)
     {
         // Upsert: if one already exists for this vendor, update it instead

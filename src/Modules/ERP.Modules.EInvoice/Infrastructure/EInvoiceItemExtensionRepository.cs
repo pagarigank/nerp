@@ -25,6 +25,14 @@ public class EInvoiceItemExtensionRepository : IEInvoiceItemExtensionRepository
             .ToListAsync();
     }
 
+    public async Task<List<EInvoiceItemExtension>> GetAllByCompanyIdAsync(Guid companyId)
+    {
+        return await _context.Set<EInvoiceItemExtension>()
+            .Where(e => !e.IsDeleted && e.CompanyId == companyId)
+            .OrderBy(e => e.ItemId)
+            .ToListAsync();
+    }
+
     public async Task<EInvoiceItemExtension?> GetByIdAsync(Guid id)
     {
         return await _context.Set<EInvoiceItemExtension>()

@@ -14,6 +14,7 @@ public interface IEInvoiceVendorExtensionRepository
     Task<EInvoiceVendorExtension?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<EInvoiceVendorExtension?> GetByVendorIdAsync(Guid vendorId, CancellationToken ct = default);
     Task<IEnumerable<EInvoiceVendorExtension>> GetAllAsync(CancellationToken ct = default);
+    Task<IEnumerable<EInvoiceVendorExtension>> GetAllByCompanyIdAsync(Guid companyId, CancellationToken ct = default);
     Task AddAsync(EInvoiceVendorExtension entity, CancellationToken ct = default);
     Task UpdateAsync(EInvoiceVendorExtension entity, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);

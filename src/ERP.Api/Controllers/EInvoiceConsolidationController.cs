@@ -7,6 +7,7 @@ using ERP.Modules.EInvoice.Domain;
 using ERP.Modules.EInvoice.Domain.Entities;
 using ERP.Modules.EInvoice.Infrastructure;
 using ERP.Modules.Platform.Api.Authorization;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,13 +22,17 @@ namespace ERP.Api.Controllers;
 public class EInvoiceConsolidationController : ControllerBase
 {
     private readonly EInvoiceDbContext _dbContext;
+    private readonly ICurrentUserService _currentUser;
 
     /// <summary>Maximum amount per document for consolidation eligibility.</summary>
     private const decimal MaxConsolidationAmount = 10_000m;
 
-    public EInvoiceConsolidationController(EInvoiceDbContext dbContext)
+    public EInvoiceConsolidationController(
+        EInvoiceDbContext dbContext,
+        ICurrentUserService currentUser)
     {
         _dbContext = dbContext;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -152,6 +157,11 @@ public class EInvoiceConsolidationController : ControllerBase
 
     private Guid GetCompanyId()
     {
+        if (_currentUser.CompanyIds.Count == 1)
+        {
+            return _currentUser.CompanyIds[0];
+        }
+
         var claim = User?.FindFirst("CompanyId")?.Value;
         return Guid.TryParse(claim, out var companyId) ? companyId : Guid.Empty;
     }

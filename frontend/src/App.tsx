@@ -237,6 +237,8 @@ import { TaxRatesPage } from '@pages/tax/TaxRatesPage'
 import { TaxDeterminationRulesPage } from '@pages/tax/TaxDeterminationRulesPage'
 import { SstReturnsPage } from '@pages/tax/SstReturnsPage'
 import { LocalCodeTablesPage } from '@pages/tax/LocalCodeTablesPage'
+import { ExemptZeroRatesPage } from '@pages/tax/ExemptZeroRatesPage'
+import { TaxReportsPage } from '@pages/tax/TaxReportsPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -520,14 +522,15 @@ function App() {
           <Route path="tin-validation" element={<TinValidationPage />} />
           <Route path="queue" element={<SubmissionStatusPage />} />
           <Route path="validation" element={<SubmissionStatusPage />} />
-          <Route path="consolidated" element={<SubmissionStatusPage />} />
         </Route>
         <Route path="tax">
           <Route path="tax-codes" element={<TaxCodesPage />} />
           <Route path="tax-rates" element={<TaxRatesPage />} />
           <Route path="sst-returns" element={<SstReturnsPage />} />
           <Route path="determination-rules" element={<TaxDeterminationRulesPage />} />
+          <Route path="exempt-zero-rates" element={<ExemptZeroRatesPage />} />
           <Route path="local-tables" element={<LocalCodeTablesPage />} />
+          <Route path="reports" element={<TaxReportsPage />} />
         </Route>
         <Route path="integration/*">
           <Route index element={<IntegrationDashboard />} />
