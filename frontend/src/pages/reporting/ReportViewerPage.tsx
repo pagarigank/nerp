@@ -14,6 +14,7 @@ import { Button } from '@components/ui/Button'
 import { Input, Select } from '@components/ui/Input'
 import { Skeleton } from '@components/ui/LoadingSpinner'
 import { getErrorMessage } from '@api/client'
+import { DrillBackLink } from '@components/ui/DrillBackLink'
 import { useAuthStore } from '@stores/authStore'
 import { getFiscalPeriods, getCompanies } from '@api/platform'
 
@@ -119,6 +120,7 @@ const REPORTS: ReportConfig[] = [
       { key: 'total', header: 'Total', align: 'right', format: formatCurrency },
     ],
     adapter: (r) => r?.lines ?? (Array.isArray(r) ? r : []),
+    drillBack: (row) => `/ap/vouchers?vendorId=${row.vendorId}`,
   },
 
   // AR
@@ -136,6 +138,7 @@ const REPORTS: ReportConfig[] = [
       { key: 'total', header: 'Total', align: 'right', format: formatCurrency },
     ],
     adapter: (r) => r?.lines ?? (Array.isArray(r) ? r : []),
+    drillBack: (row) => `/ar/invoices?customerId=${row.customerId}`,
   },
 
   // Inventory

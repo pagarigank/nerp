@@ -48,6 +48,7 @@ import type {
 } from '@/types/gl'
 import { accountTypeMap } from '@pages/platform/statusMaps'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
+import { DrillBackLink } from '@components/ui/DrillBackLink'
 
 type ReportKey =
   | 'trialBalance'
@@ -444,12 +445,12 @@ function renderTrialBalance(report: TrialBalanceReport): { title: string; body: 
         {dataTable(
           ['Account', 'Description', 'Type', 'Debit', 'Credit', 'Ending Balance'],
           report.lines.map(line => [
-            <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+            <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
             line.accountDescription,
             <MapStatusBadge key={`${line.accountId}-type`} value={line.accountType} mapping={accountTypeMap} />,
-            money(line.debit),
-            money(line.credit),
-            money(line.endingBalance),
+            <span key={`${line.accountId}-dr`} className="font-tabular tabular-nums">{money(line.debit)}</span>,
+            <span key={`${line.accountId}-cr`} className="font-tabular tabular-nums">{money(line.credit)}</span>,
+            <span key={`${line.accountId}-bal`} className="font-semibold font-tabular tabular-nums">{money(line.endingBalance)}</span>,
           ]),
           ['left', 'left', 'left', 'right', 'right', 'right']
         )}
@@ -535,9 +536,9 @@ function renderFinancialStatement(report: FinancialStatementReport): { title: st
           dataTable(
             ['Account', 'Description', 'Balance'],
             report.lines.map(line => [
-              <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+              <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
               line.accountDescription,
-              money(line.balance),
+              <span key={`${line.accountId}-bal`} className="font-semibold font-tabular tabular-nums">{money(line.balance)}</span>,
             ]),
             ['left', 'left', 'right']
           )
@@ -565,9 +566,9 @@ function renderCashFlow(report: CashFlowReport): { title: string; body: React.Re
             ['Category', 'Account', 'Description', 'Amount'],
             report.lines.map((line, i) => [
               line.category,
-              <span key={`${i}-a`} className="font-mono text-xs">{line.accountNumber}</span>,
+              <DrillBackLink key={`${i}-a`} to={`/gl/general-ledger?accountId=${line.accountId ?? ''}`}>{line.accountNumber}</DrillBackLink>,
               line.accountDescription,
-              money(line.amount),
+              <span key={`${i}-amt`} className="font-semibold font-tabular tabular-nums">{money(line.amount)}</span>,
             ]),
             ['left', 'left', 'left', 'right']
           )
@@ -593,11 +594,11 @@ function renderBudgetVsActual(report: BudgetVsActualReport): { title: string; bo
           dataTable(
             ['Account', 'Description', 'Budget', 'Actual', 'Variance', 'Var %'],
             report.lines.map(line => [
-              <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+              <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
               line.accountDescription,
-              money(line.budgetAmount),
-              money(line.actualAmount),
-              money(line.variance),
+              <span key={`${line.accountId}-bud`} className="font-tabular tabular-nums">{money(line.budgetAmount)}</span>,
+              <span key={`${line.accountId}-act`} className="font-tabular tabular-nums">{money(line.actualAmount)}</span>,
+              <span key={`${line.accountId}-var`} className={`font-tabular tabular-nums ${line.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{money(line.variance)}</span>,
               `${line.variancePercent.toFixed(2)}%`,
             ]),
             ['left', 'left', 'right', 'right', 'right', 'right']
@@ -623,12 +624,12 @@ function renderAccountDistribution(report: AccountDistributionReport): { title: 
           dataTable(
             ['Account', 'Description', 'Transactions', 'Debit', 'Credit', 'Net Change'],
             report.lines.map(line => [
-              <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+              <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
               line.accountDescription,
               String(line.transactionCount),
-              money(line.debit),
-              money(line.credit),
-              money(line.netChange),
+              <DrillBackLink key={`${line.accountId}-dr`} to={`/gl/general-ledger?accountId=${line.accountId}`}>{money(line.debit)}</DrillBackLink>,
+              <DrillBackLink key={`${line.accountId}-cr`} to={`/gl/general-ledger?accountId=${line.accountId}`}>{money(line.credit)}</DrillBackLink>,
+              <span key={`${line.accountId}-nc`} className="font-semibold font-tabular tabular-nums">{money(line.netChange)}</span>,
             ]),
             ['left', 'left', 'right', 'right', 'right', 'right']
           )
@@ -653,14 +654,14 @@ function renderConsolidatedTrialBalance(report: ConsolidatedTrialBalanceReport):
           ['Company', 'Account', 'Description', 'Type', 'Debit', 'Credit', 'Ending Balance'],
           report.lines.map(line => [
             line.companyName,
-            <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+            <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
             line.accountDescription,
             <MapStatusBadge key={`${line.accountId}-type`} value={line.accountType} mapping={accountTypeMap} />,
-            money(line.debit),
-            money(line.credit),
-            money(line.endingBalance),
+            <span key={`${line.accountId}-dr`} className="font-tabular tabular-nums">{money(line.debit)}</span>,
+            <span key={`${line.accountId}-cr`} className="font-tabular tabular-nums">{money(line.credit)}</span>,
+            <span key={`${line.accountId}-bal`} className="font-semibold font-tabular tabular-nums">{money(line.endingBalance)}</span>,
           ]),
-          ['left', 'left', 'left', 'left', 'right', 'right', 'right']
+          ['left', 'left', 'left', 'right', 'right', 'right']
         )}
       </>
     ),
@@ -712,11 +713,11 @@ function renderMultiCurrencyRevaluation(report: MultiCurrencyRevaluationReport):
           dataTable(
             ['Account', 'Description', 'Currency', 'Original Balance', 'Revalued Balance', 'Gain/Loss'],
             report.lines.map(line => [
-              <span key={line.accountId} className="font-mono text-xs">{line.accountNumber}</span>,
+              <DrillBackLink key={line.accountId} to={`/gl/general-ledger?accountId=${line.accountId}`}>{line.accountNumber}</DrillBackLink>,
               line.accountDescription,
               line.currency,
-              money(line.originalBalance),
-              money(line.revaluedBalance),
+              <span key={`${line.accountId}-ob`} className="font-tabular tabular-nums">{money(line.originalBalance)}</span>,
+              <span key={`${line.accountId}-rb`} className="font-tabular tabular-nums">{money(line.revaluedBalance)}</span>,
               <span className={line.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}>{money(line.gainLoss)}</span>,
             ]),
             ['left', 'left', 'left', 'right', 'right', 'right']
