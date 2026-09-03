@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
 using ERP.Modules.Platform.Api.Authorization;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,7 @@ namespace ERP.Modules.MalaysianTax.Api;
 /// <summary>
 /// Tax Code CRUD API for Malaysian SST compliance.
 /// Maps to LHDN e-Invoice tax type codes (01, 02, 03, 04, E, ZRL).
+/// All mutations are audit-logged.
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
@@ -21,10 +23,17 @@ namespace ERP.Modules.MalaysianTax.Api;
 public class TaxCodeController : ControllerBase
 {
     private readonly ITaxCodeRepository _repository;
+    private readonly IAuditLogService _auditLog;
+    private readonly ICurrentUserService _currentUser;
 
-    public TaxCodeController(ITaxCodeRepository repository)
+    public TaxCodeController(
+        ITaxCodeRepository repository,
+        IAuditLogService auditLog,
+        ICurrentUserService currentUser)
     {
         _repository = repository;
+        _auditLog = auditLog;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -43,6 +52,7 @@ public class TaxCodeController : ControllerBase
     /// Get a tax code by ID.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [RequirePermission("tax", "tax-codes", "view")]
     [ProducesResponseType(typeof(TaxCode), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(Guid id)
@@ -71,6 +81,14 @@ public class TaxCodeController : ControllerBase
 
         await _repository.AddAsync(code);
 
+        await _auditLog.LogAsync(
+            "Create",
+            nameof(TaxCode),
+            code.Id,
+            _currentUser.UserId ?? "system",
+            newValues: new { code.Code, code.Description, code.LhdntTaxType },
+            correlationId: _currentUser.CorrelationId);
+
         return CreatedAtAction(nameof(Get), new { id = code.Id }, code);
     }
 
@@ -86,7 +104,22 @@ public class TaxCodeController : ControllerBase
         if (id != code.Id)
             return BadRequest("ID mismatch");
 
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+            return NotFound();
+
+        var oldValues = new { existing.Code, existing.Description, existing.LhdntTaxType, existing.IsActive };
+
         await _repository.UpdateAsync(code);
+
+        await _auditLog.LogAsync(
+            "Update",
+            nameof(TaxCode),
+            code.Id,
+            _currentUser.UserId ?? "system",
+            oldValues: oldValues,
+            newValues: new { code.Code, code.Description, code.LhdntTaxType, code.IsActive },
+            correlationId: _currentUser.CorrelationId);
 
         return Ok(code);
     }
@@ -100,7 +133,17 @@ public class TaxCodeController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var existing = await _repository.GetByIdAsync(id);
+
         await _repository.DeleteAsync(id);
+
+        await _auditLog.LogAsync(
+            "Delete",
+            nameof(TaxCode),
+            id,
+            _currentUser.UserId ?? "system",
+            oldValues: existing != null ? new { existing.Code, existing.Description } : null,
+            correlationId: _currentUser.CorrelationId);
 
         return NoContent();
     }

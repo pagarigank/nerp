@@ -6,6 +6,7 @@ using Asp.Versioning;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
 using ERP.Modules.Platform.Api.Authorization;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,7 @@ namespace ERP.Modules.MalaysianTax.Api;
 /// <summary>
 /// Exempt/Zero-Rated Supply Category CRUD API for Malaysian SST compliance.
 /// Maps product/service categories to exempt or zero-rated tax codes.
+/// All mutations are audit-logged.
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
@@ -21,10 +23,17 @@ namespace ERP.Modules.MalaysianTax.Api;
 public class ExemptSupplyCategoryController : ControllerBase
 {
     private readonly IExemptSupplyCategoryRepository _repository;
+    private readonly IAuditLogService _auditLog;
+    private readonly ICurrentUserService _currentUser;
 
-    public ExemptSupplyCategoryController(IExemptSupplyCategoryRepository repository)
+    public ExemptSupplyCategoryController(
+        IExemptSupplyCategoryRepository repository,
+        IAuditLogService auditLog,
+        ICurrentUserService currentUser)
     {
         _repository = repository;
+        _auditLog = auditLog;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -98,6 +107,15 @@ public class ExemptSupplyCategoryController : ControllerBase
 
         await _repository.AddAsync(category, ct);
 
+        await _auditLog.LogAsync(
+            "Create",
+            nameof(ExemptSupplyCategory),
+            category.Id,
+            _currentUser.UserId ?? "system",
+            newValues: new { category.CompanyId, category.CategoryCode, category.SupplyType, category.TaxCodeId },
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: ct);
+
         return CreatedAtAction(nameof(Get), new { id = category.Id }, category);
     }
 
@@ -117,6 +135,8 @@ public class ExemptSupplyCategoryController : ControllerBase
         if (existing == null)
             return NotFound();
 
+        var oldValues = new { existing.CategoryCode, existing.SupplyType, existing.TaxCodeId, existing.IsActive, existing.EffectiveFrom, existing.EffectiveTo };
+
         existing.Update(
             category.CompanyId,
             category.CategoryCode,
@@ -131,6 +151,16 @@ public class ExemptSupplyCategoryController : ControllerBase
 
         await _repository.UpdateAsync(existing, ct);
 
+        await _auditLog.LogAsync(
+            "Update",
+            nameof(ExemptSupplyCategory),
+            id,
+            _currentUser.UserId ?? "system",
+            oldValues: oldValues,
+            newValues: new { category.CategoryCode, category.SupplyType, category.TaxCodeId, category.IsActive, category.EffectiveFrom, category.EffectiveTo },
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: ct);
+
         return Ok(existing);
     }
 
@@ -143,7 +173,19 @@ public class ExemptSupplyCategoryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var existing = await _repository.GetByIdAsync(id, ct);
+
         await _repository.DeleteAsync(id, ct);
+
+        await _auditLog.LogAsync(
+            "Delete",
+            nameof(ExemptSupplyCategory),
+            id,
+            _currentUser.UserId ?? "system",
+            oldValues: existing != null ? new { existing.CategoryCode, existing.SupplyType, existing.CompanyId } : null,
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: ct);
+
         return NoContent();
     }
 }
