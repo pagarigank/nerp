@@ -1,28 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <NoWarn>CA1707;CS1591;SA1200;SA1201;SA1202;SA1117;SA1600;SA1615;SA1633;SA1636;SA1623;SA1629</NoWarn>
+    <NoWarn>CA1707;CA1062;SA1101;SA1600;SA1633;CS1591;SA1200;SA1512;SA1117;SA1122;SA1615;CA2007;S6562;SA1201</NoWarn>
   </PropertyGroup>
-
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="Moq" Version="4.20.69" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.8" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Modules\ERP.Modules.Payroll\ERP.Modules.Payroll.csproj" />
-    <ProjectReference Include="..\..\src\Modules\ERP.Modules.AccountsPayable\ERP.Modules.AccountsPayable.csproj" />
-    <ProjectReference Include="..\..\src\Modules\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\src\ERP.Core\ERP.Core.csproj" />
     <ProjectReference Include="..\..\src\ERP.Shared\ERP.Shared.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageReference Include="FluentAssertions" Version="6.12.1" />
-    <PackageReference Include="Moq" Version="4.20.70" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.8" />
-  </ItemGroup>
-
 </Project>
