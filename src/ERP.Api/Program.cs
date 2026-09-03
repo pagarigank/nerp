@@ -40,6 +40,7 @@ using ERP.Modules.Reporting;
 using ERP.Shared.Kernel.Api;
 using ERP.Shared.Kernel.Posting;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Authorization;
@@ -78,6 +79,7 @@ public class Program
         builder.Services.Configure<HostOptions>(o =>
             o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
+        builder.Services.AddFluentValidationAutoValidation();
         builder.Services.AddControllers(options =>
             {
                 options.Filters.AddService<ERP.Modules.Platform.Infrastructure.CompanyAuthorizationFilter>();
