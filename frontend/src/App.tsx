@@ -222,6 +222,9 @@ import { ReportUsagePage } from '@pages/reporting/ReportUsagePage'
 import { DataMartStatusPage } from '@pages/reporting/DataMartStatusPage'
 import { EInvoiceLayout } from '@pages/einvoice/EInvoiceLayout'
 import { CompanyEInvoiceProfilePage } from '@pages/einvoice/CompanyEInvoiceProfilePage'
+import { DocumentsPage } from '@pages/einvoice/DocumentsPage'
+import { CertificatesPage } from '@pages/einvoice/CertificatesPage'
+import { CredentialsPage } from '@pages/einvoice/CredentialsPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -493,6 +496,9 @@ function App() {
         <Route path="e-invoice" element={<EInvoiceLayout />}>
           <Route index element={<Navigate to="company-profile" replace />} />
           <Route path="company-profile" element={<CompanyEInvoiceProfilePage />} />
+          <Route path="documents" element={<DocumentsPage />} />
+          <Route path="certificates" element={<CertificatesPage />} />
+          <Route path="credentials" element={<CredentialsPage />} />
         </Route>
         <Route path="integration/*">
           <Route index element={<IntegrationDashboard />} />
