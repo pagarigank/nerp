@@ -222,6 +222,39 @@ public class UblInvoiceDto
             }
         };
     }
+
+    /// <summary>
+    /// Creates a Self-Billed Invoice DTO.
+    /// InvoiceTypeCode=11 per LHDN MyInvois specification.
+    /// Used when the buyer issues the invoice on behalf of the supplier.
+    /// </summary>
+    public static UblInvoiceDto CreateSelfBilledInvoice(
+        UblPartyDto supplier,
+        UblPartyDto buyer,
+        string invoiceNumber,
+        decimal totalAmount,
+        decimal taxAmount,
+        List<UblInvoiceLineDto> lineItems,
+        string currencyCode = "MYR")
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "11",
+            InvoiceNumber = invoiceNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = currencyCode,
+            ExchangeRate = 1.0m,
+            Supplier = supplier,
+            Buyer = buyer,
+            TaxExclusiveAmount = totalAmount,
+            TaxInclusiveAmount = totalAmount + taxAmount,
+            TaxTotalAmount = taxAmount,
+            PayableAmount = totalAmount + taxAmount,
+            LineExtensionAmount = totalAmount,
+            LineItems = lineItems,
+        };
+    }
 }
 
 /// <summary>
