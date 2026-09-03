@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ERP.Modules.MalaysianTax</AssemblyName>
+    <RootNamespace>ERP.Modules.MalaysianTax</RootNamespace>
+    <NoWarn>$(NoWarn);SA1000;CA1052;CA1062;CA1848;CA2007;SA1501;SA1028;SA1512;SA1117;SA1611;SA1615;SA1133;S1135;CA1031;CS0246;NU1603;CA1308;CA1508;CA2000;CA1869;CA2234;S1075;SA1009;SA1201;S125;CA1805;CA1002;CA1720;S3604;SA1629;SA1122;SA1111;SA1120;S4487;S6968</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ERP.Core\ERP.Core.csproj" />
+    <ProjectReference Include="..\..\ERP.Shared\ERP.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

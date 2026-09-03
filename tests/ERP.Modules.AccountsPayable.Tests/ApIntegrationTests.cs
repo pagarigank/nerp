@@ -25,11 +25,10 @@ public class ApIntegrationTests
         var accountA = Guid.NewGuid();
         var accountB = Guid.NewGuid();
 
-        var vendor = new Vendor("V-INT-001", "Integration Vendor", null, "12-3456789", null, null, true);
+        var vendor = new Vendor(Guid.NewGuid(), "V-INT-001", "Integration Vendor", null, "12-3456789", null, null, true);
         context.Vendors.Add(vendor);
 
-        var batch = new VoucherBatch(
-            companyId,
+        var batch = new VoucherBatch(companyId,
             "VB-INT-001",
             "Integration test batch",
             DateTimeOffset.UtcNow,
@@ -37,8 +36,7 @@ public class ApIntegrationTests
         context.VoucherBatches.Add(batch);
         await context.SaveChangesAsync();
 
-        var voucher = batch.AddVoucher(
-            vendor.Id,
+        var voucher = batch.AddVoucher(vendor.Id,
             VoucherType.Invoice,
             "INV-INT-001",
             DateTimeOffset.UtcNow,
@@ -55,8 +53,7 @@ public class ApIntegrationTests
         batch.Post();
         await context.SaveChangesAsync();
 
-        var payment = new Payment(
-            companyId,
+        var payment = new Payment(companyId,
             vendor.Id,
             "PMT-INT-001",
             DateTimeOffset.UtcNow,
@@ -92,11 +89,10 @@ public class ApIntegrationTests
         var companyId = Guid.NewGuid();
         var glControlAccountId = Guid.NewGuid();
 
-        var vendor = new Vendor("V-TB-001", "TB Vendor", null, "12-3456789", null, null, true);
+        var vendor = new Vendor(Guid.NewGuid(), "V-TB-001", "TB Vendor", null, "12-3456789", null, null, true);
         context.Vendors.Add(vendor);
 
-        var batch = new VoucherBatch(
-            companyId,
+        var batch = new VoucherBatch(companyId,
             "VB-TB-001",
             "TB test batch",
             DateTimeOffset.UtcNow,
@@ -104,8 +100,7 @@ public class ApIntegrationTests
         context.VoucherBatches.Add(batch);
         await context.SaveChangesAsync();
 
-        var voucher = batch.AddVoucher(
-            vendor.Id,
+        var voucher = batch.AddVoucher(vendor.Id,
             VoucherType.Invoice,
             "INV-TB-001",
             DateTimeOffset.UtcNow,

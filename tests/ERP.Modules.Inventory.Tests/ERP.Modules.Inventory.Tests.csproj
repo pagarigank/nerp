@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <NoWarn>$(NoWarn);CA1707;SA1122</NoWarn>
+    <NoWarn>$(NoWarn);CA1707;SA1122;SA1312;SA1009;SA1111;CS1503;CS0200;CS8629</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Modules\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />

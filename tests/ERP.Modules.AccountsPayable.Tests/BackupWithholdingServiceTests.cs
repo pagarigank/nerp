@@ -20,7 +20,7 @@ public class BackupWithholdingServiceTests
     public async Task VendorWithoutWithholdingFlagReturnsNoWithholding()
     {
         using var context = CreateContext();
-        var vendor = new Vendor("V-001", "Test Vendor", null, "12-3456789", null, null, true);
+        var vendor = new Vendor(Guid.NewGuid(), "V-001", "Test Vendor", null, "12-3456789", null, null, true);
         context.Vendors.Add(vendor);
         await context.SaveChangesAsync();
 
@@ -36,7 +36,7 @@ public class BackupWithholdingServiceTests
     public async Task VendorWithWithholdingFlagCalculatesCorrectAmount()
     {
         using var context = CreateContext();
-        var vendor = new Vendor("V-002", "Withholding Vendor", null, "98-7654321", Vendor1099Category.IndependentContractor, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.24m);
+        var vendor = new Vendor(Guid.NewGuid(), "V-002", "Withholding Vendor", null, "98-7654321", Vendor1099Category.IndependentContractor, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.24m);
         context.Vendors.Add(vendor);
         await context.SaveChangesAsync();
 
@@ -53,7 +53,7 @@ public class BackupWithholdingServiceTests
     public async Task CustomWithholdingRateIsUsed()
     {
         using var context = CreateContext();
-        var vendor = new Vendor("V-003", "Custom Rate Vendor", null, "12-3456789", Vendor1099Category.Rent, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.10m);
+        var vendor = new Vendor(Guid.NewGuid(), "V-003", "Custom Rate Vendor", null, "12-3456789", Vendor1099Category.Rent, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.10m);
         context.Vendors.Add(vendor);
         await context.SaveChangesAsync();
 
@@ -69,7 +69,7 @@ public class BackupWithholdingServiceTests
     public async Task ZeroPaymentAmountReturnsZeroWithholding()
     {
         using var context = CreateContext();
-        var vendor = new Vendor("V-004", "Zero Payment Vendor", null, "12-3456789", Vendor1099Category.NonEmployeeCompensation, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.24m);
+        var vendor = new Vendor(Guid.NewGuid(), "V-004", "Zero Payment Vendor", null, "12-3456789", Vendor1099Category.NonEmployeeCompensation, null, true, backupWithholdingFlag: true, backupWithholdingRate: 0.24m);
         context.Vendors.Add(vendor);
         await context.SaveChangesAsync();
 

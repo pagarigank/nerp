@@ -37,6 +37,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Reporting", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Integration", "src\Modules\ERP.Modules.Integration\ERP.Modules.Integration.csproj", "{13131313-1313-1313-1313-131313131313}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.MalaysianTax", "src\Modules\ERP.Modules.MalaysianTax\ERP.Modules.MalaysianTax.csproj", "{18181818-1818-1818-1818-181818181818}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.EInvoice", "src\Modules\ERP.Modules.EInvoice\ERP.Modules.EInvoice.csproj", "{19191919-1919-1919-1919-191919191919}"
+EndProject
+
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Api.Tests", "tests\ERP.Api.Tests\ERP.Api.Tests.csproj", "{14141414-1414-1414-1414-141414141414}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.Platform.Tests", "tests\ERP.Modules.Platform.Tests\ERP.Modules.Platform.Tests.csproj", "{15151515-1515-1515-1515-151515151515}"

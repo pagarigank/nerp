@@ -37,6 +37,7 @@ public class ApVoucherCreatorTests
     {
         using var platform = BuildPlatformContext();
         using var ap = BuildApContext();
+        using var payroll = BuildPayrollContext();
         var project = Guid.NewGuid();
         var task = Guid.NewGuid();
         var report = BuildReport((120m, project, task), (80m, project, task));
@@ -46,19 +47,19 @@ public class ApVoucherCreatorTests
 
         var voucherService = new Mock<IVoucherService>();
         voucherService.Setup(s => s.CreateVoucherBatchAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
-            .Callback(() => batchOrder.Add("Create"));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
+                      .Callback(() => batchOrder.Add("Create"));
         voucherService.Setup(s => s.AddVoucherToBatchAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<VoucherType>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<IReadOnlyList<VoucherDistributionDto>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(MakeVoucher())
-            .Callback((Guid _, Guid _, VoucherType _, string _, DateTimeOffset _, DateTimeOffset _, decimal _, decimal _, string _, Guid? _, Guid? _, Guid? _, decimal _, decimal _, IReadOnlyList<VoucherDistributionDto> dists, CancellationToken _) => captured.AddRange(dists));
+                      .ReturnsAsync(MakeVoucher())
+                      .Callback((Guid _, Guid _, VoucherType _, string _, DateTimeOffset _, DateTimeOffset _, decimal _, decimal _, string _, Guid? _, Guid? _, Guid? _, decimal _, decimal _, IReadOnlyList<VoucherDistributionDto> dists, CancellationToken _) => captured.AddRange(dists));
         voucherService.Setup(s => s.ReleaseBatchAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
-            .Callback(() => batchOrder.Add("Release"));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
+                      .Callback(() => batchOrder.Add("Release"));
         voucherService.Setup(s => s.PostBatchAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
-            .Callback(() => batchOrder.Add("Post"));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId))
+                      .Callback(() => batchOrder.Add("Post"));
 
-        var creator = new ApVoucherCreator(ap, voucherService.Object, platform);
+        var creator = new ApVoucherCreator(ap, voucherService.Object, platform, payroll);
 
         var result = await creator.CreateReimbursementVoucherAsync(report, BuildEmployee());
 
@@ -80,19 +81,20 @@ public class ApVoucherCreatorTests
     {
         using var platform = BuildPlatformContext();
         using var ap = BuildApContext();
+        using var payroll = BuildPayrollContext();
         var report = BuildReport((50m, null, null));
 
         var voucherService = new Mock<IVoucherService>();
         voucherService.Setup(s => s.CreateVoucherBatchAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
         voucherService.Setup(s => s.AddVoucherToBatchAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<VoucherType>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<IReadOnlyList<VoucherDistributionDto>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(MakeVoucher());
+                      .ReturnsAsync(MakeVoucher());
         voucherService.Setup(s => s.ReleaseBatchAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
         voucherService.Setup(s => s.PostBatchAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
+                      .ReturnsAsync(new VoucherBatch(CompanyId, "EXP-REIMB", "desc", DateTimeOffset.UtcNow, FiscalPeriodId));
 
-        var creator = new ApVoucherCreator(ap, voucherService.Object, platform);
+        var creator = new ApVoucherCreator(ap, voucherService.Object, platform, payroll);
 
         await creator.CreateReimbursementVoucherAsync(report, BuildEmployee());
 
@@ -101,6 +103,10 @@ public class ApVoucherCreatorTests
 
     private static readonly Guid CompanyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid FiscalPeriodId = Guid.NewGuid();
+    private static readonly Guid WageExpenseAccountId = Guid.NewGuid();
+    private static readonly Guid PayrollTaxExpenseAccountId = Guid.NewGuid();
+    private static readonly Guid PayrollLiabilityAccountId = Guid.NewGuid();
+    private static readonly Guid ClearingAccountId = Guid.NewGuid();
 
     private static PlatformDbContext BuildPlatformContext()
     {
@@ -124,6 +130,32 @@ public class ApVoucherCreatorTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new ApDbContext(options);
+    }
+
+    private static PayrollDbContext BuildPayrollContext()
+    {
+        var options = new DbContextOptionsBuilder<PayrollDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var ctx = new PayrollDbContext(options);
+        ctx.CompanyPayrollSetups.Add(new CompanyPayrollSetup(
+            CompanyId,
+            "12-3456789",
+            "98-7654321",
+            null,
+            null,
+            "EFTPS123456",
+            "monthly",
+            0.062m,
+            0.0145m,
+            0.006m,
+            0.01m,
+            WageExpenseAccountId,
+            PayrollTaxExpenseAccountId,
+            PayrollLiabilityAccountId,
+            ClearingAccountId));
+        ctx.SaveChanges();
+        return ctx;
     }
 
     private static Employee BuildEmployee()

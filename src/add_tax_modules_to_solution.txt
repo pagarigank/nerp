@@ -1,0 +1,12 @@
+# Add new MalaysianTax and EInvoice projects to ERP.sln
+
+# These lines need to be added after line 39 (after Integration project)
+# and before the test projects
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.MalaysianTax", "src\Modules\ERP.Modules.MalaysianTax\ERP.Modules.MalaysianTax.csproj", "{18181818-1818-1818-1818-181818181818}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Modules.EInvoice", "src\Modules\ERP.Modules.EInvoice\ERP.Modules.EInvoice.csproj", "{19191919-1919-1919-1919-191919191919}"
+EndProject
+
+# These configuration lines need to be added to the ProjectConfigurationPlatforms section
+# after line 349 (after Integration project configuration)

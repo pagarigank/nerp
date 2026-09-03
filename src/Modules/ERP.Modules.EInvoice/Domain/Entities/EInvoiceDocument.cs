@@ -39,8 +39,21 @@ public class EInvoiceDocument
     [Column(TypeName = "decimal(18,2)")]
     public decimal TotalAmount { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal TaxAmount { get; set; } = 0m;
+
+    [MaxLength(50)]
+    public string? TaxCodeId { get; set; }
+
     [Required, MaxLength(3)]
     public string CurrencyCode { get; set; } = "MYR";
+
+    // Supplier/Customer TIN for reconciliation
+    [MaxLength(50)]
+    public string? SupplierTIN { get; set; }
+
+    [MaxLength(50)]
+    public string? CustomerTIN { get; set; }
 
     // MyInvois response
     [MaxLength(100)]
