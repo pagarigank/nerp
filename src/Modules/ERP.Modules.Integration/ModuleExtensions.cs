@@ -26,6 +26,11 @@ public static class ModuleExtensions
                 sp.GetRequiredService<ICurrentUserService>(), sp));
         });
 
+        // Services
+        services.AddSingleton<EdiX12Translator>();
+        services.AddScoped<WebhookDispatchService>();
+        services.AddScoped<BulkImportService>();
+
         // Background jobs
         services.AddHostedService<WebhookRetryJob>();
         services.AddHostedService<CertificateExpiryAlertJob>();
