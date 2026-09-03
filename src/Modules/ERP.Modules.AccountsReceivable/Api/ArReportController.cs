@@ -35,15 +35,14 @@ public class ArReportController : ControllerBase
         return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
     }
 
-    [HttpGet("aging")]
-    public async Task<ActionResult<ArAgingReportDto>> GetAgingAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    // ---- Data-fetching helpers (shared by JSON + PDF endpoints) ----
+
+    private async Task<ArAgingReportDto> GetAgingDataAsync(Guid companyId, CancellationToken ct)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var customers = await _context.Customers
             .Where(c => !c.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = new List<ArAgingLineDto>();
         foreach (var customer in customers)
@@ -52,7 +51,7 @@ public class ArReportController : ControllerBase
                 .Where(i => i.CustomerId == customer.Id
                     && i.Status != InvoiceStatus.Voided
                     && i.Status != InvoiceStatus.Paid)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             if (invoices.Count == 0)
                 continue;
@@ -92,21 +91,16 @@ public class ArReportController : ControllerBase
                 current + days1To30 + days31To60 + days61To90 + over90));
         }
 
-        return Ok(new ArAgingReportDto(
+        return new ArAgingReportDto(
             companyId,
             asOfDate,
             lines,
             lines.Sum(l => l.CurrentBalance),
             lines.Sum(l => l.TotalDue),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("finance-charge")]
-    public async Task<ActionResult<FinanceChargeReportDto>> GetFinanceChargeReportAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
-        CancellationToken cancellationToken)
+    private async Task<FinanceChargeReportDto> GetFinanceChargeDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var from = fromDate ?? DateTimeOffset.UtcNow.AddMonths(-1);
         var to = toDate ?? DateTimeOffset.UtcNow;
@@ -117,12 +111,12 @@ public class ArReportController : ControllerBase
                 && f.ChargeDate <= to
                 && !f.DeletedOn.HasValue)
             .OrderByDescending(f => f.ChargeDate)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var customerIds = charges.Select(f => f.CustomerId).Distinct().ToList();
         var customers = await _context.Customers
             .Where(c => customerIds.Contains(c.Id))
-            .ToDictionaryAsync(c => c.Id, cancellationToken);
+            .ToDictionaryAsync(c => c.Id, ct);
 
         var lines = charges.Select(f =>
         {
@@ -138,23 +132,20 @@ public class ArReportController : ControllerBase
                 f.Status.ToString());
         }).ToList();
 
-        return Ok(new FinanceChargeReportDto(
+        return new FinanceChargeReportDto(
             companyId,
             DateTimeOffset.UtcNow,
             lines,
             lines.Sum(l => l.Amount),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("customer-trial-balance")]
-    public async Task<ActionResult<CustomerTrialBalanceReportDto>> GetCustomerTrialBalanceAsync(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    private async Task<CustomerTrialBalanceReportDto> GetCustomerTrialBalanceDataAsync(Guid companyId, CancellationToken ct)
     {
         var asOfDate = DateTimeOffset.UtcNow;
         var customers = await _context.Customers
             .Where(c => !c.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var lines = new List<CustomerTrialBalanceLineDto>();
         foreach (var customer in customers)
@@ -162,7 +153,7 @@ public class ArReportController : ControllerBase
             var postedInvoices = await _context.Invoices
                 .Where(i => i.CustomerId == customer.Id
                     && i.Status != InvoiceStatus.Voided)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             var totalInvoiced = postedInvoices.Sum(i => i.TotalAmount);
             var totalPaid = postedInvoices.Sum(i => i.TotalAmount - i.BalanceDue);
@@ -177,21 +168,16 @@ public class ArReportController : ControllerBase
                 totalInvoiced - totalPaid));
         }
 
-        return Ok(new CustomerTrialBalanceReportDto(
+        return new CustomerTrialBalanceReportDto(
             companyId,
             asOfDate,
             lines,
             lines.Sum(l => l.BeginningBalance),
             lines.Sum(l => l.EndingBalance),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("cash-receipts-journal")]
-    public async Task<ActionResult<CashReceiptsJournalReportDto>> GetCashReceiptsJournalAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
-        CancellationToken cancellationToken)
+    private async Task<CashReceiptsJournalReportDto> GetCashReceiptsJournalDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var from = fromDate ?? DateTimeOffset.UtcNow.AddMonths(-1);
         var to = toDate ?? DateTimeOffset.UtcNow;
@@ -202,12 +188,12 @@ public class ArReportController : ControllerBase
                 && r.ReceiptDate <= to
                 && !r.DeletedOn.HasValue)
             .OrderByDescending(r => r.ReceiptDate)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var customerIds = receipts.Select(r => r.CustomerId).Distinct().ToList();
         var customers = await _context.Customers
             .Where(c => customerIds.Contains(c.Id))
-            .ToDictionaryAsync(c => c.Id, cancellationToken);
+            .ToDictionaryAsync(c => c.Id, ct);
 
         var lines = receipts.Select(r =>
         {
@@ -223,22 +209,17 @@ public class ArReportController : ControllerBase
                 r.Status.ToString());
         }).ToList();
 
-        return Ok(new CashReceiptsJournalReportDto(
+        return new CashReceiptsJournalReportDto(
             companyId,
             from,
             to,
             lines,
             lines.Sum(l => l.Amount),
             lines.Count,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("sales-journal")]
-    public async Task<ActionResult<SalesJournalReportDto>> GetSalesJournalAsync(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
-        CancellationToken cancellationToken)
+    private async Task<SalesJournalReportDto> GetSalesJournalDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var from = fromDate ?? DateTimeOffset.UtcNow.AddMonths(-1);
         var to = toDate ?? DateTimeOffset.UtcNow;
@@ -248,12 +229,12 @@ public class ArReportController : ControllerBase
                 && i.InvoiceDate <= to
                 && i.Status != InvoiceStatus.Voided)
             .OrderByDescending(i => i.InvoiceDate)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var customerIds = invoices.Select(i => i.CustomerId).Distinct().ToList();
         var customers = await _context.Customers
             .Where(c => customerIds.Contains(c.Id))
-            .ToDictionaryAsync(c => c.Id, cancellationToken);
+            .ToDictionaryAsync(c => c.Id, ct);
 
         var lines = invoices.Select(i =>
         {
@@ -268,14 +249,62 @@ public class ArReportController : ControllerBase
                 i.Status.ToString());
         }).ToList();
 
-        return Ok(new SalesJournalReportDto(
+        return new SalesJournalReportDto(
             companyId,
             from,
             to,
             lines,
             lines.Sum(l => l.Amount),
             lines.Count,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
+    }
+
+    // ---- JSON endpoints ----
+
+    [HttpGet("aging")]
+    public async Task<ActionResult<ArAgingReportDto>> GetAgingAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetAgingDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("finance-charge")]
+    public async Task<ActionResult<FinanceChargeReportDto>> GetFinanceChargeReportAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate,
+        [FromQuery] DateTimeOffset? toDate,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetFinanceChargeDataAsync(companyId, fromDate, toDate, cancellationToken));
+    }
+
+    [HttpGet("customer-trial-balance")]
+    public async Task<ActionResult<CustomerTrialBalanceReportDto>> GetCustomerTrialBalanceAsync(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetCustomerTrialBalanceDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("cash-receipts-journal")]
+    public async Task<ActionResult<CashReceiptsJournalReportDto>> GetCashReceiptsJournalAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate,
+        [FromQuery] DateTimeOffset? toDate,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetCashReceiptsJournalDataAsync(companyId, fromDate, toDate, cancellationToken));
+    }
+
+    [HttpGet("sales-journal")]
+    public async Task<ActionResult<SalesJournalReportDto>> GetSalesJournalAsync(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate,
+        [FromQuery] DateTimeOffset? toDate,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetSalesJournalDataAsync(companyId, fromDate, toDate, cancellationToken));
     }
 
     // ---- PDF endpoints ----
@@ -283,18 +312,13 @@ public class ArReportController : ControllerBase
     [HttpGet("aging/pdf")]
     public async Task<ActionResult> AgingPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetAgingAsync(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetAgingDataAsync(companyId, ct);
         var header = await GetHeaderAsync(companyId, "AR Aging Report", "AR Aging", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
-            l.CustomerName,
-            l.CurrentBalance.ToString("C", CultureInfo.InvariantCulture),
-            l.Days1To30.ToString("C", CultureInfo.InvariantCulture),
-            l.Days31To60.ToString("C", CultureInfo.InvariantCulture),
-            l.Days61To90.ToString("C", CultureInfo.InvariantCulture),
-            l.Over90Days.ToString("C", CultureInfo.InvariantCulture),
+            l.CustomerName, l.CurrentBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.Days1To30.ToString("C", CultureInfo.InvariantCulture), l.Days31To60.ToString("C", CultureInfo.InvariantCulture),
+            l.Days61To90.ToString("C", CultureInfo.InvariantCulture), l.Over90Days.ToString("C", CultureInfo.InvariantCulture),
             l.TotalDue.ToString("C", CultureInfo.InvariantCulture),
         }).ToArray();
         var doc = new ReportDocument(header, "AR Aging", $"As of {data.AsOfDate:yyyy-MM-dd}",
@@ -306,16 +330,12 @@ public class ArReportController : ControllerBase
     [HttpGet("customer-trial-balance/pdf")]
     public async Task<ActionResult> CustomerTrialBalancePdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetCustomerTrialBalanceAsync(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCustomerTrialBalanceDataAsync(companyId, ct);
         var header = await GetHeaderAsync(companyId, "Customer Trial Balance", "CTB", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
-            l.CustomerName,
-            l.BeginningBalance.ToString("C", CultureInfo.InvariantCulture),
-            l.Debits.ToString("C", CultureInfo.InvariantCulture),
-            l.Credits.ToString("C", CultureInfo.InvariantCulture),
+            l.CustomerName, l.BeginningBalance.ToString("C", CultureInfo.InvariantCulture),
+            l.Debits.ToString("C", CultureInfo.InvariantCulture), l.Credits.ToString("C", CultureInfo.InvariantCulture),
             l.EndingBalance.ToString("C", CultureInfo.InvariantCulture),
         }).ToArray();
         var doc = new ReportDocument(header, "Customer Trial Balance", $"As of {data.AsOfDate:yyyy-MM-dd}",
@@ -327,9 +347,7 @@ public class ArReportController : ControllerBase
     [HttpGet("cash-receipts-journal/pdf")]
     public async Task<ActionResult> CashReceiptsJournalPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetCashReceiptsJournalAsync(companyId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCashReceiptsJournalDataAsync(companyId, fromDate, toDate, ct);
         var header = await GetHeaderAsync(companyId, "Cash Receipts Journal", "CRJ", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -346,9 +364,7 @@ public class ArReportController : ControllerBase
     [HttpGet("sales-journal/pdf")]
     public async Task<ActionResult> SalesJournalPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetSalesJournalAsync(companyId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetSalesJournalDataAsync(companyId, fromDate, toDate, ct);
         var header = await GetHeaderAsync(companyId, "Sales Journal", "SJ", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -365,9 +381,7 @@ public class ArReportController : ControllerBase
     [HttpGet("finance-charge/pdf")]
     public async Task<ActionResult> FinanceChargePdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetFinanceChargeReportAsync(companyId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetFinanceChargeDataAsync(companyId, fromDate, toDate, ct);
         var header = await GetHeaderAsync(companyId, "Finance Charge Report", "Finance Charges", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
