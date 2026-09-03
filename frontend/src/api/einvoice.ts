@@ -171,3 +171,71 @@ export function resubmitDocument(
 ): Promise<{ success: boolean; documentId?: string; uuid?: string; error?: string }> {
   return post(`/einvoice/documents/${documentId}/resubmit`, { correctedPayload })
 }
+
+// ---- Reconciliation ----
+
+export interface ReconciliationSummary {
+  totalDocuments: number
+  validDocuments: number
+  invalidDocuments: number
+  pendingDocuments: number
+  cancelledDocuments: number
+  totalAmount: number
+  validAmount: number
+  invalidAmount: number
+  successRate: number
+}
+
+export interface ReconciliationItem {
+  documentId: string
+  sourceDocumentId: string
+  sourceDocumentType: string
+  documentType: string
+  totalAmount: number
+  taxAmount: number
+  currencyCode: string
+  status: string
+  myInvoisUuid?: string
+  validationLink?: string
+  errorMessage?: string
+  errorCode?: string
+  submittedAt?: string
+  validatedAt?: string
+  createdAt: string
+}
+
+export interface ReconciliationDiscrepancy {
+  type: string
+  severity: string
+  documentId: string
+  description: string
+  detail: string
+  errorCode?: string
+  amount: number
+}
+
+export interface ReconciliationReport {
+  companyId: string
+  fromDate: string
+  toDate: string
+  generatedAt: string
+  summary: ReconciliationSummary
+  items: ReconciliationItem[]
+  discrepancies: ReconciliationDiscrepancy[]
+}
+
+export function getReconciliationReport(
+  companyId: string,
+  fromDate: string,
+  toDate: string
+): Promise<ReconciliationReport> {
+  return get('/einvoice/reconciliation/report', { companyId, fromDate, toDate })
+}
+
+export function getUnsubmittedDocuments(companyId: string): Promise<ReconciliationItem[]> {
+  return get('/einvoice/reconciliation/unsubmitted', { companyId })
+}
+
+export function getPendingValidationDocuments(companyId: string): Promise<ReconciliationItem[]> {
+  return get('/einvoice/reconciliation/pending-validation', { companyId })
+}

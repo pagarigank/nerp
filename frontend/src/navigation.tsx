@@ -534,8 +534,8 @@ export const mainNavigation: NavModule[] = [
       { label: 'API Credentials', to: '/e-invoice/credentials' },
       { label: 'Validation', to: '/e-invoice/validation' },
       { label: 'Consolidated', to: '/e-invoice/consolidated' },
-      { label: 'Reports', to: '/e-invoice/reports' },
       { label: 'Reconciliation', to: '/e-invoice/reconciliation' },
+      { label: 'Reports', to: '/e-invoice/reports' },
     ],
   },
   {

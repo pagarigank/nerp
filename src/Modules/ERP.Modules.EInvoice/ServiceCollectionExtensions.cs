@@ -39,9 +39,10 @@ public static class ServiceCollectionExtensions
         // Token cache (singleton — uses IMemoryCache for thread-safe caching)
         services.AddSingleton<IMyInvoisTokenCache, MyInvoisTokenCache>();
 
-        // QR code, signing, and error mapping
+        // QR code, signing, error mapping, and reconciliation
         services.AddScoped<IQRCodeService, QRCodeService>();
         services.AddScoped<IXAdESSigningService, XAdESSigningService>();
+        services.AddScoped<IReconciliationReportService, ReconciliationReportService>();
 
         // Retry queue
         services.AddScoped<IEInvoiceRetryQueue, EInvoiceRetryQueue>();
