@@ -535,6 +535,7 @@ export const mainNavigation: NavModule[] = [
       { label: 'Validation', to: '/e-invoice/validation' },
       { label: 'Consolidated', to: '/e-invoice/consolidated' },
       { label: 'Item Extensions', to: '/e-invoice/item-extensions' },
+      { label: 'TIN Validation', to: '/e-invoice/tin-validation' },
       { label: 'Reconciliation', to: '/e-invoice/reconciliation' },
       { label: 'Reports', to: '/e-invoice/reports' },
     ],

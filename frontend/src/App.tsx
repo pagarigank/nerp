@@ -231,6 +231,7 @@ import { ReconciliationReportPage } from '@pages/einvoice/ReconciliationReportPa
 import { ReportsPage as EInvoiceReportsPage } from '@pages/einvoice/ReportsPage'
 import { ItemExtensionsPage } from '@pages/einvoice/ItemExtensionsPage'
 import { ConsolidatedPage } from '@pages/einvoice/ConsolidatedPage'
+import { TinValidationPage } from '@pages/einvoice/TinValidationPage'
 import { TaxCodesPage } from '@pages/tax/TaxCodesPage'
 import { TaxRatesPage } from '@pages/tax/TaxRatesPage'
 import { TaxDeterminationRulesPage } from '@pages/tax/TaxDeterminationRulesPage'
@@ -516,6 +517,7 @@ function App() {
           <Route path="reports" element={<EInvoiceReportsPage />} />
           <Route path="item-extensions" element={<ItemExtensionsPage />} />
           <Route path="consolidated" element={<ConsolidatedPage />} />
+          <Route path="tin-validation" element={<TinValidationPage />} />
           <Route path="queue" element={<SubmissionStatusPage />} />
           <Route path="validation" element={<SubmissionStatusPage />} />
           <Route path="consolidated" element={<SubmissionStatusPage />} />
