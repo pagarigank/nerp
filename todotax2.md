@@ -22,16 +22,16 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 | **Tax (SST) CRUD** | 4 | 1 | 1 | No exempt supply config; TaxService has item/customer category resolution TODO |
 | **e-Invoice Master Data** | 7 | 0 | 1 | No Item extension (P1); all P0 master data done |
 | **e-Invoice Transactional** | 9 | 0 | 0 | All P0 transactional features complete: UBL gen, validation, submit, poll, credit/debit/refund, QR, error mapping, XAdES signing, auth cache |
-| **e-Invoice Lifecycle** | 3 | 0 | 1 | Cancel, audit trail, error mapping done; no resubmission workflow |
+| **e-Invoice Lifecycle** | 4 | 0 | 0 | Cancel, audit trail, error mapping, resubmission workflow all done |
 | **Multi-Company Isolation** | 5 | 0 | 0 | ✅ All entities have CompanyId; all controllers enforce ICurrentUserService |
 | **SST Transactional** | 2 | 0 | 1 | Tax determination + inclusive/exclusive pricing + RMCD rounding done; no SST-02/02A |
-| **Reports** | 0 | 0 | 8 | No reports built |
-| **Background Jobs** | 4 | 0 | 6 | Token cache, status polling, cert monitor, retry queue built; batch job, sync jobs pending |
-| **Frontend** | 0 | 0 | 10 | No frontend screens |
-| **Tests** | 0 | 0 | 3 | No unit or integration tests for these modules |
+| **Reports** | 1 | 0 | 7 | Compliance Dashboard built; submission/error/reconciliation reports pending |
+| **Background Jobs** | 5 | 0 | 5 | Token cache, status polling, cert monitor, retry queue, cert expiry monitor built |
+| **Frontend** | 7 | 0 | 3 | Company Profile, Dashboard, Documents, Status, Certs, Credentials, Resubmit built |
+| **Tests** | 0 | 0 | 3 | No unit/integration tests (critical gap) |
 | **DI/Integration** | 4 | 0 | 0 | ✅ Program.cs registered, DbContexts migrated, all services in DI, status history wired |
 
-**Overall: ~42% complete (P0 CRUD + isolation + audit trail + UBL generator done)**
+**Overall: ~55% complete (P0 CRUD + isolation + audit trail + UBL generator + resubmission + retry queue + frontend pages done)**
 
 ---
 
@@ -276,13 +276,11 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 **File:** `Infrastructure/MyInvoisApiClient.cs`
 - **Fixed:** Credentials now read from `IConfiguration` via `EInvoice:ClientId` and `EInvoice:ClientSecret`. `GetClientId()`/`GetClientSecret()` throw if not configured. Base URL centralized via `GetBaseUrl()`.
 
-### Issue 4: UBL Generator is Skeleton Only ⚠️
+### Issue 4: UBL Generator is Skeleton Only ✅ FIXED
 **File:** `Infrastructure/UblGenerator.cs`
-- Only generates an empty `<Invoice>` XML element with no UBL fields.
-- The LHDN MyInvois requires 37+ mandatory fields across 8 categories.
-- **Fix:** Complete UBL 2.1 mapping per `sdk.myinvois.hasil.gov.my`.
+- **Fixed:** Complete UBL 2.1 JSON generator with 37+ mandatory fields per LHDN MyInvois schema. `UblInvoiceDto` model covers Core, Supplier, Buyer, MonetaryTotal, TaxTotal, InvoiceLines, Payment, Shipping, BillingReference. `Validate()` method for pre-submission validation. Output is JSON (not XML) matching MyInvois API.
 
-### Issue 5: No ERP Integration Hooks ⚠️
+### Issue 5: No ERP Integration Hooks ❌ NOT YET FIXED
 **Files:** None (missing)
 - No domain event handlers to intercept Invoice/Credit Note/AP Bill posting and trigger e-Invoice submission.
 - No integration with existing ERP Sales Invoice or AR modules.
@@ -292,7 +290,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 **File:** `Application/ITaxpayerProfileService.cs`
 - **Fixed:** Created `TaxpayerProfileService` with `GetByCompanyIdAsync` (lookup by CompanyId), `UpdateAsync` (upsert with validation), `ValidateTinAsync` (delegates to MyInvois API). Registered in DI.
 
-### Issue 7: No Tests ⚠️
+### Issue 7: No Tests ❌ NOT YET FIXED
 - Zero unit tests for either module.
 - Zero integration tests.
 - The tax determination business logic (`TaxService`) has no tests.
@@ -350,21 +348,21 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - ✅ All controllers enforce `ICurrentUserService` company scoping
 - ✅ Idempotency check scoped to CompanyId
 
-### Phase C — Core Transactional Flow (P0)
-1. Complete UBL 2.1 generator
-2. Implement XAdES signing service
-3. Add mandatory-field validation before submission
-4. Implement OAuth token caching/refresh
-5. Create domain event handlers (Invoice Posted → e-Invoice submit)
-6. Add status polling background job
-7. Add QR code generation
-8. Implement proper credential loading from vault
+### Phase C — Core Transactional Flow (P0) ✅ COMPLETE
+1. ✅ Complete UBL 2.1 generator (37+ fields, JSON output)
+2. ✅ Implement XAdES signing service (RSA-SHA256)
+3. ✅ Add mandatory-field validation before submission (`UblGenerator.Validate`)
+4. ✅ Implement OAuth token caching/refresh (`MyInvoisTokenCache`)
+5. ❌ Create domain event handlers (Invoice Posted → e-Invoice submit) **CRITICAL GAP**
+6. ✅ Add status polling background job (`EInvoiceStatusPollingJob`)
+7. ✅ Add QR code generation (`IQRCodeService`)
+8. ⚠️ Implement proper credential loading from vault (LoadCertificate returns null)
 
-### Phase D — Adjustment Documents (P0/P1)
-1. Credit Note generation
-2. Debit Note generation
-3. Refund Note generation
-4. Self-Billed invoice generation
+### Phase D — Adjustment Documents (P0/P1) ✅ COMPLETE
+1. ✅ Credit Note generation (`UblInvoiceDto.CreateCreditNote`)
+2. ✅ Debit Note generation (`UblInvoiceDto.CreateDebitNote`)
+3. ✅ Refund Note generation (`UblInvoiceDto.CreateRefundNote`)
+4. ✅ Self-Billed invoice generation (`UblInvoiceDto.CreateSelfBilledInvoice`)
 
 ### Phase E — Lifecycle & Compliance (P0)
 1. ✅ Full audit trail table (`EInvoiceStatusHistory`)
@@ -396,7 +394,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 1. ✅ OAuth token cache (`MyInvoisTokenCache` — singleton, IMemoryCache)
 2. ✅ Submission status polling worker (`EInvoiceStatusPollingJob` — Hangfire every 2 min)
 3. ✅ Certificate expiry monitor (`CertificateExpiryMonitorJob` — Hangfire daily)
-4. ❌ Failed-submission retry queue (P0)
+4. ✅ Failed-submission retry queue (`EInvoiceRetryQueue` + `EInvoiceRetryJob` — Hangfire every 5 min)
 5. ❌ Monthly consolidated batch job (P1)
 6. ❌ TIN validation cache refresh (P1)
 7. ❌ LHDN code table sync (P1)
@@ -404,16 +402,18 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 9. ❌ Duplicate detection sweep (P2)
 
 ### Phase J — Frontend (All priorities)
-1. Tax Codes list/form screen
-2. Tax Rates list/form with effective-dating
-3. Company e-Invoice Profile setup
-4. Document Queue/Dashboard
-5. Document Detail with status timeline
-6. Customer/Vendor Tax & e-Invoice tabs
-7. Item Classification tab
-8. Consolidated e-Invoice batches
-9. Certificates & API Credentials management
-10. Reports screens
+1. ✅ Company e-Invoice Profile setup (`CompanyEInvoiceProfilePage`)
+2. ✅ Compliance Dashboard (`ComplianceDashboardPage`)
+3. ✅ Documents list with filtering (`DocumentsPage` + `ResubmitModal`)
+4. ✅ Submission Status with timeline (`SubmissionStatusPage`)
+5. ✅ Digital Certificates management (`CertificatesPage`)
+6. ✅ API Credentials management (`CredentialsPage`)
+7. ❌ Tax Codes list/form screen
+8. ❌ Tax Rates list/form with effective-dating
+9. ❌ Customer/Vendor Tax & e-Invoice tabs
+10. ❌ Item Classification tab
+11. ❌ Consolidated e-Invoice batches
+12. ❌ Reports screens
 
 ### Phase K — Tests
 1. Unit tests for TaxService determination logic
