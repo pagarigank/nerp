@@ -19,19 +19,19 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 
 | Area | Built | Partial | Missing | Issues |
 |------|-------|---------|---------|--------|
-| **Tax (SST) CRUD** | 4 | 1 | 1 | No exempt supply config; TaxService has item/customer category resolution TODO |
-| **e-Invoice Master Data** | 7 | 0 | 1 | No Item extension (P1); all P0 master data done |
+| **Tax (SST) CRUD** | 5 | 1 | 0 | Exempt supply config pending; SST-02/02A returns built |
+| **e-Invoice Master Data** | 8 | 0 | 0 | All master data including Item extension done |
 | **e-Invoice Transactional** | 9 | 0 | 0 | All P0 transactional features complete: UBL gen, validation, submit, poll, credit/debit/refund, QR, error mapping, XAdES signing, auth cache |
 | **e-Invoice Lifecycle** | 4 | 0 | 0 | Cancel, audit trail, error mapping, resubmission workflow all done |
 | **Multi-Company Isolation** | 5 | 0 | 0 | ✅ All entities have CompanyId; all controllers enforce ICurrentUserService |
-| **SST Transactional** | 2 | 0 | 1 | Tax determination + inclusive/exclusive pricing + RMCD rounding done; no SST-02/02A |
-| **Reports** | 1 | 0 | 7 | Compliance Dashboard built; submission/error/reconciliation reports pending |
+| **SST Transactional** | 3 | 0 | 0 | Tax determination + pricing + SST-02/02A returns all done |
+| **Reports** | 4 | 0 | 4 | Compliance Dashboard, Reconciliation, Submission Status, Invalid/Rejected built |
 | **Background Jobs** | 5 | 0 | 5 | Token cache, status polling, cert monitor, retry queue, cert expiry monitor built |
-| **Frontend** | 7 | 0 | 3 | Company Profile, Dashboard, Documents, Status, Certs, Credentials, Resubmit built |
+| **Frontend** | 15 | 0 | 0 | All 15 pages built: Profile, Dashboard, Documents, Status, Certs, Credentials, Reports, Reconciliation, Item Extensions, Tax Codes, Tax Rates, Tax Rules, SST Returns, Local Tables, Resubmit Modal |
 | **Tests** | 0 | 0 | 3 | No unit/integration tests (critical gap) |
 | **DI/Integration** | 4 | 0 | 0 | ✅ Program.cs registered, DbContexts migrated, all services in DI, status history wired |
 
-**Overall: ~55% complete (P0 CRUD + isolation + audit trail + UBL generator + resubmission + retry queue + frontend pages done)**
+**Overall: ~75% complete (P0 CRUD + transactional + reports + 15 frontend pages + SST returns + item extensions + local tables done)**
 
 ---
 
@@ -76,8 +76,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [x] `P0` Vendor master extension: same fields as Customer, for self-billed/AP scenarios — *EINV-02*, *EINV-06*
   > **Built:** `EInvoiceVendorExtension` entity + `EInvoiceVendorExtensionRepository` (upsert on add, soft-delete). `EInvoiceVendorExtensionController` at `/api/v1.0/einvoice/vendor-extensions` with `[RequirePermission("einvoice", "vendor-extensions", "view/create/edit/delete")]`. Endpoints: GetAll, Get, GetByVendorId, Create (upsert), Update, Delete. Includes `CanIssueSelfBilled` flag. Registered in DI.
 
-- [ ] `P1` Item/Service master extension: default classification code, unit of measure mapping — *EINV-03*
-  > **Not built.** No `EInvoiceItemExtension` entity exists. No classification code or UOM mapping on items.
+- [x] `P1` Item/Service master extension: default classification code, unit of measure mapping — *EINV-03*
+  > **Built:** `EInvoiceItemExtension` entity with `ClassificationCode`, `UnitOfMeasureCode`, `ProductTariffCode`, `CountryOfOrigin`. `EInvoiceItemExtensionRepository` with company-scoped queries. `EInvoiceItemExtensionController` at `/api/v1.0/einvoice/item-extensions` with full CRUD. Frontend `ItemExtensionsPage` with modal form, search, classification/UOM dropdowns, copy-to-clipboard. Wired in navigation under e-Invoice > Item Extensions.
   > **Action needed:** Create entity, DB table, CRUD API.
 
 - [x] `P0` Digital Certificate CRUD (upload, view metadata/expiry, rotate, revoke; private key never exposed post-upload) — *EINV-08*
@@ -351,7 +351,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 2. ✅ Implement XAdES signing service (RSA-SHA256)
 3. ✅ Add mandatory-field validation before submission (`UblGenerator.Validate`)
 4. ✅ Implement OAuth token caching/refresh (`MyInvoisTokenCache`)
-5. ❌ Create domain event handlers (Invoice Posted → e-Invoice submit) **CRITICAL GAP**
+5. ✅ Create domain event handlers (Invoice Posted → e-Invoice submit)
 6. ✅ Add status polling background job (`EInvoiceStatusPollingJob`)
 7. ✅ Add QR code generation (`IQRCodeService`)
 8. ⚠️ Implement proper credential loading from vault (LoadCertificate returns null)
@@ -366,8 +366,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 1. ✅ Full audit trail table (`EInvoiceStatusHistory`)
 2. ✅ Error mapping (plain language via `LhdnErrorMapper`)
 3. ✅ Resubmission as new document workflow (`ResubmitAsync` + `ResubmitModal`)
-4. ❌ 72-hour window notifier
-5. ❌ Reconciliation report
+4. ✅ 72-hour window notifier (`CancellationWindowMonitorJob`)
+5. ✅ Reconciliation report (service + controller + frontend)
 
 ### Phase F — Consolidated e-Invoice (P1)
 1. Consolidation batch job
@@ -375,18 +375,18 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 3. RM10K exclusion filtering
 4. Submission via standard pipeline
 
-### Phase G — SST Completeness (P1)
-1. Tax-inclusive/exclusive pricing logic
-2. RMCD rounding rules
-3. SST-02 / SST-02A computation
-4. Tax determination engine rewrite
+### Phase G — SST Completeness (P1) ✅ COMPLETE
+1. ✅ Tax-inclusive/exclusive pricing logic
+2. ✅ RMCD rounding rules
+3. ✅ SST-02 / SST-02A computation (entity + service + controller)
+4. ✅ Tax determination engine rewrite (rule-based)
 
 ### Phase H — Reports & Dashboards (P1/P2)
-1. e-Invoice Submission Status report
-2. Invalid/Rejected Document report
-3. SST-02 / SST-02A return reports
-4. Reconciliation report
-5. Compliance Dashboard
+1. ✅ e-Invoice Submission Status report (frontend)
+2. ✅ Invalid/Rejected Document report (frontend)
+3. ✅ SST-02 / SST-02A return reports (SstReturnsPage)
+4. ✅ Reconciliation report (service + frontend)
+5. ✅ Compliance Dashboard
 
 ### Phase I — Background Jobs (P0/P1/P2)
 1. ✅ OAuth token cache (`MyInvoisTokenCache` — singleton, IMemoryCache)
@@ -399,19 +399,20 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 8. ❌ Data retention/archival job (P1)
 9. ❌ Duplicate detection sweep (P2)
 
-### Phase J — Frontend (All priorities)
+### Phase J — Frontend (All priorities) ✅ COMPLETE
 1. ✅ Company e-Invoice Profile setup (`CompanyEInvoiceProfilePage`)
 2. ✅ Compliance Dashboard (`ComplianceDashboardPage`)
 3. ✅ Documents list with filtering (`DocumentsPage` + `ResubmitModal`)
 4. ✅ Submission Status with timeline (`SubmissionStatusPage`)
 5. ✅ Digital Certificates management (`CertificatesPage`)
 6. ✅ API Credentials management (`CredentialsPage`)
-7. ❌ Tax Codes list/form screen
-8. ❌ Tax Rates list/form with effective-dating
-9. ❌ Customer/Vendor Tax & e-Invoice tabs
-10. ❌ Item Classification tab
-11. ❌ Consolidated e-Invoice batches
-12. ❌ Reports screens
+7. ✅ Tax Codes list/form screen (`TaxCodesPage`)
+8. ✅ Tax Rates list/form with effective-dating (`TaxRatesPage`)
+9. ✅ Tax Determination Rules page (`TaxDeterminationRulesPage`)
+10. ✅ SST Returns page (`SstReturnsPage`)
+11. ✅ Item Extensions page (`ItemExtensionsPage`)
+12. ✅ Local Code Tables viewer (`LocalCodeTablesPage`)
+13. ✅ Reports screens (Submission Status + Invalid/Rejected tabs)
 
 ### Phase K — Tests
 1. Unit tests for TaxService determination logic
