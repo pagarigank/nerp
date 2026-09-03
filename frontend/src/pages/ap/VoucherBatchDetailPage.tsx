@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, AlertCircle, X } from 'lucide-react'
@@ -10,6 +10,7 @@ import { Combobox } from '@components/ui/Combobox'
 import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { Skeleton } from '@components/ui/LoadingSpinner'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
+import { useDraftAutosave } from '@hooks/useDraftAutosave'
 import { getErrorMessage } from '@api/client'
 import {
   getVoucherBatch,
@@ -470,6 +471,12 @@ export function VoucherBatchDetailPage() {
   const vouchers = batch?.vouchers ?? []
   const totalAmount = vouchers.reduce((sum, v) => sum + v.totalAmount, 0)
 
+  const { lastSavedLabel } = useDraftAutosave({
+    draftKey: `voucher-batch-${batchId}`,
+    data: vouchers,
+    enabled: isDraft,
+  })
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -526,6 +533,11 @@ export function VoucherBatchDetailPage() {
           action={
             <div className="flex items-center gap-2">
               <MapStatusBadge value={batch.status} mapping={voucherBatchStatusMap} size="md" />
+              {isDraft && (
+                <span className="text-xs text-gray-400 dark:text-gray-500" title="Auto-saved draft">
+                  {lastSavedLabel}
+                </span>
+              )}
               {isDraft && (
                 <Button
                   variant="secondary"

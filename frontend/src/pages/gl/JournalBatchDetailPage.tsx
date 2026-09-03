@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, AlertCircle, Trash2 } from 'lucide-react'
@@ -11,6 +11,7 @@ import { Modal, ConfirmDialog } from '@components/ui/Modal'
 import { Skeleton } from '@components/ui/LoadingSpinner'
 import { Badge } from '@components/ui/Badge'
 import { MapStatusBadge } from '@components/ui/MapStatusBadge'
+import { useDraftAutosave } from '@hooks/useDraftAutosave'
 import { getErrorMessage } from '@api/client'
 import {
   getJournalBatch,
@@ -226,6 +227,12 @@ export function JournalBatchDetailPage() {
   const totalCredits = lines.reduce((sum, l) => sum + l.credit, 0)
   const isBalanced = lines.length >= 2 && Math.abs(totalDebits - totalCredits) < 0.005
 
+  const { lastSavedLabel, saveNow } = useDraftAutosave({
+    draftKey: `journal-batch-${batchId}`,
+    data: lines,
+    enabled: isDraft,
+  })
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -282,6 +289,11 @@ export function JournalBatchDetailPage() {
           action={
             <div className="flex items-center gap-2">
               <MapStatusBadge value={batch.status} mapping={journalBatchStatusMap} size="md" />
+              {isDraft && (
+                <span className="text-xs text-gray-400 dark:text-gray-500" title="Auto-saved draft">
+                  {lastSavedLabel}
+                </span>
+              )}
               {isDraft && (
                 <Button
                   variant="secondary"
