@@ -56,6 +56,21 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DataRetentionJob>();
         services.AddScoped<EInvoiceConsolidationJob>();
 
+        // TIN validation cache and refresh job
+        services.AddSingleton<ITinValidationCache, TinValidationCache>();
+        services.AddScoped<TinValidationCacheRefreshJob>();
+
+        // LHDN code table cache and sync job
+        services.AddSingleton<ILhdnCodeTableCache, LhdnCodeTableCache>();
+        services.AddScoped<LhdnCodeTableSyncJob>();
+
+        // LHDN reference API client for code table sync
+        services.AddHttpClient("lhdn-reference", client =>
+        {
+            client.BaseAddress = new Uri("https://sdk.myinvois.hasil.gov.my");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        });
+
         return services;
     }
 }

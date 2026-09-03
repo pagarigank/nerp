@@ -628,6 +628,18 @@ public class Program
                 job => job.ExecuteAsync(CancellationToken.None),
                 Cron.Daily(3, 0), // Daily at 3:00 AM UTC: consolidate small-value invoices
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.TinValidationCacheRefreshJob>(
+                "einvoice-tin-cache-refresh",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Daily(2, 0), // Daily at 2:00 AM UTC: refresh TIN validation cache
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.LhdnCodeTableSyncJob>(
+                "einvoice-lhdn-code-table-sync",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Daily(3, 0), // Daily at 3:00 AM UTC: sync LHDN code tables
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())

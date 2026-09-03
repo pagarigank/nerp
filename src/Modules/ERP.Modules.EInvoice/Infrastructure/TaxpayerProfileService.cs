@@ -19,6 +19,7 @@ public class TaxpayerProfileService : ITaxpayerProfileService
     private readonly EInvoiceDbContext _dbContext;
     private readonly IMyInvoisApiClient _myInvoisClient;
     private readonly IMyInvoisTokenCache _tokenCache;
+    private readonly ITinValidationCache _tinCache;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TaxpayerProfileService> _logger;
 
@@ -26,12 +27,14 @@ public class TaxpayerProfileService : ITaxpayerProfileService
         EInvoiceDbContext dbContext,
         IMyInvoisApiClient myInvoisClient,
         IMyInvoisTokenCache tokenCache,
+        ITinValidationCache tinCache,
         IConfiguration configuration,
         ILogger<TaxpayerProfileService> logger)
     {
         _dbContext = dbContext;
         _myInvoisClient = myInvoisClient;
         _tokenCache = tokenCache;
+        _tinCache = tinCache;
         _configuration = configuration;
         _logger = logger;
     }
@@ -151,9 +154,16 @@ public class TaxpayerProfileService : ITaxpayerProfileService
             };
         }
 
+        // Check cache first
+        var cached = _tinCache.Get(tin);
+        if (cached != null)
+        {
+            _logger.LogDebug("Returning cached TIN validation for {TIN}", tin);
+            return cached;
+        }
+
         try
         {
-            // Delegate to MyInvois API for TIN validation via token cache
             var clientId = _configuration["EInvoice:ClientId"] ?? string.Empty;
             var clientSecret = _configuration["EInvoice:ClientSecret"] ?? string.Empty;
             var environment = _configuration["EInvoice:Environment"] ?? "sandbox";
@@ -161,16 +171,19 @@ public class TaxpayerProfileService : ITaxpayerProfileService
 
             var response = await _myInvoisClient.ValidateTaxpayerTinAsync(tin, accessToken);
 
-            return new TinValidationResult
+            var result = new TinValidationResult
             {
                 TIN = tin,
                 IsValid = response.IsValid,
                 EntityName = response.EntityName ?? string.Empty,
                 BusinessDescription = response.BusinessName ?? string.Empty,
-                IsAgent = false, // MyInvois API doesn't directly expose this
+                IsAgent = false,
                 Success = true,
                 ValidationDate = DateTime.UtcNow
             };
+
+            _tinCache.Set(tin, result);
+            return result;
         }
         catch (Exception ex)
         {
