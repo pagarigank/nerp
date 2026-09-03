@@ -23,6 +23,7 @@ public class MalaysianTaxDbContext : DbContext
     public DbSet<CompanySstRegistration> CompanySstRegistrations => Set<CompanySstRegistration>();
     public DbSet<TaxDeterminationRule> TaxDeterminationRules => Set<TaxDeterminationRule>();
     public DbSet<SstReturn> SstReturns => Set<SstReturn>();
+    public DbSet<ExemptSupplyCategory> ExemptSupplyCategories => Set<ExemptSupplyCategory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +74,15 @@ public class MalaysianTaxDbContext : DbContext
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => new { e.CompanyId, e.PeriodStart, e.ReturnType });
             entity.HasIndex(e => e.Status);
+        });
+
+        // ExemptSupplyCategory configuration
+        modelBuilder.Entity<ExemptSupplyCategory>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.CategoryCode }).IsUnique();
+            entity.HasIndex(e => e.SupplyType);
+            entity.HasIndex(e => e.TaxCodeId);
         });
     }
 }

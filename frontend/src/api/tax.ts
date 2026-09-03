@@ -122,3 +122,45 @@ export interface TaxPreviewResult {
 export function previewTax(data: { amount: number; ratePercent: number; pricingMode: string }): Promise<TaxPreviewResult> {
   return post('/tax/calculator/preview', data)
 }
+
+// ---- Exempt/Zero-Rated Supply Categories ----
+
+export interface ExemptSupplyCategory {
+  id: string
+  companyId: string
+  categoryCode: string
+  description?: string
+  supplyType: string
+  taxCodeId: string
+  lhdnReference?: string
+  isActive: boolean
+  effectiveFrom?: string
+  effectiveTo?: string
+  notes?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export function getExemptSupplyCategories(companyId: string): Promise<ExemptSupplyCategory[]> {
+  return get('/ExemptSupplyCategory', { companyId })
+}
+
+export function getExemptSupplyCategory(id: string): Promise<ExemptSupplyCategory> {
+  return get(`/ExemptSupplyCategory/${id}`)
+}
+
+export function getEffectiveExemptCategories(companyId: string, asOfDate?: string): Promise<ExemptSupplyCategory[]> {
+  return get('/ExemptSupplyCategory/effective', { companyId, asOfDate })
+}
+
+export function createExemptSupplyCategory(data: Partial<ExemptSupplyCategory>): Promise<ExemptSupplyCategory> {
+  return post('/ExemptSupplyCategory', data)
+}
+
+export function updateExemptSupplyCategory(id: string, data: Partial<ExemptSupplyCategory>): Promise<ExemptSupplyCategory> {
+  return put(`/ExemptSupplyCategory/${id}`, { ...data, id })
+}
+
+export function deleteExemptSupplyCategory(id: string): Promise<void> {
+  return del(`/ExemptSupplyCategory/${id}`)
+}
