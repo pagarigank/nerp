@@ -588,6 +588,19 @@ public class Program
                 job => job.RunFullCheckAsync(CancellationToken.None),
                 Cron.Daily(7, 0), // Daily at 7:00 AM UTC: full data mart integrity check
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            // E-Invoice recurring jobs
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.EInvoiceStatusPollingJob>(
+                "einvoice-status-polling",
+                job => job.RunAsync(CancellationToken.None),
+                "*/2 * * * *", // Every 2 minutes: poll MyInvois for submission status
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.CertificateExpiryMonitorJob>(
+                "einvoice-cert-expiry-monitor",
+                job => job.RunAsync(CancellationToken.None),
+                Cron.Daily(8, 0), // Daily at 8:00 AM UTC: check certificate expiry
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())

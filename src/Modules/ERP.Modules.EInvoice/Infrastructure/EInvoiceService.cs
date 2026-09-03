@@ -7,6 +7,7 @@ using ERP.Modules.EInvoice.Domain;
 using ERP.Modules.EInvoice.Domain.Entities;
 using ERP.Modules.EInvoice.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace ERP.Modules.EInvoice.Infrastructure;
 
@@ -14,11 +15,30 @@ public class EInvoiceService : IEInvoiceService
 {
     private readonly IMyInvoisApiClient _myInvoisClient;
     private readonly EInvoiceDbContext _dbContext;
+    private readonly IMyInvoisTokenCache _tokenCache;
+    private readonly IConfiguration _configuration;
+    private readonly IQRCodeService _qrCodeService;
 
-    public EInvoiceService(IMyInvoisApiClient myInvoisClient, EInvoiceDbContext dbContext)
+    public EInvoiceService(
+        IMyInvoisApiClient myInvoisClient,
+        EInvoiceDbContext dbContext,
+        IMyInvoisTokenCache tokenCache,
+        IConfiguration configuration,
+        IQRCodeService qrCodeService)
     {
         _myInvoisClient = myInvoisClient;
         _dbContext = dbContext;
+        _tokenCache = tokenCache;
+        _configuration = configuration;
+        _qrCodeService = qrCodeService;
+    }
+
+    private async Task<string> GetAccessTokenAsync(CancellationToken ct)
+    {
+        var clientId = _configuration["EInvoice:ClientId"] ?? string.Empty;
+        var clientSecret = _configuration["EInvoice:ClientSecret"] ?? string.Empty;
+        var environment = _configuration["EInvoice:Environment"] ?? "sandbox";
+        return await _tokenCache.GetAccessTokenAsync(clientId, clientSecret, environment, ct);
     }
 
     public async Task<EInvoiceSubmissionResult> SubmitDocumentAsync(
@@ -46,18 +66,23 @@ public class EInvoiceService : IEInvoiceService
             };
         }
 
-        // Authenticate with MyInvois (credentials read from IConfiguration)
-        var authRequest = new AuthenticationRequest(
-            ClientId: string.Empty,
-            ClientSecret: string.Empty,
-            Environment: "production"
-        );
+        // Get cached access token (auto-refreshes if expired)
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
 
-        var authResponse = await _myInvoisClient.AuthenticateAsync(authRequest, cancellationToken);
+        // Validate batch size before submission
+        var payloadBytes = System.Text.Encoding.UTF8.GetByteCount(payload);
+        if (payloadBytes > 300 * 1024)
+        {
+            return new EInvoiceSubmissionResult
+            {
+                Success = false,
+                Error = $"Document payload exceeds 300KB limit ({payloadBytes:N0} bytes)"
+            };
+        }
 
         // Submit document
         var submitRequest = new SubmissionRequest(documentType, payload, "JSON");
-        var response = await _myInvoisClient.SubmitDocumentsAsync(submitRequest, authResponse.AccessToken, cancellationToken);
+        var response = await _myInvoisClient.SubmitDocumentsAsync(submitRequest, accessToken, cancellationToken);
 
         var result = new EInvoiceSubmissionResult
         {
@@ -167,17 +192,11 @@ public class EInvoiceService : IEInvoiceService
         if (string.IsNullOrEmpty(document.SubmissionUid))
             throw new InvalidOperationException("Document has not been submitted");
 
-        // Credentials resolved via MyInvoisApiClient from IConfiguration
-        var authRequest = new AuthenticationRequest(
-            ClientId: string.Empty,
-            ClientSecret: string.Empty,
-            Environment: "production"
-        );
-
-        var authResponse = await _myInvoisClient.AuthenticateAsync(authRequest, cancellationToken);
+        // Get cached access token
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
         var statusResponse = await _myInvoisClient.GetSubmissionStatusAsync(
             document.SubmissionUid,
-            authResponse.AccessToken,
+            accessToken,
             cancellationToken);
 
         var docStatus = statusResponse.Documents.FirstOrDefault();
@@ -186,9 +205,30 @@ public class EInvoiceService : IEInvoiceService
         document.Status = newStatus;
         document.ValidatedAt = DateTime.UtcNow;
 
+        // Store UUID and validation link from MyInvois response
+        if (!string.IsNullOrEmpty(docStatus?.Uuid))
+        {
+            document.MyInvoisUuid = docStatus.Uuid;
+        }
+
         if (!string.IsNullOrEmpty(docStatus?.ErrorMessage))
         {
-            document.LhdnsErrorMessage = docStatus.ErrorMessage;
+            document.LhdnsErrorMessage = LhdnErrorMapper.MapError(null, docStatus.ErrorMessage);
+        }
+
+        // Generate QR payload when document becomes valid
+        if (newStatus == EInvoiceDocumentStatus.Valid && !string.IsNullOrEmpty(document.MyInvoisUuid))
+        {
+            document.ValidationLink = $"https://myinvois.hasil.gov.my/{document.MyInvoisUuid}";
+            try
+            {
+                await _qrCodeService.GenerateQrPayloadAsync(documentId, cancellationToken);
+            }
+            catch (Exception)
+            {
+                // QR generation failure is non-fatal — log and continue
+                // The document is still valid even without QR payload
+            }
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -220,15 +260,9 @@ public class EInvoiceService : IEInvoiceService
 
     public async Task<EInvoiceValidationResult> ValidateTinAsync(string tin, CancellationToken cancellationToken = default)
     {
-        // Credentials resolved via MyInvoisApiClient from IConfiguration
-        var authRequest = new AuthenticationRequest(
-            ClientId: string.Empty,
-            ClientSecret: string.Empty,
-            Environment: "production"
-        );
-
-        var authResponse = await _myInvoisClient.AuthenticateAsync(authRequest, cancellationToken);
-        var response = await _myInvoisClient.ValidateTaxpayerTinAsync(tin, authResponse.AccessToken, cancellationToken);
+        // Get cached access token
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
+        var response = await _myInvoisClient.ValidateTaxpayerTinAsync(tin, accessToken, cancellationToken);
 
         return new EInvoiceValidationResult
         {
@@ -252,18 +286,12 @@ public class EInvoiceService : IEInvoiceService
         if (string.IsNullOrEmpty(document.SubmissionUid))
             throw new InvalidOperationException("Document not yet submitted");
 
-        // Credentials resolved via MyInvoisApiClient from IConfiguration
-        var authRequest = new AuthenticationRequest(
-            ClientId: string.Empty,
-            ClientSecret: string.Empty,
-            Environment: "production"
-        );
-
-        var authResponse = await _myInvoisClient.AuthenticateAsync(authRequest, cancellationToken);
+        // Get cached access token
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
         var cancelResult = await _myInvoisClient.CancelDocumentAsync(
             document.SubmissionUid,
             reason,
-            authResponse.AccessToken,
+            accessToken,
             cancellationToken);
 
         if (cancelResult.Status == "Accepted" || cancelResult.Status == "Cancelled")

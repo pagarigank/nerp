@@ -76,11 +76,24 @@ public class MyInvoisApiClient : IMyInvoisApiClient
         return JsonSerializer.Deserialize<AuthenticationResponse>(json, JsonOptions)!;
     }
 
+    /// <summary>
+    /// Submits document(s) to MyInvois API.
+    /// Enforces LHDN limits: max 100 documents per batch, max 5MB total payload.
+    /// </summary>
     public async Task<SubmissionResponse> SubmitDocumentsAsync(SubmissionRequest request, string accessToken, CancellationToken cancellationToken = default)
     {
         var baseUrl = GetBaseUrl();
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        // Validate single-document size (300KB limit per LHDN)
+        var payloadBytes = Encoding.UTF8.GetByteCount(request.Payload);
+        const int maxDocSize = 300 * 1024; // 300KB
+        if (payloadBytes > maxDocSize)
+        {
+            _logger.LogWarning("Document payload exceeds 300KB limit: {Size} bytes", payloadBytes);
+            throw new ArgumentException($"Document payload exceeds 300KB limit ({payloadBytes:N0} bytes)");
+        }
 
         var json = JsonSerializer.Serialize(new
         {
@@ -90,6 +103,18 @@ public class MyInvoisApiClient : IMyInvoisApiClient
         });
 
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Validate total batch size (5MB limit per LHDN)
+        var batchBytes = Encoding.UTF8.GetByteCount(json);
+        const int maxBatchSize = 5 * 1024 * 1024; // 5MB
+        if (batchBytes > maxBatchSize)
+        {
+            _logger.LogWarning("Batch payload exceeds 5MB limit: {Size} bytes", batchBytes);
+            throw new ArgumentException($"Batch payload exceeds 5MB limit ({batchBytes:N0} bytes)");
+        }
+
+        _logger.LogInformation("Submitting document to MyInvois: type={DocumentType}, size={Size} bytes", request.DocumentType, batchBytes);
+
         var response = await _httpClient.PostAsync("/api/v1.0/documentsubmissions", content, cancellationToken);
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
 

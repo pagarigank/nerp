@@ -94,11 +94,134 @@ public class UblInvoiceDto
 
     // ---- Document References (optional) ----
 
-    /// <summary>Gets or sets the billing reference number.</summary>
+    /// <summary>Gets or sets the billing reference number (original invoice number for credit/debit notes).</summary>
     public string? BillingReferenceNumber { get; set; }
+
+    /// <summary>Gets or sets the billing reference UUID (original invoice MyInvois UUID for credit/debit/refund notes).</summary>
+    public string? BillingReferenceUuid { get; set; }
 
     /// <summary>Gets or sets customs import form references (comma-separated).</summary>
     public string? CustomsFormReferences { get; set; }
+
+    /// <summary>
+    /// Creates a Credit Note DTO from an original invoice DTO.
+    /// </summary>
+    public static UblInvoiceDto CreateCreditNote(
+        UblInvoiceDto originalInvoice,
+        string creditNoteNumber,
+        decimal creditAmount,
+        string reason)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "02",
+            InvoiceNumber = creditNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = originalInvoice.CurrencyCode,
+            ExchangeRate = originalInvoice.ExchangeRate,
+            Supplier = originalInvoice.Supplier,
+            Buyer = originalInvoice.Buyer,
+            TaxExclusiveAmount = creditAmount,
+            TaxInclusiveAmount = creditAmount,
+            PayableAmount = creditAmount,
+            LineExtensionAmount = creditAmount,
+            BillingReferenceNumber = originalInvoice.InvoiceNumber,
+            BillingReferenceUuid = originalInvoice.BillingReferenceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Credit Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = creditAmount,
+                    LineExtensionAmount = creditAmount,
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a Debit Note DTO from an original invoice DTO.
+    /// </summary>
+    public static UblInvoiceDto CreateDebitNote(
+        UblInvoiceDto originalInvoice,
+        string debitNoteNumber,
+        decimal debitAmount,
+        string reason)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "03",
+            InvoiceNumber = debitNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = originalInvoice.CurrencyCode,
+            ExchangeRate = originalInvoice.ExchangeRate,
+            Supplier = originalInvoice.Supplier,
+            Buyer = originalInvoice.Buyer,
+            TaxExclusiveAmount = debitAmount,
+            TaxInclusiveAmount = debitAmount,
+            PayableAmount = debitAmount,
+            LineExtensionAmount = debitAmount,
+            BillingReferenceNumber = originalInvoice.InvoiceNumber,
+            BillingReferenceUuid = originalInvoice.BillingReferenceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Debit Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = debitAmount,
+                    LineExtensionAmount = debitAmount,
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a Refund Note DTO from an original invoice DTO.
+    /// </summary>
+    public static UblInvoiceDto CreateRefundNote(
+        UblInvoiceDto originalInvoice,
+        string refundNoteNumber,
+        decimal refundAmount,
+        string reason)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "04",
+            InvoiceNumber = refundNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = originalInvoice.CurrencyCode,
+            ExchangeRate = originalInvoice.ExchangeRate,
+            Supplier = originalInvoice.Supplier,
+            Buyer = originalInvoice.Buyer,
+            TaxExclusiveAmount = refundAmount,
+            TaxInclusiveAmount = refundAmount,
+            PayableAmount = refundAmount,
+            LineExtensionAmount = refundAmount,
+            BillingReferenceNumber = originalInvoice.InvoiceNumber,
+            BillingReferenceUuid = originalInvoice.BillingReferenceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Refund Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = refundAmount,
+                    LineExtensionAmount = refundAmount,
+                }
+            }
+        };
+    }
 }
 
 /// <summary>

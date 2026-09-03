@@ -184,6 +184,25 @@ public class UblGenerator
             invoice["Delivery"] = delivery;
         }
 
+        // ---- Billing Reference (for Credit Notes, Debit Notes, Refund Notes) ----
+        if (!string.IsNullOrEmpty(dto.BillingReferenceNumber) || !string.IsNullOrEmpty(dto.BillingReferenceUuid))
+        {
+            var billingRef = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(dto.BillingReferenceNumber))
+            {
+                billingRef["InvoiceDocumentReference"] = new Dictionary<string, object>
+                {
+                    ["ID"] = dto.BillingReferenceNumber,
+                };
+            }
+            if (!string.IsNullOrEmpty(dto.BillingReferenceUuid))
+            {
+                billingRef["InvoiceDocumentReference"] ??= new Dictionary<string, object>();
+                ((Dictionary<string, object>)billingRef["InvoiceDocumentReference"])["UUID"] = dto.BillingReferenceUuid;
+            }
+            invoice["BillingReference"] = new List<object> { billingRef };
+        }
+
         return JsonSerializer.Serialize(payload, JsonOptions);
     }
 

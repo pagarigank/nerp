@@ -36,6 +36,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEInvoiceVendorExtensionRepository, EInvoiceVendorExtensionRepository>();
         services.AddScoped<IApiCredentialRepository, ApiCredentialRepository>();
 
+        // Token cache (singleton — uses IMemoryCache for thread-safe caching)
+        services.AddSingleton<IMyInvoisTokenCache, MyInvoisTokenCache>();
+
+        // QR code and error mapping
+        services.AddScoped<IQRCodeService, QRCodeService>();
+
+        // Background jobs
+        services.AddScoped<EInvoiceStatusPollingJob>();
+        services.AddScoped<CertificateExpiryMonitorJob>();
+
         return services;
     }
 }
