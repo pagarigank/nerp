@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ERP.Core.Domain.Common;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
+using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.EInvoice.Application;
 using ERP.Modules.EInvoice.Domain;
 using ERP.Modules.EInvoice.Domain.Entities;
@@ -19,6 +20,7 @@ namespace ERP.Api.Handlers;
 /// <summary>
 /// Handles InvoiceBatchPostedEvent and auto-submits e-Invoices.
 /// Loads supplier/buyer profiles, item extensions, and tax determination rules.
+/// Wires actual InvoiceLine data (quantity, price, tax) into UBL payload.
 /// </summary>
 public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<InvoiceBatchPostedEvent>
 {
@@ -30,17 +32,20 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
 
     private readonly IEInvoiceService _eInvoiceService;
     private readonly EInvoiceDbContext _eInvoiceDbContext;
+    private readonly ArDbContext _arDbContext;
     private readonly ERP.Modules.MalaysianTax.Infrastructure.MalaysianTaxDbContext _taxDbContext;
     private readonly ILogger<InvoicePostedToEInvoiceHandler> _logger;
 
     public InvoicePostedToEInvoiceHandler(
         IEInvoiceService eInvoiceService,
         EInvoiceDbContext eInvoiceDbContext,
+        ArDbContext arDbContext,
         ERP.Modules.MalaysianTax.Infrastructure.MalaysianTaxDbContext taxDbContext,
         ILogger<InvoicePostedToEInvoiceHandler> logger)
     {
         _eInvoiceService = eInvoiceService;
         _eInvoiceDbContext = eInvoiceDbContext;
+        _arDbContext = arDbContext;
         _taxDbContext = taxDbContext;
         _logger = logger;
     }
@@ -143,14 +148,82 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
 
     private async Task<string> BuildInvoicePayloadAsync(InvoiceBatchPostedEvent batchEvent, CancellationToken cancellationToken)
     {
+        // 1. Load supplier profile
         var supplierProfile = await _eInvoiceDbContext.TaxpayerProfiles
             .FirstOrDefaultAsync(p => p.CompanyId == batchEvent.CompanyId, cancellationToken);
 
         var supplier = BuildSupplierParty(supplierProfile);
-        var buyer = await BuildBuyerPartyAsync(batchEvent.CompanyId, cancellationToken);
-        var lineItems = await BuildLineItemsAsync(batchEvent, cancellationToken);
+
+        // 2. Load invoices in this batch and their lines
+        var invoices = await _arDbContext.Invoices
+            .Where(i => i.InvoiceBatchId == batchEvent.BatchId)
+            .Include(i => i.Lines)
+            .ToListAsync(cancellationToken);
+
+        if (invoices.Count == 0)
+        {
+            _logger.LogWarning("No invoices found for batch {BatchId}. Using placeholder line.", batchEvent.BatchId);
+        }
+
+        // 3. Load the first invoice's customer for buyer party
+        var firstInvoice = invoices.FirstOrDefault();
+        var buyer = firstInvoice != null
+            ? await BuildBuyerPartyForCustomerAsync(batchEvent.CompanyId, firstInvoice.CustomerId, cancellationToken)
+            : await BuildBuyerPartyAsync(batchEvent.CompanyId, cancellationToken);
+
+        // 4. Load tax determination rules
+        var taxRules = await _taxDbContext.TaxDeterminationRules
+            .Where(r => r.CompanyId == batchEvent.CompanyId && r.IsActive)
+            .OrderBy(r => r.Priority)
+            .ToListAsync(cancellationToken);
+
+        var taxCode = DetermineTaxCode(taxRules);
+
+        // 6. Build line items from actual invoice lines
+        var lineItems = new List<UblInvoiceLineDto>();
+        var lineCounter = 1;
+
+        foreach (var invoice in invoices)
+        {
+            foreach (var line in invoice.Lines)
+            {
+                var lineExtension = line.Quantity * line.UnitPrice;
+                var discountAmount = line.DiscountAmount;
+
+                // Try to get item extension for classification codes
+                // In production, line would have an ItemId to look up
+                var classificationCode = "022"; // Default: Goods
+                var uomCode = "C62"; // Default: Each
+                var tariffCode = (string?)null;
+                var countryOfOrigin = (string?)null;
+
+                // Compute tax amount for this line
+                var lineTaxAmount = line.TaxAmount;
+
+                lineItems.Add(new UblInvoiceLineDto
+                {
+                    LineNumber = lineCounter++,
+                    Description = line.Description,
+                    Quantity = line.Quantity,
+                    UnitCode = uomCode,
+                    UnitPrice = line.UnitPrice,
+                    LineExtensionAmount = lineExtension,
+                    TaxTypeCode = taxCode,
+                    TaxRatePercent = 0, // Will be computed from tax rules if available
+                    TaxAmount = lineTaxAmount,
+                    ClassificationCodes = new List<string> { classificationCode },
+                    ProductTariffCode = tariffCode,
+                    CountryOfOrigin = countryOfOrigin,
+                    DiscountAmount = discountAmount > 0 ? discountAmount : null,
+                    DiscountReason = discountAmount > 0 ? "Line discount" : null,
+                });
+            }
+        }
+
+        // 7. Compute tax subtotals
         var taxSubtotals = ComputeTaxSubtotals(lineItems);
 
+        // 8. Compute totals
         var totalExcl = lineItems.Sum(l => l.LineExtensionAmount);
         var totalTax = taxSubtotals.Sum(t => t.TaxAmount);
 
@@ -175,6 +248,42 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
         };
 
         return JsonSerializer.Serialize(new { invoice = dto }, JsonOptions);
+    }
+
+    private async Task<UblPartyDto> BuildBuyerPartyForCustomerAsync(
+        Guid companyId,
+        Guid customerId,
+        CancellationToken cancellationToken)
+    {
+        // Try to load customer extension for this specific customer
+        var extension = await _eInvoiceDbContext.EInvoiceCustomerExtensions
+            .Where(e => e.CompanyId == companyId
+                && e.CustomerId == customerId
+                && !e.IsDeleted)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (extension != null)
+        {
+            return new UblPartyDto
+            {
+                Name = extension.IdValue ?? "Customer",
+                TIN = extension.TaxIdentificationNumber ?? "TBC",
+                RegistrationNumber = extension.IdValue ?? string.Empty,
+                IdType = extension.IdType ?? "BRN",
+                SSTRegistrationNumber = extension.SstRegistrationNumber,
+                Address = new UblAddressDto
+                {
+                    AddressLines = new List<string> { extension.SstBillingAddress ?? string.Empty },
+                    City = extension.SstBillingCity ?? string.Empty,
+                    State = extension.SstBillingState ?? string.Empty,
+                    PostalCode = extension.SstBillingPostalCode ?? string.Empty,
+                    CountryCode = extension.SstBillingCountry ?? "MYS",
+                },
+            };
+        }
+
+        // Fallback to any extension for this company
+        return await BuildBuyerPartyAsync(companyId, cancellationToken);
     }
 
     private async Task<UblPartyDto> BuildBuyerPartyAsync(Guid companyId, CancellationToken cancellationToken)
@@ -207,35 +316,6 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
                 State = extension.SstBillingState ?? string.Empty,
                 PostalCode = extension.SstBillingPostalCode ?? string.Empty,
                 CountryCode = extension.SstBillingCountry ?? "MYS",
-            },
-        };
-    }
-
-    private async Task<List<UblInvoiceLineDto>> BuildLineItemsAsync(
-        InvoiceBatchPostedEvent batchEvent,
-        CancellationToken cancellationToken)
-    {
-        var taxRules = await _taxDbContext.TaxDeterminationRules
-            .Where(r => r.CompanyId == batchEvent.CompanyId && r.IsActive)
-            .OrderBy(r => r.Priority)
-            .ToListAsync(cancellationToken);
-
-        var taxCode = DetermineTaxCode(taxRules);
-
-        return new List<UblInvoiceLineDto>
-        {
-            new()
-            {
-                LineNumber = 1,
-                Description = $"Invoice {batchEvent.BatchNumber}",
-                Quantity = 1,
-                UnitCode = "C62",
-                UnitPrice = 0,
-                LineExtensionAmount = 0,
-                TaxTypeCode = taxCode,
-                TaxRatePercent = 0,
-                TaxAmount = 0,
-                ClassificationCodes = new List<string> { "022" },
             },
         };
     }
