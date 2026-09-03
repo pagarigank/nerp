@@ -202,8 +202,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [ ] `P1` Sales/Service Tax collected report — *TAX-01, TAX-02*
   > **Not built.**
 
-- [ ] `P0` Reconciliation report: ERP-posted vs. MyInvois-confirmed — *EINV-15*
-  > **Not built.**
+- [x] `P0` Reconciliation report: ERP-posted vs. MyInvois-confirmed — *EINV-15* ✅
+  > **Built:** `ReconciliationReportService` with summary, items, discrepancy detection (errors, cancelled, stale pending). `EInvoiceReconciliationController` at `/api/v1.0/einvoice/reconciliation/report` with date range. `ReconciliationReportPage` with tabs (Overview/Discrepancies/Items), success rate bar, amount summaries.
 
 - [ ] `P1` Audit trail / change log report — *EINV-15*
   > **Not built.**
