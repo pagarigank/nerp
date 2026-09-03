@@ -9,6 +9,7 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  RotateCw,
 } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
@@ -16,6 +17,7 @@ import { Input } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
 import { SkeletonTable } from '@components/ui/LoadingSpinner'
 import { getDocuments, type EInvoiceDocument } from '@api/einvoice'
+import { ResubmitModal } from './ResubmitModal'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -67,6 +69,7 @@ function getStatusIcon(status: string) {
 export function DocumentsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [resubmitDoc, setResubmitDoc] = useState<EInvoiceDocument | null>(null)
 
   // TODO: Replace with actual companyId from auth context
   const companyId = '00000000-0000-0000-0000-000000000001'
@@ -261,16 +264,29 @@ export function DocumentsPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        {doc.validationLink && (
-                          <a
-                            href={doc.validationLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-                          >
-                            View <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {doc.validationLink && (
+                            <a
+                              href={doc.validationLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                            >
+                              View <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                          {['Invalid', 'Rejected', 'Cancelled'].includes(doc.status) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setResubmitDoc(doc)}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                              leftIcon={<RotateCw className="h-3 w-3" />}
+                            >
+                              Resubmit
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -280,6 +296,11 @@ export function DocumentsPage() {
           )}
         </CardContent>
       </Card>
+      <ResubmitModal
+        isOpen={!!resubmitDoc}
+        onClose={() => setResubmitDoc(null)}
+        document={resubmitDoc}
+      />
     </div>
   )
 }

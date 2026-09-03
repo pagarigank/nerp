@@ -23,4 +23,13 @@ public interface IEInvoiceService
     Task<EInvoiceValidationResult> ValidateTinAsync(string tin, CancellationToken cancellationToken = default);
 
     Task<bool> CancelDocumentAsync(Guid documentId, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resubmits a failed/invalid e-Invoice document as a new submission.
+    /// Creates a new document record, copies corrected payload, and submits to MyInvois.
+    /// </summary>
+    Task<EInvoiceSubmissionResult> ResubmitAsync(
+        Guid originalDocumentId,
+        string correctedPayload,
+        CancellationToken cancellationToken = default);
 }

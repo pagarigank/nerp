@@ -164,3 +164,10 @@ export function getDocuments(
 export function getDocumentStatus(id: string): Promise<EInvoiceDocument> {
   return get(`/einvoice/documents/${id}/status`)
 }
+
+export function resubmitDocument(
+  documentId: string,
+  correctedPayload: string
+): Promise<{ success: boolean; documentId?: string; uuid?: string; error?: string }> {
+  return post(`/einvoice/documents/${documentId}/resubmit`, { correctedPayload })
+}

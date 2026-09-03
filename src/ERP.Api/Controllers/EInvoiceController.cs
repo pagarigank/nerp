@@ -122,6 +122,33 @@ public class EInvoiceController : ControllerBase
             return BadRequest(new { Error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Resubmits a failed/invalid e-Invoice document with a corrected payload.
+    /// Creates a new document record and submits to MyInvois.
+    /// </summary>
+    [HttpPost("documents/{documentId:guid}/resubmit")]
+    [RequirePermission("einvoice", "documents", "create")]
+    [ProducesResponseType(typeof(EInvoiceSubmissionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ResubmitDocument(Guid documentId, [FromBody] ResubmitRequest request)
+    {
+        try
+        {
+            var result = await _service.ResubmitAsync(documentId, request.CorrectedPayload);
+
+            if (!result.Success)
+                return BadRequest(new { Error = result.Error });
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
 }
 
 /// <summary>
@@ -149,4 +176,13 @@ public class CancelRequest
 {
     /// <summary>Gets or sets the reason for cancellation (required by LHDN).</summary>
     [Required] public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for resubmitting a failed/invalid e-Invoice document.
+/// </summary>
+public class ResubmitRequest
+{
+    /// <summary>Gets or sets the corrected UBL payload (JSON).</summary>
+    [Required] public string CorrectedPayload { get; set; } = string.Empty;
 }

@@ -307,4 +307,129 @@ public class EInvoiceService : IEInvoiceService
 
         return document.Status == EInvoiceDocumentStatus.Cancelled;
     }
+
+    /// <inheritdoc/>
+    public async Task<EInvoiceSubmissionResult> ResubmitAsync(
+        Guid originalDocumentId,
+        string correctedPayload,
+        CancellationToken cancellationToken = default)
+    {
+        var original = await _dbContext.EInvoiceDocuments
+            .FirstOrDefaultAsync(d => d.Id == originalDocumentId, cancellationToken);
+
+        if (original == null)
+            throw new InvalidOperationException($"Original document {originalDocumentId} not found");
+
+        // Only Invalid, Rejected, or Cancelled documents can be resubmitted
+        if (original.Status != EInvoiceDocumentStatus.Invalid
+            && original.Status != EInvoiceDocumentStatus.Rejected
+            && original.Status != EInvoiceDocumentStatus.Cancelled)
+        {
+            throw new InvalidOperationException(
+                $"Cannot resubmit document in {original.Status} status. Only Invalid, Rejected, or Cancelled documents can be resubmitted.");
+        }
+
+        // Validate the corrected payload before submission
+        var validationErrors = UblGenerator.Validate(
+            System.Text.Json.JsonSerializer.Deserialize<UblInvoiceDto>(
+                correctedPayload,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!);
+
+        if (validationErrors.Count > 0)
+        {
+            return new EInvoiceSubmissionResult
+            {
+                Success = false,
+                Error = $"Payload validation failed: {string.Join(", ", validationErrors)}"
+            };
+        }
+
+        // Create a new document record (preserving the link to the original)
+        var contentHash = ComputeContentHash(correctedPayload);
+
+        // Check for duplicate
+        var existingDoc = await _dbContext.EInvoiceDocuments
+            .FirstOrDefaultAsync(d =>
+                d.CompanyId == original.CompanyId
+                && d.ContentHash == contentHash
+                && d.Status != EInvoiceDocumentStatus.Cancelled,
+                cancellationToken);
+
+        if (existingDoc != null)
+        {
+            return new EInvoiceSubmissionResult
+            {
+                Success = true,
+                Uuid = existingDoc.MyInvoisUuid,
+                SubmissionUid = existingDoc.SubmissionUid,
+                DocumentId = existingDoc.Id,
+                IsDuplicate = true
+            };
+        }
+
+        // Get cached access token
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
+
+        // Validate batch size
+        var payloadBytes = System.Text.Encoding.UTF8.GetByteCount(correctedPayload);
+        if (payloadBytes > 300 * 1024)
+        {
+            return new EInvoiceSubmissionResult
+            {
+                Success = false,
+                Error = $"Document payload exceeds 300KB limit ({payloadBytes:N0} bytes)"
+            };
+        }
+
+        // Submit the corrected document
+        var submitRequest = new SubmissionRequest(original.DocumentType, correctedPayload, "JSON");
+        var response = await _myInvoisClient.SubmitDocumentsAsync(submitRequest, accessToken, cancellationToken);
+
+        var result = new EInvoiceSubmissionResult
+        {
+            Success = response.Status == "Accepted",
+            Uuid = response.Results.Count > 0 ? response.Results[0].Uuid : null,
+            SubmissionUid = response.SubmissionUid,
+            Error = response.Results.Count > 0 ? response.Results[0].ErrorMessage : null
+        };
+
+        // Store the new document
+        if (response.Results.Count > 0)
+        {
+            var newDoc = new EInvoiceDocument
+            {
+                CompanyId = original.CompanyId,
+                SourceDocumentId = original.SourceDocumentId,
+                SourceDocumentType = original.SourceDocumentType,
+                DocumentType = original.DocumentType,
+                TotalAmount = ParseAmount(correctedPayload),
+                CurrencyCode = original.CurrencyCode,
+                SupplierTIN = original.SupplierTIN,
+                CustomerTIN = original.CustomerTIN,
+                Status = EInvoiceDocumentStatus.Submitted,
+                MyInvoisUuid = response.Results[0].Uuid,
+                SubmissionUid = response.SubmissionUid,
+                ContentType = "JSON",
+                ContentHash = contentHash,
+                IsSandbox = original.IsSandbox,
+                SubmittedAt = DateTime.UtcNow,
+            };
+
+            _dbContext.EInvoiceDocuments.Add(newDoc);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            result.DocumentId = newDoc.Id;
+
+            // Record audit trail
+            await RecordStatusChange(
+                newDoc.Id,
+                null,
+                EInvoiceDocumentStatus.Submitted.ToString(),
+                "user",
+                $"Resubmitted from document {originalDocumentId} (original status: {original.Status})",
+                ct: cancellationToken);
+        }
+
+        return result;
+    }
 }
