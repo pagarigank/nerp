@@ -45,6 +45,7 @@ public static class PermissionCatalog
             new("users", "Users"),
             new("roles", "Roles"),
             new("audit-logs", "Audit Log"),
+            new("access-requests", "Access Requests"),
         }),
         new("gl", "General Ledger", new List<PageEntry>
         {
