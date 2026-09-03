@@ -355,6 +355,9 @@ public class Program
         // E-Invoice integration: auto-submit on AR invoice batch posting
         builder.Services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.AccountsReceivable.Domain.Entities.InvoiceBatchPostedEvent>, ERP.Api.Handlers.InvoicePostedToEInvoiceHandler>();
 
+        // E-Invoice integration: auto-submit self-billed e-Invoice on AP voucher posting
+        builder.Services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Core.Common.VoucherPostedEvent>, ERP.Api.Handlers.VoucherPostedToEInvoiceHandler>();
+
         // Phase 15 — Performance & Scalability
         builder.Services.AddResponseCompression(options =>
         {

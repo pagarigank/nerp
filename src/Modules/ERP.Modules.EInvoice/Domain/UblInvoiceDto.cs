@@ -256,6 +256,153 @@ public class UblInvoiceDto
             LineItems = lineItems,
         };
     }
+
+    /// <summary>
+    /// Creates a Self-Billed Credit Note DTO.
+    /// InvoiceTypeCode=12 per LHDN MyInvois specification.
+    /// Used when the buyer issues a credit note for self-billed scenarios.
+    /// </summary>
+    public static UblInvoiceDto CreateSelfBilledCreditNote(
+        UblPartyDto supplier,
+        UblPartyDto buyer,
+        string creditNoteNumber,
+        decimal creditAmount,
+        decimal taxAmount,
+        string originalInvoiceNumber,
+        string originalInvoiceUuid,
+        string reason,
+        string currencyCode = "MYR",
+        decimal exchangeRate = 1.0m)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "12",
+            InvoiceNumber = creditNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = currencyCode,
+            ExchangeRate = exchangeRate,
+            Supplier = supplier,
+            Buyer = buyer,
+            TaxExclusiveAmount = creditAmount,
+            TaxInclusiveAmount = creditAmount + taxAmount,
+            TaxTotalAmount = taxAmount,
+            PayableAmount = creditAmount + taxAmount,
+            LineExtensionAmount = creditAmount,
+            BillingReferenceNumber = originalInvoiceNumber,
+            BillingReferenceUuid = originalInvoiceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Self-Billed Credit Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = creditAmount,
+                    LineExtensionAmount = creditAmount,
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    /// Creates a Self-Billed Debit Note DTO.
+    /// InvoiceTypeCode=13 per LHDN MyInvois specification.
+    /// Used when the buyer issues a debit note for self-billed scenarios.
+    /// </summary>
+    public static UblInvoiceDto CreateSelfBilledDebitNote(
+        UblPartyDto supplier,
+        UblPartyDto buyer,
+        string debitNoteNumber,
+        decimal debitAmount,
+        decimal taxAmount,
+        string originalInvoiceNumber,
+        string originalInvoiceUuid,
+        string reason,
+        string currencyCode = "MYR",
+        decimal exchangeRate = 1.0m)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "13",
+            InvoiceNumber = debitNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = currencyCode,
+            ExchangeRate = exchangeRate,
+            Supplier = supplier,
+            Buyer = buyer,
+            TaxExclusiveAmount = debitAmount,
+            TaxInclusiveAmount = debitAmount + taxAmount,
+            TaxTotalAmount = taxAmount,
+            PayableAmount = debitAmount + taxAmount,
+            LineExtensionAmount = debitAmount,
+            BillingReferenceNumber = originalInvoiceNumber,
+            BillingReferenceUuid = originalInvoiceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Self-Billed Debit Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = debitAmount,
+                    LineExtensionAmount = debitAmount,
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    /// Creates a Self-Billed Refund Note DTO.
+    /// InvoiceTypeCode=14 per LHDN MyInvois specification.
+    /// Used when the buyer issues a refund note for self-billed scenarios.
+    /// </summary>
+    public static UblInvoiceDto CreateSelfBilledRefundNote(
+        UblPartyDto supplier,
+        UblPartyDto buyer,
+        string refundNoteNumber,
+        decimal refundAmount,
+        decimal taxAmount,
+        string originalInvoiceNumber,
+        string originalInvoiceUuid,
+        string reason,
+        string currencyCode = "MYR",
+        decimal exchangeRate = 1.0m)
+    {
+        return new UblInvoiceDto
+        {
+            InvoiceTypeCode = "14",
+            InvoiceNumber = refundNoteNumber,
+            IssueDate = DateTime.UtcNow.Date,
+            IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
+            CurrencyCode = currencyCode,
+            ExchangeRate = exchangeRate,
+            Supplier = supplier,
+            Buyer = buyer,
+            TaxExclusiveAmount = refundAmount,
+            TaxInclusiveAmount = refundAmount + taxAmount,
+            TaxTotalAmount = taxAmount,
+            PayableAmount = refundAmount + taxAmount,
+            LineExtensionAmount = refundAmount,
+            BillingReferenceNumber = originalInvoiceNumber,
+            BillingReferenceUuid = originalInvoiceUuid,
+            LineItems = new List<UblInvoiceLineDto>
+            {
+                new()
+                {
+                    LineNumber = 1,
+                    Description = $"Self-Billed Refund Note: {reason}",
+                    Quantity = 1,
+                    UnitCode = "C62",
+                    UnitPrice = refundAmount,
+                    LineExtensionAmount = refundAmount,
+                }
+            },
+        };
+    }
 }
 
 /// <summary>
