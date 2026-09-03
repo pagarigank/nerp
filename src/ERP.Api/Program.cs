@@ -616,6 +616,18 @@ public class Program
                 job => job.RunAsync(CancellationToken.None),
                 "*/30 * * * *", // Every 30 minutes: check cancellation window expiry
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.DataRetentionJob>(
+                "einvoice-data-retention",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Monthly(1, 4, 0), // 1st of month at 4:00 AM UTC: archive 7-year-old documents
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.EInvoiceConsolidationJob>(
+                "einvoice-consolidation",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Daily(3, 0), // Daily at 3:00 AM UTC: consolidate small-value invoices
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())

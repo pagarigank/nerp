@@ -235,7 +235,8 @@ public class UblInvoiceDto
         decimal totalAmount,
         decimal taxAmount,
         List<UblInvoiceLineDto> lineItems,
-        string currencyCode = "MYR")
+        string currencyCode = "MYR",
+        decimal exchangeRate = 1.0m)
     {
         return new UblInvoiceDto
         {
@@ -244,7 +245,7 @@ public class UblInvoiceDto
             IssueDate = DateTime.UtcNow.Date,
             IssueTime = DateTime.UtcNow.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
             CurrencyCode = currencyCode,
-            ExchangeRate = 1.0m,
+            ExchangeRate = exchangeRate,
             Supplier = supplier,
             Buyer = buyer,
             TaxExclusiveAmount = totalAmount,

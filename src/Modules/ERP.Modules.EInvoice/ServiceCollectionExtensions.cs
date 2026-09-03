@@ -53,6 +53,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CertificateExpiryMonitorJob>();
         services.AddScoped<EInvoiceRetryJob>();
         services.AddScoped<CancellationWindowMonitorJob>();
+        services.AddScoped<DataRetentionJob>();
+        services.AddScoped<EInvoiceConsolidationJob>();
 
         return services;
     }

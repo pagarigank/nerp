@@ -32,4 +32,13 @@ public interface IEInvoiceService
         Guid originalDocumentId,
         string correctedPayload,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records a buyer-side rejection of a validated e-Invoice.
+    /// The buyer rejects the invoice within the allowed window, requiring a credit note.
+    /// </summary>
+    Task<bool> RecordBuyerRejectionAsync(
+        Guid documentId,
+        string rejectionReason,
+        CancellationToken cancellationToken = default);
 }

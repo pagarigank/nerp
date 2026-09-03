@@ -20,6 +20,7 @@ public class DigitalCertificate
         IsActive = true;
         IsSandbox = false;
         CreatedAt = DateTime.UtcNow;
+        CertificateBytes = Array.Empty<byte>();
     }
 
     [Key]
@@ -50,6 +51,15 @@ public class DigitalCertificate
 
     [MaxLength(1000)]
     public string? VaultObjectId { get; set; }
+
+    /// <summary>Gets or sets the certificate PFX/PKCS12 bytes (for sandbox/dev). Production should use vault.</summary>
+    #pragma warning disable CA1819 // Properties should not return arrays
+    public byte[] CertificateBytes { get; set; }
+    #pragma warning restore CA1819
+
+    /// <summary>Gets or sets the password for the PFX file (encrypted in production).</summary>
+    [MaxLength(200)]
+    public string? CertificatePassword { get; set; }
 
     public bool IsActive { get; set; }
 

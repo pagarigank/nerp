@@ -432,4 +432,51 @@ public class EInvoiceService : IEInvoiceService
 
         return result;
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> RecordBuyerRejectionAsync(
+        Guid documentId,
+        string rejectionReason,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _dbContext.EInvoiceDocuments
+            .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
+
+        if (document == null)
+        {
+            throw new InvalidOperationException($"Document {documentId} not found");
+        }
+
+        if (document.Status != EInvoiceDocumentStatus.Valid)
+        {
+            throw new InvalidOperationException(
+                $"Cannot record rejection for a document in {document.Status} status. Only Valid documents can be rejected.");
+        }
+
+        // Verify rejection is within the allowed window (same 72-hour rule as cancellation)
+        if (!EInvoiceComplianceHelper.CanCancelDocument(document.SubmittedAt ?? DateTime.UtcNow, DateTime.UtcNow))
+        {
+            throw new InvalidOperationException(
+                "Rejection window has expired (72 hours from submission). Late rejections must go through the standard dispute process.");
+        }
+
+        var previousStatus = document.Status.ToString();
+        document.Status = EInvoiceDocumentStatus.Rejected;
+        document.BuyerRejectionReason = rejectionReason;
+        document.RejectedAt = DateTime.UtcNow;
+        document.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Record audit trail
+        await RecordStatusChange(
+            documentId,
+            previousStatus,
+            EInvoiceDocumentStatus.Rejected.ToString(),
+            "buyer",
+            rejectionReason,
+            ct: cancellationToken);
+
+        return true;
+    }
 }

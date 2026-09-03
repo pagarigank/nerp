@@ -60,6 +60,10 @@ public class UblGenerator
         if (dto.TaxSubtotals.Count == 0)
             errors.Add("At least one TaxSubtotal is required.");
 
+        // Exchange Rate (mandatory for non-MYR)
+        if (dto.CurrencyCode != "MYR" && dto.ExchangeRate <= 0)
+            errors.Add("ExchangeRate must be positive for non-MYR currencies.");
+
         // Line Items
         if (dto.LineItems.Count == 0)
             errors.Add("At least one InvoiceLine is required.");
@@ -160,7 +164,7 @@ public class UblGenerator
         invoice["TaxTotal"] = BuildTaxTotal(dto);
 
         // ---- Invoice Lines (mandatory) ----
-        invoice["InvoiceLine"] = dto.LineItems.Select(BuildInvoiceLine).ToList();
+        invoice["InvoiceLine"] = dto.LineItems.Select(line => BuildInvoiceLine(line, dto.CurrencyCode)).ToList();
 
         // ---- Shipping (optional) ----
         if (!string.IsNullOrEmpty(dto.ShippingRecipientName) || dto.ShippingRecipientAddress != null)
@@ -369,7 +373,7 @@ public class UblGenerator
         return subtotal;
     }
 
-    private static Dictionary<string, object> BuildInvoiceLine(UblInvoiceLineDto line)
+    private static Dictionary<string, object> BuildInvoiceLine(UblInvoiceLineDto line, string currencyCode)
     {
         var result = new Dictionary<string, object>
         {
@@ -379,7 +383,7 @@ public class UblGenerator
                 ["_"] = FormatDecimal(line.Quantity),
                 ["unitCode"] = line.UnitCode,
             },
-            ["LineExtensionAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.LineExtensionAmount), ["currencyID"] = "MYR" },
+            ["LineExtensionAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.LineExtensionAmount), ["currencyID"] = currencyCode },
             ["Item"] = new Dictionary<string, object>
             {
                 ["Description"] = line.Description,
@@ -390,7 +394,7 @@ public class UblGenerator
             },
             ["Price"] = new Dictionary<string, object>
             {
-                ["PriceAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.UnitPrice), ["currencyID"] = "MYR" },
+                ["PriceAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.UnitPrice), ["currencyID"] = currencyCode },
             },
             ["TaxTotal"] = new Dictionary<string, object>
             {
@@ -399,8 +403,8 @@ public class UblGenerator
                 {
                     new Dictionary<string, object>
                     {
-                        ["TaxableAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.LineExtensionAmount), ["currencyID"] = "MYR" },
-                        ["TaxAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.TaxAmount), ["currencyID"] = "MYR" },
+                        ["TaxableAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.LineExtensionAmount), ["currencyID"] = currencyCode },
+                        ["TaxAmount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.TaxAmount), ["currencyID"] = currencyCode },
                         ["TaxCategory"] = new Dictionary<string, object>
                         {
                             ["ID"] = line.TaxTypeCode,
@@ -449,7 +453,7 @@ public class UblGenerator
                 ["ChargeIndicator"] = false,
             };
             if (line.DiscountAmount.HasValue)
-                allowance["Amount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.DiscountAmount.Value), ["currencyID"] = "MYR" };
+                allowance["Amount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.DiscountAmount.Value), ["currencyID"] = currencyCode };
             if (line.DiscountRate.HasValue)
                 allowance["MultiplierFactorNumeric"] = line.DiscountRate.Value;
             if (!string.IsNullOrEmpty(line.DiscountReason))
@@ -465,7 +469,7 @@ public class UblGenerator
                 ["ChargeIndicator"] = true,
             };
             if (line.ChargeAmount.HasValue)
-                charge["Amount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.ChargeAmount.Value), ["currencyID"] = "MYR" };
+                charge["Amount"] = new Dictionary<string, object> { ["_"] = FormatDecimal(line.ChargeAmount.Value), ["currencyID"] = currencyCode };
             if (line.ChargeRate.HasValue)
                 charge["MultiplierFactorNumeric"] = line.ChargeRate.Value;
             if (!string.IsNullOrEmpty(line.ChargeReason))

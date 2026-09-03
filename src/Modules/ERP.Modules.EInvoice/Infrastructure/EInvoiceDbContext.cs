@@ -27,6 +27,7 @@ public class EInvoiceDbContext : DbContext
     public DbSet<ApiCredential> ApiCredentials => Set<ApiCredential>();
     public DbSet<EInvoiceStatusHistory> EInvoiceStatusHistories => Set<EInvoiceStatusHistory>();
     public DbSet<EInvoiceItemExtension> EInvoiceItemExtensions => Set<EInvoiceItemExtension>();
+    public DbSet<EInvoiceDocumentArchive> EInvoiceDocumentArchives => Set<EInvoiceDocumentArchive>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,6 +88,15 @@ public class EInvoiceDbContext : DbContext
             entity.HasIndex(e => e.EInvoiceDocumentId);
             entity.HasIndex(e => e.OccurredAt);
             entity.HasIndex(e => new { e.EInvoiceDocumentId, e.OccurredAt });
+        });
+
+        // EInvoiceDocumentArchive configuration
+        modelBuilder.Entity<EInvoiceDocumentArchive>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.MyInvoisUuid);
+            entity.HasIndex(e => e.ArchivedAt);
+            entity.HasIndex(e => new { e.CompanyId, e.ArchivedAt });
         });
     }
 }

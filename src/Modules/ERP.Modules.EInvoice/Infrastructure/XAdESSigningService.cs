@@ -171,7 +171,27 @@ public class XAdESSigningService : IXAdESSigningService
     private static X509Certificate2? LoadCertificate(DigitalCertificate cert)
     {
         if (cert == null)
+        {
             return null;
+        }
+
+        // Try loading from database-stored PFX bytes first
+        if (cert.CertificateBytes != null && cert.CertificateBytes.Length > 0)
+        {
+            return new X509Certificate2(
+                cert.CertificateBytes,
+                cert.CertificatePassword ?? string.Empty,
+                X509KeyStorageFlags.Exportable);
+        }
+
+        // Try loading from file path (VaultObjectId can hold a file path for dev/sandbox)
+        if (!string.IsNullOrEmpty(cert.VaultObjectId) && File.Exists(cert.VaultObjectId))
+        {
+            return new X509Certificate2(
+                cert.VaultObjectId,
+                cert.CertificatePassword ?? string.Empty,
+                X509KeyStorageFlags.Exportable);
+        }
 
         return null;
     }

@@ -109,6 +109,15 @@ public class EInvoiceDocument
     [MaxLength(64)]
     public string? SelfBilledInvoiceId { get; set; }
 
+    // Buyer-side rejection
+    [MaxLength(500)]
+    public string? BuyerRejectionReason { get; set; }
+
+    public DateTime? RejectedAt { get; set; }
+
+    // Consolidation
+    public Guid? ConsolidatedDocumentId { get; set; }
+
     // Audit
     [MaxLength(100)]
     public string? CreatedByUserId { get; set; }

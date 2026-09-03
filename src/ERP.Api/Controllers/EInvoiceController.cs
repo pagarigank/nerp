@@ -149,6 +149,34 @@ public class EInvoiceController : ControllerBase
             return BadRequest(new { Error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Records a buyer-side rejection of a validated e-Invoice.
+    /// Must be within 72 hours of submission.
+    /// </summary>
+    [HttpPost("documents/{documentId:guid}/reject")]
+    [RequirePermission("einvoice", "documents", "edit")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RejectDocument(Guid documentId, [FromBody] BuyerRejectionRequest request)
+    {
+        try
+        {
+            var result = await _service.RecordBuyerRejectionAsync(documentId, request.RejectionReason);
+
+            if (!result)
+            {
+                return BadRequest(new { Error = "Failed to record rejection" });
+            }
+
+            return Ok(new { message = "Buyer rejection recorded. A credit note should be issued to resolve this." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
 }
 
 /// <summary>
@@ -185,4 +213,13 @@ public class ResubmitRequest
 {
     /// <summary>Gets or sets the corrected UBL payload (JSON).</summary>
     [Required] public string CorrectedPayload { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for recording a buyer-side rejection.
+/// </summary>
+public class BuyerRejectionRequest
+{
+    /// <summary>Gets or sets the rejection reason from the buyer.</summary>
+    [Required] public string RejectionReason { get; set; } = string.Empty;
 }
