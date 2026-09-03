@@ -43,9 +43,10 @@ public static class PermissionCatalog
             new("holiday-calendar", "Holiday Calendar"),
             new("sod", "Segregation of Duties"),
             new("users", "Users"),
+            new("access-requests", "Access Requests"),
             new("roles", "Roles"),
             new("audit-logs", "Audit Log"),
-            new("access-requests", "Access Requests"),
+            new("platform-reports", "Reports"),
         }),
         new("gl", "General Ledger", new List<PageEntry>
         {
@@ -61,6 +62,7 @@ public static class PermissionCatalog
             new("period-end-checklist", "Period-End Checklist"),
             new("year-end-close", "Year-End Close"),
             new("posting-suspense", "Posting Suspense"),
+            new("gl-reports", "Reports"),
         }),
         new("ap", "Accounts Payable", new List<PageEntry>
         {
@@ -80,6 +82,7 @@ public static class PermissionCatalog
             new("escheatment", "Escheatment"),
             new("grir-accrual", "GR/IR Accrual"),
             new("vendor-statements", "Vendor Statements"),
+            new("ap-reports", "Reports"),
         }),
         new("ar", "Accounts Receivable", new List<PageEntry>
         {
@@ -97,6 +100,7 @@ public static class PermissionCatalog
             new("credit-memo-apply", "Apply Credit Memo"),
             new("aging-by-basis", "Aging by Basis"),
             new("cash-receipt-match", "Receipt Match"),
+            new("ar-reports", "Reports"),
         }),
         new("cash", "Cash Management", new List<PageEntry>
         {
@@ -114,6 +118,7 @@ public static class PermissionCatalog
             new("fee-analysis", "Fee Analysis"),
             new("forecast-horizon", "Forecast Horizon"),
             new("outstanding-deposits", "Outstanding Deposits"),
+            new("cash-reports", "Reports"),
         }),
         new("purchasing", "Purchasing", new List<PageEntry>
         {
@@ -129,6 +134,7 @@ public static class PermissionCatalog
             new("buyer-agents", "Buyer Agents"),
             new("shipping-methods", "Shipping Methods"),
             new("fob-terms", "FOB Terms"),
+            new("purchasing-reports", "Reports"),
         }),
         new("inventory", "Inventory", new List<PageEntry>
         {
@@ -153,11 +159,13 @@ public static class PermissionCatalog
             new("consignment", "Consignment"),
             new("put-away-picking", "Put-away / Picking"),
             new("stock-by-location", "Stock by Location"),
+            new("cycle-count-schedule", "Cycle Count Schedule"),
             new("scrap", "Scrap / Disposal"),
             new("gl-tie-out", "GL Tie-Out"),
             new("stock-card", "Stock Card"),
             new("uom-conversions", "UOM Conversions"),
             new("uoms", "UOM"),
+            new("inventory-reports", "Reports"),
         }),
         new("om", "Order Management", new List<PageEntry>
         {
@@ -176,6 +184,7 @@ public static class PermissionCatalog
             new("freight", "Freight"),
             new("pick-pack-ship", "Pick/Pack/Ship"),
             new("masters", "Masters"),
+            new("om-reports", "Reports"),
         }),
         new("bom", "Bill of Materials", new List<PageEntry>
         {
@@ -183,6 +192,7 @@ public static class PermissionCatalog
             new("work-centers", "Work Centers"),
             new("routing-operations", "Routing Operations"),
             new("build-orders", "Build Orders"),
+            new("bom-reports", "Reports"),
         }),
         new("projects", "Project Accounting", new List<PageEntry>
         {
@@ -193,6 +203,7 @@ public static class PermissionCatalog
             new("billing", "Billing"),
             new("change-orders", "Change Orders"),
             new("analysis", "WIP / Analysis"),
+            new("project-reports", "Reports"),
         }),
         new("payroll", "Payroll", new List<PageEntry>
         {
@@ -208,6 +219,7 @@ public static class PermissionCatalog
             new("manual", "Manual Checks"),
             new("garnishments", "Garnishments"),
             new("setup", "Setup & Config"),
+            new("payroll-reports", "Reports"),
         }),
         new("field-service", "Field Service", new List<PageEntry>
         {
@@ -223,6 +235,7 @@ public static class PermissionCatalog
             new("pm", "PM Schedules"),
             new("van-stock", "Van Stock"),
             new("warranty", "Warranty"),
+            new("fs-reports", "Reports"),
         }),
         new("reporting", "Reporting / BI", new List<PageEntry>
         {
@@ -237,6 +250,13 @@ public static class PermissionCatalog
             new("parameter-sets", "Parameter Sets"),
             new("usage", "Usage Analytics"),
             new("sync-status", "Sync Status"),
+        }),
+        new("integration", "Integration", new List<PageEntry>
+        {
+            new("dashboard", "Dashboard"),
+            new("partners", "Trading Partners"),
+            new("webhooks", "Webhooks"),
+            new("import-export", "Import / Export"),
         }),
         new("tax", "Malaysian Tax (SST)", new List<PageEntry>
         {

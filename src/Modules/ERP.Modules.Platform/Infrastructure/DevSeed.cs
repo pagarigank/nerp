@@ -29,7 +29,7 @@ public static class DevSeed
         await db.Database.EnsureCreatedAsync(cancellationToken);
 
         // --- Permissions: page-scoped catalog (module.page.action) + legacy module.action + wildcard ---
-        var modules = new[] { "platform", "gl", "ap", "ar", "cash", "pur", "inv", "om", "bom", "proj", "pay", "fs", "rpt", "int", "tax", "einvoice" };
+        var modules = new[] { "platform", "gl", "ap", "ar", "cash", "pur", "inv", "om", "bom", "proj", "pay", "fs", "rpt", "int", "tax", "einvoice", "integration" };
         var actions = new[] { "view", "create", "edit", "delete", "post", "approve" };
 
         var existingPermissions = await db.Permissions
