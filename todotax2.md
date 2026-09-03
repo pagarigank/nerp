@@ -26,7 +26,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 | **Multi-Company Isolation** | 5 | 0 | 0 | ✅ All entities have CompanyId; all controllers enforce ICurrentUserService |
 | **SST Transactional** | 2 | 0 | 1 | Tax determination + inclusive/exclusive pricing + RMCD rounding done; no SST-02/02A |
 | **Reports** | 0 | 0 | 8 | No reports built |
-| **Background Jobs** | 3 | 0 | 7 | Token cache, status polling, cert monitor built; retry queue, batch job, sync jobs pending |
+| **Background Jobs** | 4 | 0 | 6 | Token cache, status polling, cert monitor, retry queue built; batch job, sync jobs pending |
 | **Frontend** | 0 | 0 | 10 | No frontend screens |
 | **Tests** | 0 | 0 | 3 | No unit or integration tests for these modules |
 | **DI/Integration** | 4 | 0 | 0 | ✅ Program.cs registered, DbContexts migrated, all services in DI, status history wired |
@@ -228,8 +228,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [x] `P0` Submission status polling worker — *EINV-10* ✅
   > Built: `EInvoiceStatusPollingJob`. Hangfire recurring `einvoice-status-polling` every 2 minutes. Polls 50 pending docs per run, 200ms rate-limit delay between calls.
 
-- [ ] `P0` Failed-submission retry queue with exponential backoff — *architecture.md §11*
-  > **Not built.** No outbox pattern, no retry queue, no dead-letter handling.
+- [x] `P0` Failed-submission retry queue with exponential backoff — *architecture.md §11* ✅
+  > **Built:** `EInvoiceRetryQueue` with exponential backoff (1m, 5m, 15m, 1h, 4h). Max 5 retries per document. `EInvoiceRetryJob` Hangfire job every 5 minutes. Retry attempts tracked in `EInvoiceStatusHistory` with `retry-system` actor.
 
 - [ ] `P1` Monthly consolidated e-Invoice batch job — *EINV-07*
   > **Not built.**
