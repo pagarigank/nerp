@@ -226,6 +226,7 @@ import { DocumentsPage } from '@pages/einvoice/DocumentsPage'
 import { CertificatesPage } from '@pages/einvoice/CertificatesPage'
 import { CredentialsPage } from '@pages/einvoice/CredentialsPage'
 import { SubmissionStatusPage } from '@pages/einvoice/SubmissionStatusPage'
+import { ComplianceDashboardPage } from '@pages/einvoice/ComplianceDashboardPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -497,6 +498,7 @@ function App() {
         <Route path="e-invoice" element={<EInvoiceLayout />}>
           <Route index element={<Navigate to="company-profile" replace />} />
           <Route path="company-profile" element={<CompanyEInvoiceProfilePage />} />
+          <Route path="dashboard" element={<ComplianceDashboardPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="status" element={<SubmissionStatusPage />} />
           <Route path="certificates" element={<CertificatesPage />} />

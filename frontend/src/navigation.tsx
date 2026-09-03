@@ -526,6 +526,7 @@ export const mainNavigation: NavModule[] = [
     roles: ['*'],
     sub: [
       { label: 'Company Profile', to: '/e-invoice/company-profile' },
+      { label: 'Dashboard', to: '/e-invoice/dashboard' },
       { label: 'Documents', to: '/e-invoice/documents' },
       { label: 'Document Queue', to: '/e-invoice/queue' },
       { label: 'Submission Status', to: '/e-invoice/status' },
