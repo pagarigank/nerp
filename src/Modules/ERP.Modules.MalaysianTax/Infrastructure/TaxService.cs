@@ -33,11 +33,63 @@ public class TaxService : ITaxService
     }
 
     /// <inheritdoc/>
+    public TaxCalculationResult CalculateTax(
+        decimal amount,
+        decimal ratePercent,
+        PricingMode pricingMode)
+    {
+        // RMCD rounding: round to 2 decimal places, half-up
+        if (ratePercent == 0)
+        {
+            return new TaxCalculationResult
+            {
+                NetAmount = amount,
+                TaxAmount = 0m,
+                GrossAmount = amount,
+                RatePercent = 0m,
+            };
+        }
+
+        if (pricingMode == PricingMode.Inclusive)
+        {
+            // amount is the gross (tax-inclusive) price
+            // net = amount / (1 + rate/100)
+            // tax = amount - net
+            var divisor = 1 + (ratePercent / 100);
+            var netAmount = Math.Round(amount / divisor, 2, MidpointRounding.AwayFromZero);
+            var taxAmount = Math.Round(amount - netAmount, 2, MidpointRounding.AwayFromZero);
+
+            return new TaxCalculationResult
+            {
+                NetAmount = netAmount,
+                TaxAmount = taxAmount,
+                GrossAmount = amount,
+                RatePercent = ratePercent,
+            };
+        }
+
+        // Exclusive: amount is the net (tax-exclusive) price
+        // tax = amount * rate/100
+        // gross = amount + tax
+        var tax = Math.Round(amount * (ratePercent / 100), 2, MidpointRounding.AwayFromZero);
+        var gross = Math.Round(amount + tax, 2, MidpointRounding.AwayFromZero);
+
+        return new TaxCalculationResult
+        {
+            NetAmount = amount,
+            TaxAmount = tax,
+            GrossAmount = gross,
+            RatePercent = ratePercent,
+        };
+    }
+
+    /// <inheritdoc/>
     public async Task<TaxDeterminationResult> DetermineTaxAsync(
         Guid itemId,
         Guid customerId,
         decimal amount,
         Guid companyId,
+        PricingMode pricingMode = PricingMode.Exclusive,
         CancellationToken ct = default)
     {
         try
@@ -96,7 +148,7 @@ public class TaxService : ITaxService
                     };
                 }
 
-                var fallbackTaxAmount = Math.Round(amount * (fallbackRate.RatePercent / 100), 2, MidpointRounding.AwayFromZero);
+                var fallbackCalc = CalculateTax(amount, fallbackRate.RatePercent, pricingMode);
 
                 return new TaxDeterminationResult
                 {
@@ -105,7 +157,9 @@ public class TaxService : ITaxService
                     TaxCode = fallbackCode.Code,
                     LhdntTaxType = fallbackCode.LhdntTaxType,
                     RatePercent = fallbackRate.RatePercent,
-                    TaxAmount = fallbackTaxAmount
+                    TaxAmount = fallbackCalc.TaxAmount,
+                    NetAmount = fallbackCalc.NetAmount,
+                    GrossAmount = fallbackCalc.GrossAmount,
                 };
             }
 
@@ -131,13 +185,14 @@ public class TaxService : ITaxService
                 };
             }
 
-            // Step 4: Calculate tax amount
-            // For zero-rated (ZRL) and exempt (E) codes, the rate is 0%
-            var taxAmount = Math.Round(amount * (activeRate.RatePercent / 100), 2, MidpointRounding.AwayFromZero);
+            // Step 4: Calculate tax amount using pricing mode
+            var calc = CalculateTax(amount, activeRate.RatePercent, pricingMode);
 
             _logger.LogInformation(
-                "Tax determined: Code={Code}, Rate={Rate}%, Amount={Amount}, Tax={Tax}, RuleId={RuleId}",
-                taxCode.Code, activeRate.RatePercent, amount, taxAmount, matchedRule.Id);
+                "Tax determined: Code={Code}, Rate={Rate}%, Mode={Mode}, " +
+                "Amount={Amount}, Net={Net}, Tax={Tax}, Gross={Gross}, RuleId={RuleId}",
+                taxCode.Code, activeRate.RatePercent, pricingMode, amount,
+                calc.NetAmount, calc.TaxAmount, calc.GrossAmount, matchedRule.Id);
 
             return new TaxDeterminationResult
             {
@@ -146,7 +201,9 @@ public class TaxService : ITaxService
                 TaxCode = taxCode.Code,
                 LhdntTaxType = taxCode.LhdntTaxType,
                 RatePercent = activeRate.RatePercent,
-                TaxAmount = taxAmount
+                TaxAmount = calc.TaxAmount,
+                NetAmount = calc.NetAmount,
+                GrossAmount = calc.GrossAmount,
             };
         }
         catch (Exception ex)

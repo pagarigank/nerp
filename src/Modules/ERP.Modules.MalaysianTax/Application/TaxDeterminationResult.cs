@@ -16,4 +16,28 @@ public class TaxDeterminationResult
     public decimal RatePercent { get; set; }
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
+
+    /// <summary>Gets or sets the net amount (excluding tax).</summary>
+    public decimal NetAmount { get; set; }
+
+    /// <summary>Gets or sets the gross amount (including tax).</summary>
+    public decimal GrossAmount { get; set; }
+}
+
+/// <summary>
+/// Result of a tax calculation (net, tax, gross amounts).
+/// </summary>
+public class TaxCalculationResult
+{
+    /// <summary>Gets or sets the net amount (tax-exclusive).</summary>
+    public decimal NetAmount { get; set; }
+
+    /// <summary>Gets or sets the tax amount.</summary>
+    public decimal TaxAmount { get; set; }
+
+    /// <summary>Gets or sets the gross amount (tax-inclusive).</summary>
+    public decimal GrossAmount { get; set; }
+
+    /// <summary>Gets or sets the effective tax rate used.</summary>
+    public decimal RatePercent { get; set; }
 }

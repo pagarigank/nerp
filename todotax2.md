@@ -24,7 +24,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 | **e-Invoice Transactional** | 8 | 1 | 0 | UBL gen, validation, submit, poll, credit/debit/refund, QR, error mapping, auth cache all done; XAdES signing pending |
 | **e-Invoice Lifecycle** | 3 | 0 | 1 | Cancel, audit trail, error mapping done; no resubmission workflow |
 | **Multi-Company Isolation** | 5 | 0 | 0 | ✅ All entities have CompanyId; all controllers enforce ICurrentUserService |
-| **SST Transactional** | 1 | 0 | 2 | Tax determination engine working; no inclusive/exclusive pricing; no SST-02/02A |
+| **SST Transactional** | 2 | 0 | 1 | Tax determination + inclusive/exclusive pricing + RMCD rounding done; no SST-02/02A |
 | **Reports** | 0 | 0 | 8 | No reports built |
 | **Background Jobs** | 3 | 0 | 7 | Token cache, status polling, cert monitor built; retry queue, batch job, sync jobs pending |
 | **Frontend** | 0 | 0 | 10 | No frontend screens |
@@ -175,8 +175,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [x] `P0` Apply tax determination engine output to each invoice line at entry time — *TAX-03*
   > **Built:** `TaxService.DetermineTaxAsync` now uses `TaxDeterminationRuleRepository.FindMatchingRulesAsync` to find the best rule (most-specific-first), resolves `TaxCodeId` → `TaxCode` → `TaxRate`, calculates tax amount with RMCD rounding. Falls back to SST-SALES-10 if no rules match. TODO: integrate with Sales Invoice creation (pass item/customer category from ERP master data).
 
-- [ ] `P0` Tax-inclusive/exclusive pricing and rounding — *TAX-04*
-  > **Not built.** No pricing logic. `TaxService` calculates `amount * (rate / 100)` but doesn't handle inclusive pricing or RMCD rounding rules.
+- [x] `P0` Tax-inclusive/exclusive pricing and rounding — *TAX-04* ✅
+  > **Built:** `TaxService.CalculateTax()` supports `PricingMode.Inclusive` (extract tax from gross) and `PricingMode.Exclusive` (add tax to net). RMCD rounding: round to 2 decimal places, half-up. `DetermineTaxAsync` accepts `PricingMode` parameter. `TaxCalculatorController` at `/api/v1.0/tax/calculator/preview` and `/determine` for UI preview. `TaxCalculationResult` returns Net, Tax, Gross amounts.
 
 - [ ] `P1` SST-02 / SST-02A computation — *TAX-06*
   > **Not built.** No aggregation of posted transactions into bi-monthly return figures.
