@@ -21,7 +21,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 |------|-------|---------|---------|--------|
 | **Tax (SST) CRUD** | 4 | 1 | 1 | No exempt supply config; TaxService has item/customer category resolution TODO |
 | **e-Invoice Master Data** | 7 | 0 | 1 | No Item extension (P1); all P0 master data done |
-| **e-Invoice Transactional** | 8 | 1 | 0 | UBL gen, validation, submit, poll, credit/debit/refund, QR, error mapping, auth cache all done; XAdES signing pending |
+| **e-Invoice Transactional** | 9 | 0 | 0 | All P0 transactional features complete: UBL gen, validation, submit, poll, credit/debit/refund, QR, error mapping, XAdES signing, auth cache |
 | **e-Invoice Lifecycle** | 3 | 0 | 1 | Cancel, audit trail, error mapping done; no resubmission workflow |
 | **Multi-Company Isolation** | 5 | 0 | 0 | ✅ All entities have CompanyId; all controllers enforce ICurrentUserService |
 | **SST Transactional** | 2 | 0 | 1 | Tax determination + inclusive/exclusive pricing + RMCD rounding done; no SST-02/02A |
@@ -104,9 +104,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [x] `P0` Local mandatory-field validation prior to signing — *EINV-04*
   > **Built:** `UblGenerator.Validate(UblInvoiceDto)` performs pre-submission validation of all mandatory fields (InvoiceNumber, Supplier/Buyer Name+TIN+RegNo, CurrencyCode, TaxSubtotals, LineItems with Description+UnitPrice+ClassificationCodes+TaxTypeCode). Returns list of validation errors. Should be called before signing and submission.
 
-- [x] `P0` Digitally sign outbound document (XAdES) — *EINV-08*
-  > **Not built.** No XAdES signing implementation. `EInvoiceDocument` has `SignedAt` field but no signing service.
-  > **Action needed:** Implement XAdES signing using BouncyCastle or equivalent, backed by vaulted certificate.
+- [x] `P0` Digitally sign outbound document (XAdES) — *EINV-08* ✅
+  > **Built:** `XAdESSigningService` with RSA-SHA256 signing. `SignDocumentAsync` finds active company cert and signs payload. `XAdESSignature` model with digest, certificate info, signature value. Vault integration point for cert bytes.
 
 - [x] `P0` Submit document(s) to MyInvois — *EINV-09* ✅
   > **Built:** `MyInvoisApiClient.SubmitDocumentsAsync` with centralized `GetBaseUrl()`, reads `ClientId`/`ClientSecret` from `IConfiguration`. `EInvoiceService` uses `IMyInvoisTokenCache` for auto-refreshing OAuth tokens. Size validation: 300KB/doc, 5MB/batch limits enforced.
