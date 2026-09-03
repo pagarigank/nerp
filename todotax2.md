@@ -369,7 +369,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 ### Phase E — Lifecycle & Compliance (P0)
 1. ✅ Full audit trail table (`EInvoiceStatusHistory`)
 2. ✅ Error mapping (plain language via `LhdnErrorMapper`)
-3. ❌ Resubmission as new document workflow
+3. ✅ Resubmission as new document workflow (`ResubmitAsync` + `ResubmitModal`)
 4. ❌ 72-hour window notifier
 5. ❌ Reconciliation report
 
