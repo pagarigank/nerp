@@ -42,9 +42,13 @@ public static class ServiceCollectionExtensions
         // QR code and error mapping
         services.AddScoped<IQRCodeService, QRCodeService>();
 
+        // Retry queue
+        services.AddScoped<IEInvoiceRetryQueue, EInvoiceRetryQueue>();
+
         // Background jobs
         services.AddScoped<EInvoiceStatusPollingJob>();
         services.AddScoped<CertificateExpiryMonitorJob>();
+        services.AddScoped<EInvoiceRetryJob>();
 
         return services;
     }

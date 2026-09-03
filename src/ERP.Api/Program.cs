@@ -601,6 +601,12 @@ public class Program
                 job => job.RunAsync(CancellationToken.None),
                 Cron.Daily(8, 0), // Daily at 8:00 AM UTC: check certificate expiry
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.EInvoiceRetryJob>(
+                "einvoice-retry-queue",
+                job => job.RunAsync(CancellationToken.None),
+                "*/5 * * * *", // Every 5 minutes: process failed submission retries
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())
