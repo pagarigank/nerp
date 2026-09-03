@@ -239,3 +239,33 @@ export function getUnsubmittedDocuments(companyId: string): Promise<Reconciliati
 export function getPendingValidationDocuments(companyId: string): Promise<ReconciliationItem[]> {
   return get('/einvoice/reconciliation/pending-validation', { companyId })
 }
+
+// ---- Item Extensions ----
+
+export interface ItemExtension {
+  id: string
+  itemId: string
+  companyId?: string
+  classificationCode?: string
+  unitOfMeasureCode?: string
+  productTariffCode?: string
+  countryOfOrigin?: string
+  isSubjectToEInvoice: boolean
+  createdAt: string
+}
+
+export function getItemExtensions(companyId?: string): Promise<ItemExtension[]> {
+  return get('/einvoice/item-extensions', companyId ? { companyId } : {})
+}
+
+export function createItemExtension(data: Partial<ItemExtension>): Promise<ItemExtension> {
+  return post('/einvoice/item-extensions', data)
+}
+
+export function updateItemExtension(id: string, data: Partial<ItemExtension>): Promise<ItemExtension> {
+  return put(`/einvoice/item-extensions/${id}`, data)
+}
+
+export function deleteItemExtension(id: string): Promise<void> {
+  return del(`/einvoice/item-extensions/${id}`)
+}

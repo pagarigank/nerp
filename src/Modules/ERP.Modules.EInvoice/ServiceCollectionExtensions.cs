@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEInvoiceCustomerExtensionRepository, EInvoiceCustomerExtensionRepository>();
         services.AddScoped<IEInvoiceVendorExtensionRepository, EInvoiceVendorExtensionRepository>();
         services.AddScoped<IApiCredentialRepository, ApiCredentialRepository>();
+        services.AddScoped<IEInvoiceItemExtensionRepository, EInvoiceItemExtensionRepository>();
 
         // Token cache (singleton — uses IMemoryCache for thread-safe caching)
         services.AddSingleton<IMyInvoisTokenCache, MyInvoisTokenCache>();
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<EInvoiceStatusPollingJob>();
         services.AddScoped<CertificateExpiryMonitorJob>();
         services.AddScoped<EInvoiceRetryJob>();
+        services.AddScoped<CancellationWindowMonitorJob>();
 
         return services;
     }

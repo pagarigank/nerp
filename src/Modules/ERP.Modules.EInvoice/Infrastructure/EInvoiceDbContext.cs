@@ -26,6 +26,7 @@ public class EInvoiceDbContext : DbContext
     public DbSet<EInvoiceVendorExtension> EInvoiceVendorExtensions => Set<EInvoiceVendorExtension>();
     public DbSet<ApiCredential> ApiCredentials => Set<ApiCredential>();
     public DbSet<EInvoiceStatusHistory> EInvoiceStatusHistories => Set<EInvoiceStatusHistory>();
+    public DbSet<EInvoiceItemExtension> EInvoiceItemExtensions => Set<EInvoiceItemExtension>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

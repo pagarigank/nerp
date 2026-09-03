@@ -22,6 +22,7 @@ public class MalaysianTaxDbContext : DbContext
     public DbSet<TaxRate> TaxRates => Set<TaxRate>();
     public DbSet<CompanySstRegistration> CompanySstRegistrations => Set<CompanySstRegistration>();
     public DbSet<TaxDeterminationRule> TaxDeterminationRules => Set<TaxDeterminationRule>();
+    public DbSet<SstReturn> SstReturns => Set<SstReturn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +65,14 @@ public class MalaysianTaxDbContext : DbContext
             entity.HasIndex(e => e.PlaceOfSupply);
             entity.HasIndex(e => new { e.CompanyId, e.IsActive, e.Priority });
             entity.HasIndex(e => e.TaxCodeId);
+        });
+
+        // SstReturn configuration
+        modelBuilder.Entity<SstReturn>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.PeriodStart, e.ReturnType });
+            entity.HasIndex(e => e.Status);
         });
     }
 }

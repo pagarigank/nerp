@@ -35,8 +35,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICompanySstRegistrationRepository, CompanySstRegistrationRepository>();
         services.AddScoped<ITaxDeterminationRuleRepository, TaxDeterminationRuleRepository>();
 
+        // Register repositories
+        services.AddScoped<ISstReturnRepository, SstReturnRepository>();
+
         // Register services
         services.AddScoped<ITaxService, TaxService>();
+        services.AddScoped<ISstReturnService, SstReturnService>();
 
         return services;
     }

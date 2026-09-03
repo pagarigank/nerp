@@ -610,6 +610,12 @@ public class Program
                 job => job.RunAsync(CancellationToken.None),
                 "*/5 * * * *", // Every 5 minutes: process failed submission retries
                 new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            recurringJobManager.AddOrUpdate<ERP.Modules.EInvoice.Infrastructure.CancellationWindowMonitorJob>(
+                "einvoice-cancellation-window-monitor",
+                job => job.RunAsync(CancellationToken.None),
+                "*/30 * * * *", // Every 30 minutes: check cancellation window expiry
+                new Hangfire.RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         if (app.Environment.IsDevelopment())

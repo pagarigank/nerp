@@ -229,9 +229,12 @@ import { SubmissionStatusPage } from '@pages/einvoice/SubmissionStatusPage'
 import { ComplianceDashboardPage } from '@pages/einvoice/ComplianceDashboardPage'
 import { ReconciliationReportPage } from '@pages/einvoice/ReconciliationReportPage'
 import { ReportsPage as EInvoiceReportsPage } from '@pages/einvoice/ReportsPage'
+import { ItemExtensionsPage } from '@pages/einvoice/ItemExtensionsPage'
 import { TaxCodesPage } from '@pages/tax/TaxCodesPage'
 import { TaxRatesPage } from '@pages/tax/TaxRatesPage'
 import { TaxDeterminationRulesPage } from '@pages/tax/TaxDeterminationRulesPage'
+import { SstReturnsPage } from '@pages/tax/SstReturnsPage'
+import { LocalCodeTablesPage } from '@pages/tax/LocalCodeTablesPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -510,11 +513,17 @@ function App() {
           <Route path="credentials" element={<CredentialsPage />} />
           <Route path="reconciliation" element={<ReconciliationReportPage />} />
           <Route path="reports" element={<EInvoiceReportsPage />} />
+          <Route path="item-extensions" element={<ItemExtensionsPage />} />
+          <Route path="queue" element={<SubmissionStatusPage />} />
+          <Route path="validation" element={<SubmissionStatusPage />} />
+          <Route path="consolidated" element={<SubmissionStatusPage />} />
         </Route>
         <Route path="tax">
           <Route path="tax-codes" element={<TaxCodesPage />} />
           <Route path="tax-rates" element={<TaxRatesPage />} />
+          <Route path="sst-returns" element={<SstReturnsPage />} />
           <Route path="determination-rules" element={<TaxDeterminationRulesPage />} />
+          <Route path="local-tables" element={<LocalCodeTablesPage />} />
         </Route>
         <Route path="integration/*">
           <Route index element={<IntegrationDashboard />} />
