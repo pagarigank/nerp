@@ -5,6 +5,7 @@
 using ERP.Modules.EInvoice.Application;
 using ERP.Modules.EInvoice.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ERP.Modules.EInvoice.Infrastructure;
@@ -17,15 +18,21 @@ public class TaxpayerProfileService : ITaxpayerProfileService
 {
     private readonly EInvoiceDbContext _dbContext;
     private readonly IMyInvoisApiClient _myInvoisClient;
+    private readonly IMyInvoisTokenCache _tokenCache;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<TaxpayerProfileService> _logger;
 
     public TaxpayerProfileService(
         EInvoiceDbContext dbContext,
         IMyInvoisApiClient myInvoisClient,
+        IMyInvoisTokenCache tokenCache,
+        IConfiguration configuration,
         ILogger<TaxpayerProfileService> logger)
     {
         _dbContext = dbContext;
         _myInvoisClient = myInvoisClient;
+        _tokenCache = tokenCache;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -146,11 +153,13 @@ public class TaxpayerProfileService : ITaxpayerProfileService
 
         try
         {
-            // Delegate to MyInvois API for TIN validation
-            var authRequest = new AuthenticationRequest(ClientId: string.Empty, ClientSecret: string.Empty, Environment: "production");
+            // Delegate to MyInvois API for TIN validation via token cache
+            var clientId = _configuration["EInvoice:ClientId"] ?? string.Empty;
+            var clientSecret = _configuration["EInvoice:ClientSecret"] ?? string.Empty;
+            var environment = _configuration["EInvoice:Environment"] ?? "sandbox";
+            var accessToken = await _tokenCache.GetAccessTokenAsync(clientId, clientSecret, environment);
 
-            var authResponse = await _myInvoisClient.AuthenticateAsync(authRequest);
-            var response = await _myInvoisClient.ValidateTaxpayerTinAsync(tin, authResponse.AccessToken);
+            var response = await _myInvoisClient.ValidateTaxpayerTinAsync(tin, accessToken);
 
             return new TinValidationResult
             {
