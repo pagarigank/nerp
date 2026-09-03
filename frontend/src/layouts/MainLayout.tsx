@@ -24,10 +24,13 @@ import {
   Command,
   Rows3,
   AlignJustify,
+  Star,
+  Clock3,
 } from 'lucide-react'
 import { cn } from '@utils/helpers'
 import { useAuth, useAuthStore, ALL_COMPANIES } from '@stores/authStore'
 import { useDensityStore } from '@stores/densityStore'
+import { useNavigationStore } from '@stores/navigationStore'
 import { modulePageFromRoute } from '@hooks/usePagePermission'
 import { Button } from '@components/ui/Button'
 import { Combobox, type SelectOption } from '@components/ui/Combobox'
@@ -110,6 +113,24 @@ export function MainLayout() {
 
   const { user, currentCompany, currentPeriod, companies, fiscalPeriods, setCurrentCompany, setCurrentPeriod, logout, isSuperAdmin } = useAuth()
   const hasPermission = useAuthStore(s => s.hasPermission)
+  const { favorites, favoriteLabels, toggleFavorite, isFavorite } = useNavigationStore()
+  const { recordVisit, getRecentVisits } = useNavigationStore()
+
+  // Record page visit on navigation
+  useEffect(() => {
+    if (resolvedModule && resolvedSub) {
+      recordVisit(location.pathname, resolvedSub.label, resolvedModule.name)
+    }
+  }, [location.pathname])
+
+  const recentVisits = getRecentVisits(5)
+  const favoriteEntries = favorites
+    .map(path => ({ path, label: favoriteLabels[path] ?? path.split('/').pop() ?? path }))
+    .filter(e => {
+      // Only show favorites the user can view
+      const { module, page } = modulePageFromRoute(e.path)
+      return hasPermission(`${module}.${page}.view`)
+    })
 
   // A nav sub-item is visible if the user can view that page. A module stays
   // visible if it has at least one visible sub-page (or the user holds a
@@ -292,6 +313,73 @@ export function MainLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-0.5 scrollbar-thin" role="navigation" aria-label="Modules">
+          {/* Favorites Section */}
+          {isSidebarOpen && favoriteEntries.length > 0 && (
+            <div className="mb-2">
+              <div className="flex items-center gap-2 px-3 py-1.5">
+                <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Favorites</span>
+              </div>
+              {favoriteEntries.slice(0, 5).map(fav => {
+                const isActive = location.pathname === fav.path
+                return (
+                  <Link
+                    key={fav.path}
+                    to={fav.path}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'group flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200',
+                      isActive
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                    )}
+                  >
+                    <Star className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
+                    <span className="truncate flex-1">{fav.label}</span>
+                    <button
+                      onClick={e => { e.preventDefault(); toggleFavorite(fav.path, fav.label) }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Remove from favorites"
+                    >
+                      <X className="h-3 w-3 text-gray-400 hover:text-red-500" />
+                    </button>
+                  </Link>
+                )
+              })}
+              <div className="border-b border-gray-200 dark:border-gray-700 mt-2" />
+            </div>
+          )}
+
+          {/* Recent Visits Section */}
+          {isSidebarOpen && recentVisits.length > 0 && (
+            <div className="mb-2">
+              <div className="flex items-center gap-2 px-3 py-1.5">
+                <Clock3 className="h-3 w-3 text-gray-400" />
+                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Recent</span>
+              </div>
+              {recentVisits.slice(0, 5).map((visit, i) => {
+                const isActive = location.pathname === visit.to
+                return (
+                  <Link
+                    key={`${visit.to}-${i}`}
+                    to={visit.to}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200',
+                      isActive
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                    )}
+                  >
+                    <Clock3 className="h-3 w-3 flex-shrink-0 opacity-50" />
+                    <span className="truncate flex-1">{visit.label}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100">{visit.module}</span>
+                  </Link>
+                )
+              })}
+              <div className="border-b border-gray-200 dark:border-gray-700 mt-2" />
+            </div>
+          )}
           {filteredNavigation.map(item => {
             const isModuleActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
             const hasSub = item.sub.length > 0
@@ -354,6 +442,13 @@ export function MainLayout() {
                       <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                     </span>
                     <span className="flex-1 text-left truncate">{item.name}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleFavorite(item.href, item.name) }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity mr-1"
+                      aria-label={isFavorite(item.href) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Star className={cn('h-3.5 w-3.5', isFavorite(item.href) ? 'text-amber-500 fill-amber-500' : 'text-gray-400 hover:text-amber-500')} />
+                    </button>
                     <span className="text-xs text-gray-400 font-normal hidden xl:inline">{item.sub.length}</span>
                     <ChevronDown className={cn('h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] text-gray-400', isExpanded && 'rotate-180 text-gray-600 dark:text-gray-300')} aria-hidden="true" />
                   </button>
