@@ -31,44 +31,41 @@ public class ReportController : ControllerBase
     private static CompanyDocumentHeader MkHeader(string company, string title, string number) =>
         new(company, null, null, null, "USD", null, null, null, title, number, DateTimeOffset.UtcNow);
 
-    [HttpGet("company-setup")]
-    public async Task<ActionResult<CompanySetupReportDto>> GetCompanySetupReport(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken)
+    // Data-fetching helpers (shared by JSON + PDF endpoints)
+    private async Task<CompanySetupReportDto> GetCompanySetupDataAsync(Guid companyId, CancellationToken ct)
     {
         var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
-
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var fiscalYears = await _context.FiscalYears
             .Where(fy => fy.CompanyId == companyId && !fy.DeletedOn.HasValue)
             .OrderBy(fy => fy.Year)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var segmentTypes = await _context.SegmentTypes
             .Where(st => st.CompanyId == companyId && !st.DeletedOn.HasValue)
             .OrderBy(st => st.DisplayOrder)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var currencies = await _context.Currencies
             .Where(c => !c.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var numberSequences = await _context.NumberSequences
             .Where(ns => ns.CompanyId == companyId && !ns.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var users = await _context.Users
             .Where(u => !u.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var roles = await _context.Roles
             .Where(r => !r.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Ok(new CompanySetupReportDto(
+        return new CompanySetupReportDto(
             new CompanyDto(company.Id, company.Name, company.LegalName, company.BaseCurrency, company.TaxId, company.Address, company.ParentCompanyId, company.IsActive, company.CreatedOn, company.ModifiedOn),
             fiscalYears.Select(fy => new FiscalYearDto(fy.Id, fy.CompanyId, fy.Year, fy.Description, fy.StartDate, fy.EndDate, fy.IsClosed, fy.CalendarType, fy.YearEndType, fy.CreatedOn, fy.ModifiedOn)).ToList(),
             segmentTypes.Select(st => new SegmentTypeDto(st.Id, st.CompanyId, st.Name, st.Code, st.DisplayOrder, st.IsRequired, st.IsActive, st.CreatedOn, st.ModifiedOn)).ToList(),
@@ -76,50 +73,40 @@ public class ReportController : ControllerBase
             numberSequences.Select(ns => new NumberSequenceDto(ns.Id, ns.CompanyId, ns.Name, ns.Prefix, ns.NextValue, ns.Increment, ns.MinValue, ns.MaxValue, ns.IsActive, ns.CreatedOn, ns.ModifiedOn)).ToList(),
             users.Select(u => new UserDto(u.Id, u.Username, u.Email, u.DisplayName, u.PhoneNumber, u.IsActive, u.LastLoginAt, u.CreatedOn, u.ModifiedOn, Array.Empty<UserRoleAssignmentDto>())).ToList(),
             roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn, Array.Empty<PermissionDto>())).ToList(),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("chart-of-accounts")]
-    public async Task<ActionResult<ChartOfAccountsReportDto>> GetChartOfAccountsReport(
-        [FromQuery] Guid companyId,
-        [FromQuery] bool activeOnly = true,
-        CancellationToken cancellationToken = default)
+    private async Task<ChartOfAccountsReportDto> GetChartOfAccountsDataAsync(Guid companyId, bool activeOnly, CancellationToken ct)
     {
         var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
-
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var accounts = await _context.Accounts
             .Where(a => a.CompanyId == companyId && (!activeOnly || a.IsActive) && !a.DeletedOn.HasValue)
             .OrderBy(a => a.AccountNumber)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var segmentTypes = await _context.SegmentTypes
             .Where(st => st.CompanyId == companyId && !st.DeletedOn.HasValue)
             .OrderBy(st => st.DisplayOrder)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Ok(new ChartOfAccountsReportDto(
+        return new ChartOfAccountsReportDto(
             companyId,
             company.Name,
             accounts.Select(a => new AccountDto(a.Id, a.CompanyId, a.AccountNumber, a.Description, a.AccountType, a.NormalBalance, a.IsActive, a.CreatedOn, a.ModifiedOn)).ToList(),
             segmentTypes.Select(st => new SegmentTypeDto(st.Id, st.CompanyId, st.Name, st.Code, st.DisplayOrder, st.IsRequired, st.IsActive, st.CreatedOn, st.ModifiedOn)).ToList(),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("fiscal-calendar")]
-    public async Task<ActionResult<FiscalCalendarReportDto>> GetFiscalCalendarReport(
-        [FromQuery] Guid companyId,
-        [FromQuery] int? year = null,
-        CancellationToken cancellationToken = default)
+    private async Task<FiscalCalendarReportDto> GetFiscalCalendarDataAsync(Guid companyId, int? year, CancellationToken ct)
     {
         var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
-
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var query = _context.FiscalYears
             .Where(fy => fy.CompanyId == companyId && !fy.DeletedOn.HasValue);
@@ -129,7 +116,7 @@ public class ReportController : ControllerBase
 
         var fiscalYears = await query
             .OrderBy(fy => fy.Year)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var result = new List<FiscalYearWithPeriodsDto>();
 
@@ -138,43 +125,39 @@ public class ReportController : ControllerBase
             var periods = await _context.FiscalPeriods
                 .Where(fp => fp.FiscalYearId == fy.Id && !fp.DeletedOn.HasValue)
                 .OrderBy(fp => fp.PeriodNumber)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             result.Add(new FiscalYearWithPeriodsDto(
                 new FiscalYearDto(fy.Id, fy.CompanyId, fy.Year, fy.Description, fy.StartDate, fy.EndDate, fy.IsClosed, fy.CalendarType, fy.YearEndType, fy.CreatedOn, fy.ModifiedOn),
                 periods.Select(p => new FiscalPeriodDto(p.Id, p.FiscalYearId, p.CompanyId, p.PeriodNumber, p.Description, p.StartDate, p.EndDate, p.Status, p.CreatedOn, p.ModifiedOn)).ToList()));
         }
 
-        return Ok(new FiscalCalendarReportDto(companyId, company.Name, result, DateTimeOffset.UtcNow));
+        return new FiscalCalendarReportDto(companyId, company.Name, result, DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("security-matrix")]
-    public async Task<ActionResult<SecurityMatrixReportDto>> GetSecurityMatrixReport(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken = default)
+    private async Task<SecurityMatrixReportDto> GetSecurityMatrixDataAsync(Guid companyId, CancellationToken ct)
     {
         var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
-
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var roles = await _context.Roles
             .Where(r => !r.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var users = await _context.Users
             .Where(u => !u.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var permissions = await _context.Permissions
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var rolePermissionsList = await _context.RolePermissions
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var userRolesList = await _context.UserRoles
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var rolePermissions = roles
             .Select(r => new RolePermissionDto(
@@ -198,7 +181,7 @@ public class ReportController : ControllerBase
                 userRolesList.Where(ur => ur.UserId == u.Id).Select(ur => ur.RoleId.ToString()).ToList()))
             .ToList();
 
-        return Ok(new SecurityMatrixReportDto(
+        return new SecurityMatrixReportDto(
             companyId,
             company.Name,
             roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsActive, r.CreatedOn, r.ModifiedOn, Array.Empty<PermissionDto>())).ToList(),
@@ -206,25 +189,15 @@ public class ReportController : ControllerBase
             permissions.Select(p => new PermissionDto(p.Id, p.Module, p.Page, p.Action, p.Code, p.Description)).ToList(),
             rolePermissions,
             userRoles,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("audit-trail")]
-    public async Task<ActionResult<AuditTrailReportDto>> GetAuditTrailReport(
-        [FromQuery] Guid companyId,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
-        [FromQuery] string? entityType = null,
-        [FromQuery] string? action = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 100,
-        CancellationToken cancellationToken = default)
+    private async Task<AuditTrailReportDto> GetAuditTrailDataAsync(Guid companyId, DateTimeOffset? fromDate, DateTimeOffset? toDate, string? entityType, string? action, int page, int pageSize, CancellationToken ct)
     {
         var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
-
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var query = _context.AuditLogs.AsQueryable();
 
@@ -240,31 +213,79 @@ public class ReportController : ControllerBase
         if (!string.IsNullOrEmpty(action))
             query = query.Where(al => al.Action == action);
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var totalCount = await query.CountAsync(ct);
 
         var auditLogs = await query
             .OrderByDescending(al => al.PerformedOn)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Ok(new AuditTrailReportDto(
+        return new AuditTrailReportDto(
             companyId,
             company.Name,
             totalCount,
             page,
             pageSize,
             auditLogs.Select(al => new AuditLogDto(al.Id, al.Action, al.EntityType, al.EntityId, al.PerformedBy, al.PerformedOn, al.IpAddress, al.UserAgent, al.CorrelationId, al.OldValues, al.NewValues)).ToList(),
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    // ---- PDF endpoints ----
+    // JSON endpoints
+    [HttpGet("company-setup")]
+    public async Task<ActionResult<CompanySetupReportDto>> GetCompanySetupReport(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await GetCompanySetupDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("chart-of-accounts")]
+    public async Task<ActionResult<ChartOfAccountsReportDto>> GetChartOfAccountsReport(
+        [FromQuery] Guid companyId,
+        [FromQuery] bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetChartOfAccountsDataAsync(companyId, activeOnly, cancellationToken));
+    }
+
+    [HttpGet("fiscal-calendar")]
+    public async Task<ActionResult<FiscalCalendarReportDto>> GetFiscalCalendarReport(
+        [FromQuery] Guid companyId,
+        [FromQuery] int? year = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetFiscalCalendarDataAsync(companyId, year, cancellationToken));
+    }
+
+    [HttpGet("security-matrix")]
+    public async Task<ActionResult<SecurityMatrixReportDto>> GetSecurityMatrixReport(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetSecurityMatrixDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("audit-trail")]
+    public async Task<ActionResult<AuditTrailReportDto>> GetAuditTrailReport(
+        [FromQuery] Guid companyId,
+        [FromQuery] DateTimeOffset? fromDate = null,
+        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] string? action = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetAuditTrailDataAsync(companyId, fromDate, toDate, entityType, action, page, pageSize, cancellationToken));
+    }
+
+    // PDF endpoints
     [HttpGet("company-setup/pdf")]
     public async Task<ActionResult> CompanySetupPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetCompanySetupReport(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCompanySetupDataAsync(companyId, ct);
+        if (data == null) return NotFound();
         var header = MkHeader(data.Company.Name, "Company Setup", "Setup");
         var tableRows = new[] {
             new[] { "Name", data.Company.Name },
@@ -285,9 +306,8 @@ public class ReportController : ControllerBase
     [HttpGet("chart-of-accounts/pdf")]
     public async Task<ActionResult> ChartOfAccountsPdfAsync([FromQuery] Guid companyId, [FromQuery] bool activeOnly, CancellationToken ct)
     {
-        var report = await GetChartOfAccountsReport(companyId, activeOnly, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetChartOfAccountsDataAsync(companyId, activeOnly, ct);
+        if (data == null) return NotFound();
         var header = MkHeader(data.CompanyName, "Chart of Accounts", "COA");
         var tableRows = data.Accounts.Select(a => new[]
         {
@@ -302,9 +322,8 @@ public class ReportController : ControllerBase
     [HttpGet("fiscal-calendar/pdf")]
     public async Task<ActionResult> FiscalCalendarPdfAsync([FromQuery] Guid companyId, [FromQuery] int? year, CancellationToken ct)
     {
-        var report = await GetFiscalCalendarReport(companyId, year, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetFiscalCalendarDataAsync(companyId, year, ct);
+        if (data == null) return NotFound();
         var header = MkHeader(data.CompanyName, "Fiscal Calendar", "Calendar");
         var tableRows = data.FiscalYears.SelectMany(fy => fy.Periods.Select(p => new[]
         {
@@ -321,14 +340,14 @@ public class ReportController : ControllerBase
     [HttpGet("audit-trail/pdf")]
     public async Task<ActionResult> AuditTrailPdfAsync([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetAuditTrailReport(companyId, fromDate, toDate, null, null, 1, 100, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetAuditTrailDataAsync(companyId, fromDate, toDate, null, null, 1, 100, ct);
+        if (data == null) return NotFound();
         var header = MkHeader(data.CompanyName, "Audit Trail", "Audit");
         var tableRows = data.Entries.Select(l => new[]
         {
             l.PerformedOn.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
-            l.Action, l.EntityType,            l.EntityId.ToString().Substring(0, 8),
+            l.Action, l.EntityType,
+            l.EntityId.ToString().Substring(0, 8),
             l.PerformedBy ?? "—",
         }).ToArray();
         var doc = new ReportDocument(header, "Audit Trail", $"{data.CompanyName} — {data.TotalCount} entries",
@@ -339,9 +358,7 @@ public class ReportController : ControllerBase
     [HttpGet("security-matrix/pdf")]
     public async Task<ActionResult> SecurityMatrixPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetSecurityMatrixReport(companyId, ct);
-        var ok = report.Result as OkObjectResult;
-        var data = ok?.Value as SecurityMatrixReportDto;
+        var data = await GetSecurityMatrixDataAsync(companyId, ct);
         if (data == null) return NotFound();
         var header = MkHeader(data.CompanyName, "Security Matrix", "Security");
         var roleRows = data.RolePermissions.Select(rp => new[]

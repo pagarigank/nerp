@@ -41,20 +41,18 @@ public class GlReportController : ControllerBase
         return await _customerRead.GetDocumentHeaderAsync(companyId, null, title, number, null, ct);
     }
 
-    [HttpGet("trial-balance")]
-    public async Task<ActionResult<TrialBalanceReportDto>> GetTrialBalance(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
+    // ---- Data-fetching helpers (shared by JSON + PDF endpoints) ----
+
+    private async Task<TrialBalanceReportDto> GetTrialBalanceDataAsync(Guid companyId, Guid? fiscalPeriodId, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var accounts = await _platformContext.Accounts
             .Where(a => a.CompanyId == companyId && !a.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var postedLines = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId)
@@ -67,7 +65,7 @@ public class GlReportController : ControllerBase
 
         var postedLinesList = await postedLines
             .Where(l => l.JournalBatch!.Status == JournalBatchStatus.Posted)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var grouped = postedLinesList
             .GroupBy(l => l.AccountId)
@@ -107,28 +105,22 @@ public class GlReportController : ControllerBase
                 net));
         }
 
-        return Ok(new TrialBalanceReportDto(
+        return new TrialBalanceReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
             totalDebit,
             totalCredit,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("general-ledger-detail")]
-    public async Task<ActionResult<GeneralLedgerDetailReportDto>> GetGeneralLedgerDetail(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
-        CancellationToken cancellationToken = default)
+    private async Task<GeneralLedgerDetailReportDto> GetGeneralLedgerDetailDataAsync(Guid companyId, Guid? fiscalPeriodId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var query = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId)
@@ -159,12 +151,12 @@ public class GlReportController : ControllerBase
                 l.Credit,
                 l.SegmentsJson
             })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var accountIds = lines.Select(l => l.AccountId).Distinct().ToList();
         var accounts = await _platformContext.Accounts
             .Where(a => accountIds.Contains(a.Id))
-            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description }, cancellationToken);
+            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description }, ct);
 
         var detailLines = lines.Select(l => new GeneralLedgerDetailLineDto(
             l.JournalBatchId,
@@ -181,7 +173,7 @@ public class GlReportController : ControllerBase
         var totalDebit = detailLines.Sum(l => l.Debit);
         var totalCredit = detailLines.Sum(l => l.Credit);
 
-        return Ok(new GeneralLedgerDetailReportDto(
+        return new GeneralLedgerDetailReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
@@ -190,18 +182,15 @@ public class GlReportController : ControllerBase
             totalDebit,
             totalCredit,
             detailLines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("unposted-transactions")]
-    public async Task<ActionResult<UnpostedTransactionsReportDto>> GetUnpostedTransactions(
-        [FromQuery] Guid companyId,
-        CancellationToken cancellationToken = default)
+    private async Task<UnpostedTransactionsReportDto> GetUnpostedTransactionsDataAsync(Guid companyId, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var batches = await _glContext.JournalBatches
             .Where(b => b.CompanyId == companyId && b.Status != JournalBatchStatus.Posted && b.Status != JournalBatchStatus.Reversed)
@@ -216,58 +205,25 @@ public class GlReportController : ControllerBase
                 b.Lines.Sum(l => l.Debit),
                 b.Lines.Sum(l => l.Credit),
                 b.CreatedOn))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Ok(new UnpostedTransactionsReportDto(
+        return new UnpostedTransactionsReportDto(
             companyId,
             company.Name,
             batches,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("balance-sheet")]
-    public async Task<ActionResult<FinancialStatementReportDto>> GetBalanceSheet(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
-    {
-        return await GetFinancialStatement(
-            companyId,
-            "BalanceSheet",
-            fiscalPeriodId,
-            new[] { AccountType.Asset, AccountType.Liability, AccountType.Equity },
-            cancellationToken);
-    }
-
-    [HttpGet("income-statement")]
-    public async Task<ActionResult<FinancialStatementReportDto>> GetIncomeStatement(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
-    {
-        return await GetFinancialStatement(
-            companyId,
-            "IncomeStatement",
-            fiscalPeriodId,
-            new[] { AccountType.Revenue, AccountType.Expense },
-            cancellationToken);
-    }
-
-    private async Task<ActionResult<FinancialStatementReportDto>> GetFinancialStatement(
-        Guid companyId,
-        string statementType,
-        Guid? fiscalPeriodId,
-        AccountType[] accountTypes,
-        CancellationToken cancellationToken)
+    private async Task<FinancialStatementReportDto> GetFinancialStatementDataAsync(Guid companyId, string statementType, Guid? fiscalPeriodId, AccountType[] accountTypes, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var accounts = await _platformContext.Accounts
             .Where(a => a.CompanyId == companyId && accountTypes.Contains(a.AccountType) && !a.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var postedLines = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId)
@@ -280,7 +236,7 @@ public class GlReportController : ControllerBase
 
         var postedLinesList = await postedLines
             .Where(l => l.JournalBatch!.Status == JournalBatchStatus.Posted)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var grouped = postedLinesList
             .GroupBy(l => l.AccountId)
@@ -312,30 +268,26 @@ public class GlReportController : ControllerBase
                 balance));
         }
 
-        return Ok(new FinancialStatementReportDto(
+        return new FinancialStatementReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
             statementType,
             totalAmount,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("cash-flow")]
-    public async Task<ActionResult<CashFlowReportDto>> GetCashFlow(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
+    private async Task<CashFlowReportDto> GetCashFlowDataAsync(Guid companyId, Guid? fiscalPeriodId, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var accounts = await _platformContext.Accounts
             .Where(a => a.CompanyId == companyId && !a.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var postedLines = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId && l.JournalBatch.Status == JournalBatchStatus.Posted)
@@ -346,7 +298,7 @@ public class GlReportController : ControllerBase
             postedLines = postedLines.Where(l => l.JournalBatch!.FiscalPeriodId == fiscalPeriodId.Value);
         }
 
-        var postedLinesList = await postedLines.ToListAsync(cancellationToken);
+        var postedLinesList = await postedLines.ToListAsync(ct);
 
         var accountMap = accounts.ToDictionary(a => a.Id);
         var lines = new List<CashFlowLineDto>();
@@ -393,7 +345,7 @@ public class GlReportController : ControllerBase
 
         var netChange = netOperating + netInvesting + netFinancing;
 
-        return Ok(new CashFlowReportDto(
+        return new CashFlowReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
@@ -402,31 +354,26 @@ public class GlReportController : ControllerBase
             netFinancing,
             netChange,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("budget-vs-actual")]
-    public async Task<ActionResult<BudgetVsActualReportDto>> GetBudgetVsActual(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid budgetId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
+    private async Task<BudgetVsActualReportDto> GetBudgetVsActualDataAsync(Guid companyId, Guid budgetId, Guid? fiscalPeriodId, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var budget = await _glContext.Budgets
             .Include(b => b.Lines)
-            .FirstOrDefaultAsync(b => b.Id == budgetId && b.CompanyId == companyId && !b.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(b => b.Id == budgetId && b.CompanyId == companyId && !b.DeletedOn.HasValue, ct);
         if (budget == null)
-            return NotFound();
+            return null!;
 
         var accountIds = budget.Lines.Select(l => l.AccountId).Distinct().ToList();
         var accounts = await _platformContext.Accounts
             .Where(a => accountIds.Contains(a.Id))
-            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description }, cancellationToken);
+            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description }, ct);
 
         var postedLines = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId && l.JournalBatch.Status == JournalBatchStatus.Posted)
@@ -437,7 +384,7 @@ public class GlReportController : ControllerBase
             postedLines = postedLines.Where(l => l.JournalBatch!.FiscalPeriodId == fiscalPeriodId.Value);
         }
 
-        var postedLinesList = await postedLines.ToListAsync(cancellationToken);
+        var postedLinesList = await postedLines.ToListAsync(ct);
 
         var actualByAccount = postedLinesList
             .GroupBy(l => l.AccountId)
@@ -451,7 +398,7 @@ public class GlReportController : ControllerBase
         if (fiscalPeriodId.HasValue)
         {
             var fiscalPeriod = await _platformContext.FiscalPeriods
-                .FirstOrDefaultAsync(fp => fp.Id == fiscalPeriodId.Value && !fp.DeletedOn.HasValue, cancellationToken);
+                .FirstOrDefaultAsync(fp => fp.Id == fiscalPeriodId.Value && !fp.DeletedOn.HasValue, ct);
             if (fiscalPeriod != null)
                 targetPeriodNumber = fiscalPeriod.PeriodNumber;
         }
@@ -482,7 +429,7 @@ public class GlReportController : ControllerBase
 
         var totalVariance = totalBudget - totalActual;
 
-        return Ok(new BudgetVsActualReportDto(
+        return new BudgetVsActualReportDto(
             companyId,
             company.Name,
             budgetId,
@@ -492,21 +439,15 @@ public class GlReportController : ControllerBase
             totalActual,
             totalVariance,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("account-distribution")]
-    public async Task<ActionResult<AccountDistributionReportDto>> GetAccountDistribution(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
-        CancellationToken cancellationToken = default)
+    private async Task<AccountDistributionReportDto> GetAccountDistributionDataAsync(Guid companyId, Guid? fiscalPeriodId, DateTimeOffset? fromDate, DateTimeOffset? toDate, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
         var query = _glContext.JournalEntryLines
             .Where(l => l.JournalBatch != null && l.JournalBatch.CompanyId == companyId && l.JournalBatch.Status == JournalBatchStatus.Posted)
@@ -530,12 +471,12 @@ public class GlReportController : ControllerBase
                 Credit = g.Sum(l => l.Credit),
                 Count = g.Count()
             })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var accountIds = grouped.Select(g => g.AccountId).ToList();
         var accounts = await _platformContext.Accounts
             .Where(a => accountIds.Contains(a.Id))
-            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description, a.AccountType }, cancellationToken);
+            .ToDictionaryAsync(a => a.Id, a => new { a.AccountNumber, a.Description, a.AccountType }, ct);
 
         var lines = grouped.Select(g =>
         {
@@ -554,7 +495,7 @@ public class GlReportController : ControllerBase
         var totalDebit = lines.Sum(l => l.Debit);
         var totalCredit = lines.Sum(l => l.Credit);
 
-        return Ok(new AccountDistributionReportDto(
+        return new AccountDistributionReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
@@ -563,23 +504,19 @@ public class GlReportController : ControllerBase
             totalDebit,
             totalCredit,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("consolidated-trial-balance")]
-    public async Task<ActionResult<ConsolidatedTrialBalanceReportDto>> GetConsolidatedTrialBalance(
-        [FromQuery] Guid parentCompanyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
+    private async Task<ConsolidatedTrialBalanceReportDto> GetConsolidatedTrialBalanceDataAsync(Guid parentCompanyId, Guid? fiscalPeriodId, CancellationToken ct)
     {
         var parentCompany = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == parentCompanyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == parentCompanyId && !c.DeletedOn.HasValue, ct);
         if (parentCompany == null)
-            return NotFound();
+            return null!;
 
         var childCompanies = await _platformContext.Companies
             .Where(c => c.ParentCompanyId == parentCompanyId && !c.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var allCompanies = new List<Company> { parentCompany };
         allCompanies.AddRange(childCompanies);
@@ -587,7 +524,7 @@ public class GlReportController : ControllerBase
 
         var accounts = await _platformContext.Accounts
             .Where(a => companyIds.Contains(a.CompanyId) && !a.DeletedOn.HasValue)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var postedLinesQuery = _glContext.JournalEntryLines
             .Include(l => l.JournalBatch)
@@ -598,7 +535,7 @@ public class GlReportController : ControllerBase
             postedLinesQuery = postedLinesQuery.Where(l => l.JournalBatch!.FiscalPeriodId == fiscalPeriodId.Value);
         }
 
-        var postedLinesList = await postedLinesQuery.ToListAsync(cancellationToken);
+        var postedLinesList = await postedLinesQuery.ToListAsync(ct);
 
         var grouped = postedLinesList
             .GroupBy(l => new { AccountId = l.AccountId, CompanyId = l.JournalBatch!.CompanyId })
@@ -641,38 +578,34 @@ public class GlReportController : ControllerBase
                 company?.Name ?? "Unknown"));
         }
 
-        return Ok(new ConsolidatedTrialBalanceReportDto(
+        return new ConsolidatedTrialBalanceReportDto(
             parentCompanyId,
             parentCompany.Name,
             fiscalPeriodId,
             totalDebit,
             totalCredit,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("intercompany-balance")]
-    public async Task<ActionResult<IntercompanyBalanceReportDto>> GetIntercompanyBalance(
-        [FromQuery] Guid parentCompanyId,
-        [FromQuery] Guid? fiscalPeriodId = null,
-        CancellationToken cancellationToken = default)
+    private async Task<IntercompanyBalanceReportDto> GetIntercompanyBalanceDataAsync(Guid parentCompanyId, Guid? fiscalPeriodId, CancellationToken ct)
     {
         var parentCompany = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == parentCompanyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == parentCompanyId && !c.DeletedOn.HasValue, ct);
         if (parentCompany == null)
-            return NotFound();
+            return null!;
 
         var childCompanyIds = await _platformContext.Companies
             .Where(c => c.ParentCompanyId == parentCompanyId && !c.DeletedOn.HasValue)
             .Select(c => c.Id)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var mappings = await _glContext.IntercompanyMappings
             .Where(m => m.IsActive &&
                 (m.FromCompanyId == parentCompanyId ||
                  childCompanyIds.Contains(m.FromCompanyId) ||
                  childCompanyIds.Contains(m.ToCompanyId)))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         var allCompanyIds = new List<Guid> { parentCompanyId };
         allCompanyIds.AddRange(childCompanyIds);
@@ -686,12 +619,12 @@ public class GlReportController : ControllerBase
             postedLinesQuery = postedLinesQuery.Where(l => l.JournalBatch!.FiscalPeriodId == fiscalPeriodId.Value);
         }
 
-        var postedLinesList = await postedLinesQuery.ToListAsync(cancellationToken);
+        var postedLinesList = await postedLinesQuery.ToListAsync(ct);
 
         var accountIds = postedLinesList.Select(l => l.AccountId).Distinct().ToList();
         var accountsDict = await _platformContext.Accounts
             .Where(a => accountIds.Contains(a.Id))
-            .ToDictionaryAsync(a => a.Id, a => a.AccountNumber, cancellationToken);
+            .ToDictionaryAsync(a => a.Id, a => a.AccountNumber, ct);
 
         var intercompanyLines = postedLinesList
             .Where(l => mappings.Any(m =>
@@ -704,9 +637,9 @@ public class GlReportController : ControllerBase
         foreach (var mapping in mappings)
         {
             var fromAccount = await _platformContext.Accounts
-                .FirstOrDefaultAsync(a => a.CompanyId == mapping.FromCompanyId && a.AccountNumber == mapping.FromAccountNumber && !a.DeletedOn.HasValue, cancellationToken);
+                .FirstOrDefaultAsync(a => a.CompanyId == mapping.FromCompanyId && a.AccountNumber == mapping.FromAccountNumber && !a.DeletedOn.HasValue, ct);
             var toAccount = await _platformContext.Accounts
-                .FirstOrDefaultAsync(a => a.CompanyId == mapping.ToCompanyId && a.AccountNumber == mapping.ToAccountNumber && !a.DeletedOn.HasValue, cancellationToken);
+                .FirstOrDefaultAsync(a => a.CompanyId == mapping.ToCompanyId && a.AccountNumber == mapping.ToAccountNumber && !a.DeletedOn.HasValue, ct);
 
             if (fromAccount == null || toAccount == null)
                 continue;
@@ -717,8 +650,8 @@ public class GlReportController : ControllerBase
             var fromBalance = fromLines.Sum(x => x.Credit - x.Debit);
             var toBalance = toLines.Sum(x => x.Credit - x.Debit);
 
-            var fromCompany = await _platformContext.Companies.FirstOrDefaultAsync(c => c.Id == mapping.FromCompanyId && !c.DeletedOn.HasValue, cancellationToken);
-            var toCompany = await _platformContext.Companies.FirstOrDefaultAsync(c => c.Id == mapping.ToCompanyId && !c.DeletedOn.HasValue, cancellationToken);
+            var fromCompany = await _platformContext.Companies.FirstOrDefaultAsync(c => c.Id == mapping.FromCompanyId && !c.DeletedOn.HasValue, ct);
+            var toCompany = await _platformContext.Companies.FirstOrDefaultAsync(c => c.Id == mapping.ToCompanyId && !c.DeletedOn.HasValue, ct);
 
             lines.Add(new IntercompanyBalanceLineDto(
                 mapping.FromCompanyId,
@@ -730,27 +663,22 @@ public class GlReportController : ControllerBase
                 fromBalance - toBalance));
         }
 
-        return Ok(new IntercompanyBalanceReportDto(
+        return new IntercompanyBalanceReportDto(
             parentCompanyId,
             parentCompany.Name,
             fiscalPeriodId,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
     }
 
-    [HttpGet("multi-currency-revaluation")]
-    public async Task<ActionResult<MultiCurrencyRevaluationReportDto>> GetMultiCurrencyRevaluation(
-        [FromQuery] Guid companyId,
-        [FromQuery] Guid fiscalPeriodId,
-        [FromQuery] DateTimeOffset revaluationDate,
-        CancellationToken cancellationToken = default)
+    private async Task<MultiCurrencyRevaluationReportDto> GetMultiCurrencyRevaluationDataAsync(Guid companyId, Guid fiscalPeriodId, DateTimeOffset revaluationDate, CancellationToken ct)
     {
         var company = await _platformContext.Companies
-            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId && !c.DeletedOn.HasValue, ct);
         if (company == null)
-            return NotFound();
+            return null!;
 
-        var preview = await _revaluationService.PreviewRevaluationAsync(companyId, fiscalPeriodId, revaluationDate, cancellationToken);
+        var preview = await _revaluationService.PreviewRevaluationAsync(companyId, fiscalPeriodId, revaluationDate, ct);
 
         var lines = preview.Lines.Select(l => new MultiCurrencyRevaluationLineDto(
             l.AccountId,
@@ -761,14 +689,120 @@ public class GlReportController : ControllerBase
             l.RevaluedDebit - l.RevaluedCredit,
             l.GainLoss)).ToList();
 
-        return Ok(new MultiCurrencyRevaluationReportDto(
+        return new MultiCurrencyRevaluationReportDto(
             companyId,
             company.Name,
             fiscalPeriodId,
             revaluationDate,
             preview.EstimatedGainLoss,
             lines,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow);
+    }
+
+    // ---- JSON endpoints ----
+
+    [HttpGet("trial-balance")]
+    public async Task<ActionResult<TrialBalanceReportDto>> GetTrialBalance(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetTrialBalanceDataAsync(companyId, fiscalPeriodId, cancellationToken));
+    }
+
+    [HttpGet("general-ledger-detail")]
+    public async Task<ActionResult<GeneralLedgerDetailReportDto>> GetGeneralLedgerDetail(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        [FromQuery] DateTimeOffset? fromDate = null,
+        [FromQuery] DateTimeOffset? toDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetGeneralLedgerDetailDataAsync(companyId, fiscalPeriodId, fromDate, toDate, cancellationToken));
+    }
+
+    [HttpGet("unposted-transactions")]
+    public async Task<ActionResult<UnpostedTransactionsReportDto>> GetUnpostedTransactions(
+        [FromQuery] Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetUnpostedTransactionsDataAsync(companyId, cancellationToken));
+    }
+
+    [HttpGet("balance-sheet")]
+    public async Task<ActionResult<FinancialStatementReportDto>> GetBalanceSheet(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetFinancialStatementDataAsync(companyId, "BalanceSheet", fiscalPeriodId, new[] { AccountType.Asset, AccountType.Liability, AccountType.Equity }, cancellationToken));
+    }
+
+    [HttpGet("income-statement")]
+    public async Task<ActionResult<FinancialStatementReportDto>> GetIncomeStatement(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetFinancialStatementDataAsync(companyId, "IncomeStatement", fiscalPeriodId, new[] { AccountType.Revenue, AccountType.Expense }, cancellationToken));
+    }
+
+    [HttpGet("cash-flow")]
+    public async Task<ActionResult<CashFlowReportDto>> GetCashFlow(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetCashFlowDataAsync(companyId, fiscalPeriodId, cancellationToken));
+    }
+
+    [HttpGet("budget-vs-actual")]
+    public async Task<ActionResult<BudgetVsActualReportDto>> GetBudgetVsActual(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid budgetId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetBudgetVsActualDataAsync(companyId, budgetId, fiscalPeriodId, cancellationToken));
+    }
+
+    [HttpGet("account-distribution")]
+    public async Task<ActionResult<AccountDistributionReportDto>> GetAccountDistribution(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        [FromQuery] DateTimeOffset? fromDate = null,
+        [FromQuery] DateTimeOffset? toDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetAccountDistributionDataAsync(companyId, fiscalPeriodId, fromDate, toDate, cancellationToken));
+    }
+
+    [HttpGet("consolidated-trial-balance")]
+    public async Task<ActionResult<ConsolidatedTrialBalanceReportDto>> GetConsolidatedTrialBalance(
+        [FromQuery] Guid parentCompanyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetConsolidatedTrialBalanceDataAsync(parentCompanyId, fiscalPeriodId, cancellationToken));
+    }
+
+    [HttpGet("intercompany-balance")]
+    public async Task<ActionResult<IntercompanyBalanceReportDto>> GetIntercompanyBalance(
+        [FromQuery] Guid parentCompanyId,
+        [FromQuery] Guid? fiscalPeriodId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetIntercompanyBalanceDataAsync(parentCompanyId, fiscalPeriodId, cancellationToken));
+    }
+
+    [HttpGet("multi-currency-revaluation")]
+    public async Task<ActionResult<MultiCurrencyRevaluationReportDto>> GetMultiCurrencyRevaluation(
+        [FromQuery] Guid companyId,
+        [FromQuery] Guid fiscalPeriodId,
+        [FromQuery] DateTimeOffset revaluationDate,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await GetMultiCurrencyRevaluationDataAsync(companyId, fiscalPeriodId, revaluationDate, cancellationToken));
     }
 
     // ---- PDF endpoints ----
@@ -776,9 +810,8 @@ public class GlReportController : ControllerBase
     [HttpGet("trial-balance/pdf")]
     public async Task<ActionResult> TrialBalancePdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetTrialBalance(companyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetTrialBalanceDataAsync(companyId, fiscalPeriodId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Trial Balance", "TB", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -796,9 +829,8 @@ public class GlReportController : ControllerBase
     [HttpGet("balance-sheet/pdf")]
     public async Task<ActionResult> BalanceSheetPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetBalanceSheet(companyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetFinancialStatementDataAsync(companyId, "BalanceSheet", fiscalPeriodId, new[] { AccountType.Asset, AccountType.Liability, AccountType.Equity }, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Balance Sheet", "BS", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -814,9 +846,8 @@ public class GlReportController : ControllerBase
     [HttpGet("income-statement/pdf")]
     public async Task<ActionResult> IncomeStatementPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetIncomeStatement(companyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetFinancialStatementDataAsync(companyId, "IncomeStatement", fiscalPeriodId, new[] { AccountType.Revenue, AccountType.Expense }, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Income Statement", "IS", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -832,9 +863,8 @@ public class GlReportController : ControllerBase
     [HttpGet("cash-flow/pdf")]
     public async Task<ActionResult> CashFlowPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetCashFlow(companyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetCashFlowDataAsync(companyId, fiscalPeriodId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Cash Flow Statement", "CF", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -850,9 +880,8 @@ public class GlReportController : ControllerBase
     [HttpGet("unposted-transactions/pdf")]
     public async Task<ActionResult> UnpostedTransactionsPdfAsync([FromQuery] Guid companyId, CancellationToken ct)
     {
-        var report = await GetUnpostedTransactions(companyId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetUnpostedTransactionsDataAsync(companyId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Unposted Transactions", "Unposted", ct);
         var tableRows = data.Batches.Select(b => new[]
         {
@@ -870,9 +899,8 @@ public class GlReportController : ControllerBase
     [HttpGet("general-ledger-detail/pdf")]
     public async Task<ActionResult> GeneralLedgerDetailPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetGeneralLedgerDetail(companyId, fiscalPeriodId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetGeneralLedgerDetailDataAsync(companyId, fiscalPeriodId, fromDate, toDate, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "General Ledger Detail", "GL Detail", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -890,9 +918,8 @@ public class GlReportController : ControllerBase
     [HttpGet("account-distribution/pdf")]
     public async Task<ActionResult> AccountDistributionPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken ct)
     {
-        var report = await GetAccountDistribution(companyId, fiscalPeriodId, fromDate, toDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetAccountDistributionDataAsync(companyId, fiscalPeriodId, fromDate, toDate, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Account Distribution", "Distribution", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -910,9 +937,8 @@ public class GlReportController : ControllerBase
     [HttpGet("budget-vs-actual/pdf")]
     public async Task<ActionResult> BudgetVsActualPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid budgetId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetBudgetVsActual(companyId, budgetId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetBudgetVsActualDataAsync(companyId, budgetId, fiscalPeriodId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Budget vs Actual", "BvA", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -932,9 +958,8 @@ public class GlReportController : ControllerBase
     [HttpGet("consolidated-trial-balance/pdf")]
     public async Task<ActionResult> ConsolidatedTrialBalancePdfAsync([FromQuery] Guid parentCompanyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetConsolidatedTrialBalance(parentCompanyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetConsolidatedTrialBalanceDataAsync(parentCompanyId, fiscalPeriodId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(parentCompanyId, "Consolidated Trial Balance", "CTB", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -954,9 +979,8 @@ public class GlReportController : ControllerBase
     [HttpGet("intercompany-balance/pdf")]
     public async Task<ActionResult> IntercompanyBalancePdfAsync([FromQuery] Guid companyId, [FromQuery] Guid? fiscalPeriodId, CancellationToken ct)
     {
-        var report = await GetIntercompanyBalance(companyId, fiscalPeriodId, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetIntercompanyBalanceDataAsync(companyId, fiscalPeriodId, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Intercompany Balance", "IC", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
@@ -973,9 +997,8 @@ public class GlReportController : ControllerBase
     [HttpGet("multi-currency-revaluation/pdf")]
     public async Task<ActionResult> MultiCurrencyRevaluationPdfAsync([FromQuery] Guid companyId, [FromQuery] Guid fiscalPeriodId, [FromQuery] DateTimeOffset revaluationDate, CancellationToken ct)
     {
-        var report = await GetMultiCurrencyRevaluation(companyId, fiscalPeriodId, revaluationDate, ct);
-        if (report.Value == null) return NotFound();
-        var data = report.Value;
+        var data = await GetMultiCurrencyRevaluationDataAsync(companyId, fiscalPeriodId, revaluationDate, ct);
+        if (data == null) return NotFound();
         var header = await GetHeaderAsync(companyId, "Multi-Currency Revaluation", "Reval", ct);
         var tableRows = data.Lines.Select(l => new[]
         {
