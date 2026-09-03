@@ -2,7 +2,8 @@
 // Copyright (c) ERP Project. All rights reserved.
 // </copyright>
 
-using System.Text.Json;
+using ERP.Modules.AccountsPayable.Domain.Entities;
+using ERP.Modules.AccountsPayable.Infrastructure;
 using ERP.Modules.AccountsReceivable.Domain.Entities;
 using ERP.Modules.AccountsReceivable.Infrastructure;
 using ERP.Modules.Integration.Domain.Entities;
@@ -26,6 +27,7 @@ public class InboundEdiProcessor
     private readonly IntegrationDbContext _integrationDb;
     private readonly PurchasingDbContext _purchasingDb;
     private readonly ArDbContext _arDb;
+    private readonly ApDbContext _apDb;
     private readonly PlatformDbContext _platformDb;
     private readonly ILogger<InboundEdiProcessor> _logger;
 
@@ -34,6 +36,7 @@ public class InboundEdiProcessor
         IntegrationDbContext integrationDb,
         PurchasingDbContext purchasingDb,
         ArDbContext arDb,
+        ApDbContext apDb,
         PlatformDbContext platformDb,
         ILogger<InboundEdiProcessor> logger)
     {
@@ -41,6 +44,7 @@ public class InboundEdiProcessor
         _integrationDb = integrationDb;
         _purchasingDb = purchasingDb;
         _arDb = arDb;
+        _apDb = apDb;
         _platformDb = platformDb;
         _logger = logger;
     }
@@ -215,11 +219,17 @@ public class InboundEdiProcessor
             projectId: null,
             salesOrderId: null);
 
+        // Find a default AR revenue account for invoice lines
+        var defaultAccountId = await _platformDb.Accounts
+            .Where(a => a.AccountNumber.StartsWith('4') && a.IsActive)
+            .OrderBy(a => a.AccountNumber)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync(ct);
+
         foreach (var ediLine in ediInvoice.Lines)
         {
-            var lineAmount = ediLine.QuantityInvoiced * ediLine.UnitPrice;
             invoice.AddLine(
-                accountId: Guid.Empty, // TODO: Map EDI product to GL account
+                accountId: defaultAccountId,
                 description: $"EDI line {ediLine.LineNumber}: {ediLine.ProductId}",
                 quantity: ediLine.QuantityInvoiced,
                 unitPrice: ediLine.UnitPrice,
@@ -261,39 +271,98 @@ public class InboundEdiProcessor
         return Task.FromResult(Guid.NewGuid());
     }
 
-    private Task<Guid> FindOrCreateVendorAsync(
+    private async Task<Guid> FindOrCreateVendorAsync(
         Guid companyId,
         EdiParty? supplier,
         CancellationToken ct)
     {
         if (supplier == null)
-            return Task.FromResult(Guid.Empty);
+            return Guid.Empty;
 
-        // Try to find existing vendor by partner code
-        var partnerCode = !string.IsNullOrEmpty(supplier.IdCode) ? supplier.IdCode : supplier.Name;
+        // Match by EDI ID code (N1 SF/SU ID qualifier 92 = vendor code)
+        var searchCode = !string.IsNullOrEmpty(supplier.IdCode) ? supplier.IdCode : supplier.Name;
 
-        // For now, return a placeholder vendor ID
-        // In production, this would look up the vendor master or create one
-        _logger.LogDebug(
-            "EDI 850 supplier: {Name}, ID={IdCode}. Using placeholder vendor.",
-            supplier.Name, supplier.IdCode);
+        // Look up existing vendor by VendorId (string code) within the company
+        var existing = await _apDb.Vendors
+            .Where(v => v.CompanyId == companyId
+                && (v.VendorId == searchCode || v.Name == supplier.Name)
+                && v.IsActive)
+            .FirstOrDefaultAsync(ct);
 
-        return Task.FromResult(Guid.Empty);
+        if (existing != null)
+        {
+            _logger.LogDebug(
+                "EDI 850 supplier matched: {Name} -> VendorId={VendorId}, Id={Id}",
+                supplier.Name, existing.VendorId, existing.Id);
+            return existing.Id;
+        }
+
+        // Auto-create vendor from EDI partner data
+        var newVendor = new Vendor(
+            companyId: companyId,
+            vendorId: searchCode,
+            name: supplier.Name,
+            legalName: supplier.Name,
+            taxId: null,
+            form1099Category: null,
+            defaultPaymentTermId: null,
+            isActive: true);
+
+        _apDb.Vendors.Add(newVendor);
+        await _apDb.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Auto-created vendor from EDI 850: {Name}, VendorId={VendorId}, Id={Id}",
+            supplier.Name, searchCode, newVendor.Id);
+
+        return newVendor.Id;
     }
 
-    private Task<Guid> FindOrCreateCustomerAsync(
+    private async Task<Guid> FindOrCreateCustomerAsync(
         Guid companyId,
         string? senderId,
         CancellationToken ct)
     {
-        // Try to find existing customer by sender ID
-        // For now, return a placeholder customer ID
-        // In production, this would look up the customer master or create one
-        _logger.LogDebug(
-            "EDI 810 sender: {SenderId}. Using placeholder customer.",
-            senderId);
+        if (string.IsNullOrEmpty(senderId))
+            return Guid.Empty;
 
-        return Task.FromResult(Guid.Empty);
+        // Look up existing customer by CustomerId (string code) within the company
+        var existing = await _arDb.Customers
+            .Where(c => c.CompanyId == companyId
+                && (c.CustomerId == senderId)
+                && c.IsActive)
+            .FirstOrDefaultAsync(ct);
+
+        if (existing != null)
+        {
+            _logger.LogDebug(
+                "EDI 810 sender matched: {SenderId} -> CustomerId={CustomerId}, Id={Id}",
+                senderId, existing.CustomerId, existing.Id);
+            return existing.Id;
+        }
+
+        // Auto-create customer from EDI partner data
+        var newCustomer = new Customer(
+            companyId: companyId,
+            customerId: senderId,
+            name: senderId,
+            legalName: senderId,
+            taxId: null,
+            creditLimit: 0,
+            creditHoldDays: 0,
+            defaultPaymentTermId: null,
+            taxExempt: false,
+            taxExemptCertificate: null,
+            currencyCode: null);
+
+        _arDb.Customers.Add(newCustomer);
+        await _arDb.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Auto-created customer from EDI 810: {SenderId}, CustomerId={CustomerId}, Id={Id}",
+            senderId, newCustomer.CustomerId, newCustomer.Id);
+
+        return newCustomer.Id;
     }
 }
 
