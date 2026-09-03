@@ -8,7 +8,8 @@
 -- ============================================
 -- Tax Schema (tax)
 -- ============================================
-CREATE SCHEMA IF NOT EXISTS tax;
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'tax')
+    EXEC('CREATE SCHEMA tax');
 
 -- Tax Code Master
 CREATE TABLE tax.tax_code (
@@ -152,7 +153,7 @@ CREATE TABLE int.einvoice_document (
     updated_by_user_id NVARCHAR(100) NULL
 );
 
-CREATE INDEX IX_einvoice_document_myinvois_uuid ON int.einvoice_document(myinvois_uuid) WHERE myinvois_uuid IS NOT NULL;
+CREATE INDEX IX_einvoice_document_myinvois_uuid ON int.einvoice_document(myinvois_uuid);
 CREATE INDEX IX_einvoice_document_status ON int.einvoice_document(status);
 CREATE INDEX IX_einvoice_document_created_at ON int.einvoice_document(created_at);
 CREATE INDEX IX_einvoice_document_source ON int.einvoice_document(source_document_id, source_document_type);
@@ -201,7 +202,7 @@ CREATE TABLE ar.einvoice_customer_extension (
 );
 
 CREATE INDEX IX_einvoice_customer_extension_customer ON ar.einvoice_customer_extension(customer_id);
-CREATE INDEX IX_einvoice_customer_extension_tin ON ar.einvoice_customer_extension(tax_identification_number) WHERE tax_identification_number IS NOT NULL;
+CREATE INDEX IX_einvoice_customer_extension_tin ON ar.einvoice_customer_extension(tax_identification_number);
 
 -- e-Invoice Vendor Extension (TIN, ID type, SST for suppliers, self-billing)
 CREATE TABLE ap.einvoice_vendor_extension (
@@ -227,7 +228,7 @@ CREATE TABLE ap.einvoice_vendor_extension (
 );
 
 CREATE INDEX IX_einvoice_vendor_extension_vendor ON ap.einvoice_vendor_extension(vendor_id);
-CREATE INDEX IX_einvoice_vendor_extension_tin ON ap.einvoice_vendor_extension(tax_identification_number) WHERE tax_identification_number IS NOT NULL;
+CREATE INDEX IX_einvoice_vendor_extension_tin ON ap.einvoice_vendor_extension(tax_identification_number);
 
 -- API Credential (Client ID/Secret per environment for MyInvois auth)
 CREATE TABLE int.api_credential (
