@@ -166,13 +166,17 @@ public record InvoiceBatchPostedEvent : DomainEvent
         string batchNumber,
         Guid companyId,
         Guid fiscalPeriodId,
-        DateTimeOffset postingDate)
+        DateTimeOffset postingDate,
+        string? currencyCode = null,
+        string? paymentMeansCode = null)
     {
         BatchId = batchId;
         BatchNumber = batchNumber;
         CompanyId = companyId;
         FiscalPeriodId = fiscalPeriodId;
         PostingDate = postingDate;
+        CurrencyCode = currencyCode ?? "MYR";
+        PaymentMeansCode = paymentMeansCode;
     }
 
     public Guid BatchId { get; }
@@ -180,6 +184,8 @@ public record InvoiceBatchPostedEvent : DomainEvent
     public Guid CompanyId { get; }
     public Guid FiscalPeriodId { get; }
     public DateTimeOffset PostingDate { get; }
+    public string CurrencyCode { get; }
+    public string? PaymentMeansCode { get; }
 
     public override string EventType => "InvoiceBatchPosted";
 }

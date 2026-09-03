@@ -234,8 +234,8 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
             IssueDate = batchEvent.PostingDate.Date,
             IssueTime = batchEvent.PostingDate.ToString(
                 "HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "Z",
-            CurrencyCode = "MYR",
-            ExchangeRate = 1.0m,
+            CurrencyCode = batchEvent.CurrencyCode,
+            ExchangeRate = 1.0m, // TODO: Load from ExchangeRate table when CurrencyCode != MYR
             Supplier = supplier,
             Buyer = buyer,
             TaxExclusiveAmount = totalExcl,
@@ -245,6 +245,7 @@ public sealed class InvoicePostedToEInvoiceHandler : IDomainEventHandler<Invoice
             LineExtensionAmount = totalExcl,
             TaxSubtotals = taxSubtotals,
             LineItems = lineItems,
+            PaymentMeansCode = batchEvent.PaymentMeansCode ?? "04", // Default: Bank Transfer
         };
 
         return JsonSerializer.Serialize(new { invoice = dto }, JsonOptions);

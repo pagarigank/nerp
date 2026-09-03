@@ -21,7 +21,9 @@ public class Invoice : Entity
         string? description,
         Guid? paymentTermId,
         Guid? projectId,
-        Guid? salesOrderId)
+        Guid? salesOrderId,
+        string? currencyCode = null,
+        string? paymentMeansCode = null)
         : base(Guid.NewGuid())
     {
         if (string.IsNullOrWhiteSpace(invoiceNumber))
@@ -36,6 +38,8 @@ public class Invoice : Entity
         PaymentTermId = paymentTermId;
         ProjectId = projectId;
         SalesOrderId = salesOrderId;
+        CurrencyCode = currencyCode ?? "MYR";
+        PaymentMeansCode = paymentMeansCode;
         Status = InvoiceStatus.Open;
     }
 
@@ -56,6 +60,12 @@ public class Invoice : Entity
     public Guid? ProjectId { get; private set; }
 
     public Guid? SalesOrderId { get; private set; }
+
+    /// <summary>Gets the ISO 4217 currency code (default MYR).</summary>
+    public string CurrencyCode { get; private set; } = "MYR";
+
+    /// <summary>Gets the LHDN payment means code (01=Cash, 02=Cheque, 03=Credit Transfer, etc.).</summary>
+    public string? PaymentMeansCode { get; private set; }
 
     public InvoiceStatus Status { get; private set; }
 
