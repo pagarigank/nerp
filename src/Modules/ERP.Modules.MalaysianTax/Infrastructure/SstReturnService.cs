@@ -5,6 +5,7 @@
 using System.Text.Json;
 using ERP.Modules.MalaysianTax.Application;
 using ERP.Modules.MalaysianTax.Domain.Entities;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -13,20 +14,27 @@ namespace ERP.Modules.MalaysianTax.Infrastructure;
 /// <summary>
 /// Computes SST-02 (Sales Tax) and SST-02A (Service Tax) returns by
 /// aggregating posted ERP transactions filtered by tax code type.
+/// All mutations are audit-logged.
 /// </summary>
 public class SstReturnService : ISstReturnService
 {
     private readonly ISstReturnRepository _returnRepo;
     private readonly MalaysianTaxDbContext _dbContext;
+    private readonly IAuditLogService _auditLog;
+    private readonly ICurrentUserService _currentUser;
     private readonly ILogger<SstReturnService> _logger;
 
     public SstReturnService(
         ISstReturnRepository returnRepo,
         MalaysianTaxDbContext dbContext,
+        IAuditLogService auditLog,
+        ICurrentUserService currentUser,
         ILogger<SstReturnService> logger)
     {
         _returnRepo = returnRepo;
         _dbContext = dbContext;
+        _auditLog = auditLog;
+        _currentUser = currentUser;
         _logger = logger;
     }
 
@@ -77,6 +85,8 @@ public class SstReturnService : ISstReturnService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         });
 
+        SstReturn result;
+
         if (existing != null)
         {
             // Update existing draft/amended return
@@ -86,24 +96,47 @@ public class SstReturnService : ISstReturnService
             existing.LineItemsJson = lineItemsJson;
             existing.Status = "Prepared";
             existing.UpdatedAt = DateTime.UtcNow;
-            return await _returnRepo.UpdateAsync(existing, ct);
+            result = await _returnRepo.UpdateAsync(existing, ct);
+
+            await _auditLog.LogAsync(
+                "Recompute",
+                nameof(SstReturn),
+                result.Id,
+                _currentUser.UserId ?? "system",
+                oldValues: new { existing.Status, existing.TotalTaxCollected },
+                newValues: new { Status = "Prepared", TotalTaxable = totalTaxable, TotalTax = totalTax, ExemptAmount = exemptAmount },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: ct);
+        }
+        else
+        {
+            // Create new return
+            var sstReturn = new SstReturn
+            {
+                CompanyId = companyId,
+                PeriodStart = periodStart,
+                PeriodEnd = periodEnd,
+                ReturnType = returnType,
+                Status = "Prepared",
+                TotalTaxableAmount = totalTaxable,
+                TotalTaxCollected = totalTax,
+                ExemptAmount = exemptAmount,
+                LineItemsJson = lineItemsJson,
+            };
+
+            result = await _returnRepo.CreateAsync(sstReturn, ct);
+
+            await _auditLog.LogAsync(
+                "Compute",
+                nameof(SstReturn),
+                result.Id,
+                _currentUser.UserId ?? "system",
+                newValues: new { companyId, returnType, PeriodStart = periodStart.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture), TotalTaxable = totalTaxable, TotalTax = totalTax },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: ct);
         }
 
-        // Create new return
-        var sstReturn = new SstReturn
-        {
-            CompanyId = companyId,
-            PeriodStart = periodStart,
-            PeriodEnd = periodEnd,
-            ReturnType = returnType,
-            Status = "Prepared",
-            TotalTaxableAmount = totalTaxable,
-            TotalTaxCollected = totalTax,
-            ExemptAmount = exemptAmount,
-            LineItemsJson = lineItemsJson,
-        };
-
-        return await _returnRepo.CreateAsync(sstReturn, ct);
+        return result;
     }
 
     /// <inheritdoc />
@@ -132,12 +165,25 @@ public class SstReturnService : ISstReturnService
                 $"Cannot file a return in '{sstReturn.Status}' status. Only 'Prepared' returns can be filed.");
         }
 
+        var previousStatus = sstReturn.Status;
         sstReturn.Status = "Filed";
         sstReturn.FiledAt = DateTime.UtcNow.ToString("O");
         sstReturn.LhdnReference = lhdnReference;
         sstReturn.UpdatedAt = DateTime.UtcNow;
 
-        return await _returnRepo.UpdateAsync(sstReturn, ct);
+        var result = await _returnRepo.UpdateAsync(sstReturn, ct);
+
+        await _auditLog.LogAsync(
+            "File",
+            nameof(SstReturn),
+            result.Id,
+            _currentUser.UserId ?? "system",
+            oldValues: new { Status = previousStatus },
+            newValues: new { Status = "Filed", lhdnReference, FiledAt = result.FiledAt },
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: ct);
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -153,10 +199,23 @@ public class SstReturnService : ISstReturnService
                 $"Cannot amend a return in '{original.Status}' status. Only 'Filed' returns can be amended.");
         }
 
+        var previousStatus = original.Status;
+
         // Mark original as Amended
         original.Status = "Amended";
         original.UpdatedAt = DateTime.UtcNow;
         await _returnRepo.UpdateAsync(original, ct);
+
+        // Audit log the amendment
+        await _auditLog.LogAsync(
+            "Amend",
+            nameof(SstReturn),
+            original.Id,
+            _currentUser.UserId ?? "system",
+            oldValues: new { Status = previousStatus, original.TotalTaxCollected },
+            newValues: new { Status = "Amended" },
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: ct);
 
         // Recompute for the same period
         var newReturn = await ComputeReturnAsync(

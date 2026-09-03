@@ -6,6 +6,7 @@ using ERP.Modules.EInvoice.Application;
 using ERP.Modules.EInvoice.Domain;
 using ERP.Modules.EInvoice.Domain.Entities;
 using ERP.Modules.EInvoice.Infrastructure;
+using ERP.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -18,19 +19,25 @@ public class EInvoiceService : IEInvoiceService
     private readonly IMyInvoisTokenCache _tokenCache;
     private readonly IConfiguration _configuration;
     private readonly IQRCodeService _qrCodeService;
+    private readonly IAuditLogService _auditLog;
+    private readonly ICurrentUserService _currentUser;
 
     public EInvoiceService(
         IMyInvoisApiClient myInvoisClient,
         EInvoiceDbContext dbContext,
         IMyInvoisTokenCache tokenCache,
         IConfiguration configuration,
-        IQRCodeService qrCodeService)
+        IQRCodeService qrCodeService,
+        IAuditLogService auditLog,
+        ICurrentUserService currentUser)
     {
         _myInvoisClient = myInvoisClient;
         _dbContext = dbContext;
         _tokenCache = tokenCache;
         _configuration = configuration;
         _qrCodeService = qrCodeService;
+        _auditLog = auditLog;
+        _currentUser = currentUser;
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken ct)
@@ -53,7 +60,7 @@ public class EInvoiceService : IEInvoiceService
         var contentHash = ComputeContentHash(payload);
         var existingDoc = await _dbContext.EInvoiceDocuments
             .FirstOrDefaultAsync(d => d.CompanyId == companyId && d.ContentHash == contentHash && d.Status != EInvoiceDocumentStatus.Cancelled, cancellationToken);
-        
+
         if (existingDoc != null)
         {
             return new EInvoiceSubmissionResult
@@ -110,11 +117,21 @@ public class EInvoiceService : IEInvoiceService
                 IsSandbox = false,
                 SubmittedAt = DateTime.UtcNow
             };
-            
+
             _dbContext.EInvoiceDocuments.Add(dbDocument);
             await _dbContext.SaveChangesAsync(cancellationToken);
-            
+
             result.DocumentId = dbDocument.Id;
+
+            // Audit log
+            await _auditLog.LogAsync(
+                "Submit",
+                "EInvoiceDocument",
+                dbDocument.Id,
+                _currentUser.UserId ?? "system",
+                newValues: new { dbDocument.CompanyId, dbDocument.DocumentType, dbDocument.TotalAmount, dbDocument.MyInvoisUuid, dbDocument.SourceDocumentType },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: cancellationToken);
         }
 
         return result;
@@ -185,7 +202,7 @@ public class EInvoiceService : IEInvoiceService
     {
         var document = await _dbContext.EInvoiceDocuments
             .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
-        
+
         if (document == null)
             throw new InvalidOperationException($"Document {documentId} not found");
 
@@ -236,9 +253,23 @@ public class EInvoiceService : IEInvoiceService
         // Record audit trail
         await RecordStatusChange(documentId, previousStatus, newStatus.ToString(), "system-polling", lhdnErrorCode: null, lhdnErrorMessage: docStatus?.ErrorMessage, myInvoisUuid: docStatus?.Uuid, ct: cancellationToken);
 
+        // Audit log status change
+        if (previousStatus != newStatus.ToString())
+        {
+            await _auditLog.LogAsync(
+                $"StatusChange:{previousStatus}→{newStatus}",
+                "EInvoiceDocument",
+                documentId,
+                "system-polling",
+                oldValues: new { Status = previousStatus },
+                newValues: new { Status = newStatus.ToString(), document.MyInvoisUuid, document.LhdnsErrorMessage },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: cancellationToken);
+        }
+
         return new EInvoicePollingResult
         {
-            IsComplete = document.Status == EInvoiceDocumentStatus.Valid || 
+            IsComplete = document.Status == EInvoiceDocumentStatus.Valid ||
                          document.Status == EInvoiceDocumentStatus.Invalid ||
                          document.Status == EInvoiceDocumentStatus.Cancelled,
             Status = document.Status.ToString(),
@@ -286,6 +317,8 @@ public class EInvoiceService : IEInvoiceService
         if (string.IsNullOrEmpty(document.SubmissionUid))
             throw new InvalidOperationException("Document not yet submitted");
 
+        var previousStatus = document.Status.ToString();
+
         // Get cached access token
         var accessToken = await GetAccessTokenAsync(cancellationToken);
         var cancelResult = await _myInvoisClient.CancelDocumentAsync(
@@ -296,13 +329,23 @@ public class EInvoiceService : IEInvoiceService
 
         if (cancelResult.Status == "Accepted" || cancelResult.Status == "Cancelled")
         {
-            var previousStatus = document.Status.ToString();
             document.Status = EInvoiceDocumentStatus.Cancelled;
             document.CancelledAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             // Record audit trail with cancellation reason
             await RecordStatusChange(documentId, previousStatus, EInvoiceDocumentStatus.Cancelled.ToString(), "user", reason: reason, ct: cancellationToken);
+
+            // Audit log
+            await _auditLog.LogAsync(
+                "Cancel",
+                "EInvoiceDocument",
+                documentId,
+                _currentUser.UserId ?? "user",
+                oldValues: new { Status = previousStatus, document.MyInvoisUuid },
+                newValues: new { Status = "Cancelled", Reason = reason },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: cancellationToken);
         }
 
         return document.Status == EInvoiceDocumentStatus.Cancelled;
@@ -428,6 +471,17 @@ public class EInvoiceService : IEInvoiceService
                 "user",
                 $"Resubmitted from document {originalDocumentId} (original status: {original.Status})",
                 ct: cancellationToken);
+
+            // Audit log
+            await _auditLog.LogAsync(
+                "Resubmit",
+                "EInvoiceDocument",
+                newDoc.Id,
+                _currentUser.UserId ?? "user",
+                oldValues: new { OriginalDocumentId = originalDocumentId, OriginalStatus = original.Status.ToString() },
+                newValues: new { newDoc.DocumentType, newDoc.TotalAmount, newDoc.MyInvoisUuid },
+                correlationId: _currentUser.CorrelationId,
+                cancellationToken: cancellationToken);
         }
 
         return result;
@@ -476,6 +530,17 @@ public class EInvoiceService : IEInvoiceService
             "buyer",
             rejectionReason,
             ct: cancellationToken);
+
+        // Audit log
+        await _auditLog.LogAsync(
+            "Reject",
+            "EInvoiceDocument",
+            documentId,
+            "buyer",
+            oldValues: new { Status = previousStatus, document.MyInvoisUuid },
+            newValues: new { Status = "Rejected", RejectionReason = rejectionReason },
+            correlationId: _currentUser.CorrelationId,
+            cancellationToken: cancellationToken);
 
         return true;
     }
