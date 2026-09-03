@@ -106,7 +106,7 @@ export const NAV_CHIP_STYLES: Record<NavColor, string> = {
 
 export const NAV_TEXT_STYLES: Record<NavColor, string> = {
   sky: 'text-sky-600 dark:text-sky-400',
-  slate: 'text-slate-500 dark:text-slate-400',
+  slate: 'text-slate-500 dark:text-slate-300',
   indigo: 'text-indigo-500 dark:text-indigo-400',
   amber: 'text-amber-500 dark:text-amber-400',
   emerald: 'text-emerald-500 dark:text-emerald-400',
@@ -144,6 +144,7 @@ const SUB_ICON_RULES: Array<[RegExp, LucideIcon]> = [
   [/currency|exchange/i, Coins],
   [/sequence|numbering/i, Hash],
   [/tax|withholding|dunning/i, Percent],
+  [/e-invoice|myinvois/i, ShieldAlert],
   [/timesheet/i, Clock],
   [/expense/i, PenLine],
   [/pto/i, Sun],
@@ -175,6 +176,7 @@ const SUB_ICON_RULES: Array<[RegExp, LucideIcon]> = [
   [/deposit|cash receipt/i, Inbox],
   [/year-end/i, Flag],
   [/collection|allowance|credit limit|checklist/i, ListChecks],
+  [/digital|certificate|submission|status|tin/i, FileSignature],
 ]
 
 /** Resolve a contextual icon for a sub-menu label; falls back to a chevron bullet. */
@@ -498,6 +500,40 @@ export const mainNavigation: NavModule[] = [
       { label: 'Parameter Sets', to: '/reporting/parameter-sets' },
       { label: 'Usage Analytics', to: '/reporting/usage' },
       { label: 'Sync Status', to: '/reporting/sync-status' },
+    ],
+  },
+  {
+    name: 'Malaysian Tax (SST)',
+    href: '/tax',
+    icon: Percent,
+    color: 'amber',
+    roles: ['*'],
+    sub: [
+      { label: 'Tax Codes', to: '/tax/tax-codes' },
+      { label: 'Tax Rates', to: '/tax/tax-rates' },
+      { label: 'SST Returns', to: '/tax/sst-returns' },
+      { label: 'Tax Determination Rules', to: '/tax/determination-rules' },
+      { label: 'Exempt/Zeros', to: '/tax/exempt-zero-rates' },
+      { label: 'Local Code Tables', to: '/tax/local-tables' },
+      { label: 'Reports', to: '/tax/reports' },
+    ],
+  },
+  {
+    name: 'e-Invoice (MyInvois)',
+    href: '/e-invoice',
+    icon: ShieldAlert,
+    color: 'emerald',
+    roles: ['*'],
+    sub: [
+      { label: 'Documents', to: '/e-invoice/documents' },
+      { label: 'Document Queue', to: '/e-invoice/queue' },
+      { label: 'Submission Status', to: '/e-invoice/status' },
+      { label: 'Digital Certificates', to: '/e-invoice/certificates' },
+      { label: 'API Credentials', to: '/e-invoice/credentials' },
+      { label: 'Validation', to: '/e-invoice/validation' },
+      { label: 'Consolidated', to: '/e-invoice/consolidated' },
+      { label: 'Reports', to: '/e-invoice/reports' },
+      { label: 'Reconciliation', to: '/e-invoice/reconciliation' },
     ],
   },
   {
