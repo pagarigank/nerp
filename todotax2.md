@@ -19,7 +19,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 
 | Area | Built | Partial | Missing | Issues |
 |------|-------|---------|---------|--------|
-| **Tax (SST) CRUD** | 5 | 0 | 1 | Exempt supply category CRUD not built (P2) |
+| **Tax (SST) CRUD** | 6 | 0 | 0 | All tax CRUD including exempt supply categories done |
 | **e-Invoice Master Data** | 8 | 0 | 0 | All master data including Item extension done |
 | **e-Invoice Transactional** | 14 | 0 | 0 | Foreign currency, buyer rejection, consolidated batch, vault cert loading, self-billed all done |
 | **e-Invoice Lifecycle** | 4 | 0 | 1 | Cancel, audit trail, error mapping, resubmission done; auto-redirect after 72h not built (P2) |
@@ -31,7 +31,7 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 | **Tests** | 0 | 0 | 3 | No unit/integration tests (critical gap — P0) |
 | **DI/Integration** | 6 | 0 | 0 | ✅ Program.cs registered, DbContexts migrated, all services in DI, status history wired, AP handler registered |
 
-**Overall: ~92% complete (all P0 + P1 complete except unit tests; all P2 items done except exempt supply config + auto-redirect; frontend fully built; all background jobs functional)**
+**Overall: ~94% complete (all P0 + P1 complete except unit tests; all P2 items done except auto-redirect after 72h; frontend fully built; all background jobs functional)**
 
 ---
 
@@ -62,9 +62,8 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 - [x] `P1` Tax determination rule CRUD (mapping item category / customer type / place of supply → tax_code) — *TAX-03*
   > **Built:** `TaxDeterminationRule` entity with `ItemCategory`, `CustomerType`, `PlaceOfSupply` → `TaxCodeId`, priority, effective dating. `TaxDeterminationRuleRepository` with `FindMatchingRulesAsync` (most-specific-first: exact beats wildcards). `TaxDeterminationRuleController` at `/api/v1.0/TaxDeterminationRule` with `[RequirePermission("tax", "tax-rules", "view/create/edit/delete")]`. Includes `GET /determine` dry-run endpoint for preview. `TaxService` rewritten to use rule lookup with fallback to SST-SALES-10. DB table `tax.tax_determination_rule` with 3 seed rules (Services→SST-SERVICE-8, Business→SST-SALES-10, Export→SST-ZRL).
 
-- [ ] `P2` Exempt/zero-rated supply category CRUD — *TAX-08*
-  > **Not built.** Seed data includes `SST-ZRL` and `SST-EXEMPT` codes but no configuration for which supplies are exempt/zero-rated.
-  > **Action needed:** Create `ExemptSupplyCategory` entity mapping product/service categories to exempt/zero-rated tax codes.
+- [x] `P2` Exempt/zero-rated supply category CRUD — *TAX-08*
+  > **Built:** `ExemptSupplyCategory` entity with `CompanyId`, `CategoryCode`, `SupplyType` (Exempt/ZeroRated/DeemedSupply), `TaxCodeId`, `LhdnReference`, effective dating. `ExemptSupplyCategoryRepository` with company-scoped queries, duplicate detection, effective-date filtering. `ExemptSupplyCategoryController` at `/api/v1.0/ExemptSupplyCategory` with `[RequirePermission("tax", "exempt-supplies", "view/create/edit/delete")]`. Frontend `ExemptZeroRatesPage` with table, search, create/edit modal, inline delete, supply type badges, tax code dropdown.
 
 ### 1.2 e-Invoice Module — Master Data
 - [x] `P0` Company / Taxpayer Profile CRUD (TIN, BRN, SST no.(s), MSIC code, registered address, contact) — *EINV-01*
