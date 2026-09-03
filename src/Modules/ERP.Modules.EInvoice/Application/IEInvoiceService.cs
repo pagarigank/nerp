@@ -1,0 +1,26 @@
+// <copyright file="IEInvoiceService.cs" company="ERP Project">
+// Copyright (c) ERP Project. All rights reserved.
+// </copyright>
+
+using ERP.Modules.EInvoice.Domain;
+
+namespace ERP.Modules.EInvoice.Application;
+
+public interface IEInvoiceService
+{
+    Task<EInvoiceSubmissionResult> SubmitDocumentAsync(
+        Guid companyId,
+        Guid sourceDocumentId,
+        string documentType,
+        string payload,
+        string? tin = null,
+        CancellationToken cancellationToken = default);
+
+    Task<EInvoiceDocumentStatusDto> GetDocumentStatusAsync(Guid documentId, CancellationToken cancellationToken = default);
+
+    Task<EInvoicePollingResult> PollSubmissionStatusAsync(Guid documentId, CancellationToken cancellationToken = default);
+
+    Task<EInvoiceValidationResult> ValidateTinAsync(string tin, CancellationToken cancellationToken = default);
+
+    Task<bool> CancelDocumentAsync(Guid documentId, string reason, CancellationToken cancellationToken = default);
+}
