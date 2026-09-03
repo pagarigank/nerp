@@ -231,6 +231,7 @@ import { ReconciliationReportPage } from '@pages/einvoice/ReconciliationReportPa
 import { ReportsPage as EInvoiceReportsPage } from '@pages/einvoice/ReportsPage'
 import { TaxCodesPage } from '@pages/tax/TaxCodesPage'
 import { TaxRatesPage } from '@pages/tax/TaxRatesPage'
+import { TaxDeterminationRulesPage } from '@pages/tax/TaxDeterminationRulesPage'
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -513,6 +514,7 @@ function App() {
         <Route path="tax">
           <Route path="tax-codes" element={<TaxCodesPage />} />
           <Route path="tax-rates" element={<TaxRatesPage />} />
+          <Route path="determination-rules" element={<TaxDeterminationRulesPage />} />
         </Route>
         <Route path="integration/*">
           <Route index element={<IntegrationDashboard />} />
