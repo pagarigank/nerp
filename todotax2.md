@@ -280,11 +280,9 @@ Traceability: each item references the relevant requirement ID from `spec.md` wh
 **File:** `Infrastructure/UblGenerator.cs`
 - **Fixed:** Complete UBL 2.1 JSON generator with 37+ mandatory fields per LHDN MyInvois schema. `UblInvoiceDto` model covers Core, Supplier, Buyer, MonetaryTotal, TaxTotal, InvoiceLines, Payment, Shipping, BillingReference. `Validate()` method for pre-submission validation. Output is JSON (not XML) matching MyInvois API.
 
-### Issue 5: No ERP Integration Hooks ❌ NOT YET FIXED
-**Files:** None (missing)
-- No domain event handlers to intercept Invoice/Credit Note/AP Bill posting and trigger e-Invoice submission.
-- No integration with existing ERP Sales Invoice or AR modules.
-- **Fix:** Create domain event handlers (e.g., `InvoicePostedHandler`) that call `IEInvoiceService.SubmitDocumentAsync`.
+### Issue 5: No ERP Integration Hooks ✅ FIXED
+**File:** `src/ERP.Api/Handlers/InvoicePostedToEInvoiceHandler.cs`
+- **Fixed:** `InvoicePostedToEInvoiceHandler` implements `IDomainEventHandler<InvoiceBatchPostedEvent>`. Handles batch posting events, builds UBL payload from event data, calls `IEInvoiceService.SubmitDocumentAsync`. Registered in DI in Program.cs. Error handling ensures e-Invoice failure doesn't block invoice posting.
 
 ### Issue 6: No TaxpayerProfileService Implementation ✅ FIXED
 **File:** `Application/ITaxpayerProfileService.cs`

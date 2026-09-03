@@ -352,6 +352,9 @@ public class Program
         builder.Services.AddMalaysianTaxModule(builder.Configuration);
         builder.Services.AddEInvoiceModule(builder.Configuration);
 
+        // E-Invoice integration: auto-submit on AR invoice batch posting
+        builder.Services.AddScoped<ERP.Core.Domain.Common.IDomainEventHandler<ERP.Modules.AccountsReceivable.Domain.Entities.InvoiceBatchPostedEvent>, ERP.Api.Handlers.InvoicePostedToEInvoiceHandler>();
+
         // Phase 15 — Performance & Scalability
         builder.Services.AddResponseCompression(options =>
         {
