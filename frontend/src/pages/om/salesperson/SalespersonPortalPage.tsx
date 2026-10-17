@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Calendar,
   Clock,
@@ -15,19 +15,15 @@ import {
   WifiOff,
   Database,
   ArrowRight,
-  TrendingUp,
-  FileText,
-  DollarSign,
   Route as RouteIcon,
 } from 'lucide-react'
 import { useAuthStore } from '@stores/authStore'
 import {
   getSalespersonRoutes,
   getOfflineSyncPackage,
-  uploadOfflineSalesCalls,
-  type SalespersonRouteSummary,
 } from '@/api/salesperson'
 import { getSalesReps } from '@/api/orderManagement'
+import type { SalesRepSummary } from '@/types/orderManagement'
 import { sqliteService, type RouteRecord, type DatabaseStats } from '@/utils/sqliteDb'
 
 const DAYS_OF_WEEK = [
@@ -42,8 +38,8 @@ const DAYS_OF_WEEK = [
 
 export function SalespersonPortalPage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const currentCompany = useAuthStore((s) => s.currentCompany)
+  const currentUser = useAuthStore((s) => s.user)
 
   // Current day of week (0=Sunday, 1=Monday, etc.)
   const todayDayOfWeek = new Date().getDay()
@@ -57,7 +53,6 @@ export function SalespersonPortalPage() {
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null)
   const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
   const [offlineRoutes, setOfflineRoutes] = useState<RouteRecord[]>([])
 
   // Network listener
@@ -97,25 +92,25 @@ export function SalespersonPortalPage() {
   }, [selectedDay, selectedRepId])
 
   // Fetch Sales Reps
-  const { data: salesReps = [] } = useQuery({
+  const { data: salesReps = [] } = useQuery<SalesRepSummary[]>({
     queryKey: ['om', 'salesReps'],
-    queryFn: getSalesReps,
+    queryFn: () => getSalesReps(),
     enabled: effectiveOnline,
   })
 
-  // Auto-select first sales rep if none selected
+  // Auto-select sales rep: prefer match by auth user email, else first rep
   useEffect(() => {
-    if (!selectedRepId && salesReps.length > 0) {
-      handleSelectRep(salesReps[0].id)
-    }
-  }, [salesReps, selectedRepId])
+    if (selectedRepId || salesReps.length === 0) return
+    const userEmail = currentUser?.email?.toLowerCase()
+    const matched = userEmail
+      ? salesReps.find((r) => r.email?.toLowerCase() === userEmail)
+      : undefined
+    const target = matched ?? salesReps[0]
+    if (target) handleSelectRep(target.id)
+  }, [salesReps, selectedRepId, currentUser])
 
   // Live query for routes (when online)
-  const {
-    data: liveRoutes = [],
-    isLoading: isLoadingRoutes,
-    refetch: refetchRoutes,
-  } = useQuery({
+  const { data: liveRoutes = [], isLoading: isLoadingRoutes } = useQuery({
     queryKey: ['om', 'salespersonRoutes', currentCompany?.id, selectedRepId, selectedDay],
     queryFn: () => getSalespersonRoutes(currentCompany?.id, selectedRepId, selectedDay),
     enabled: effectiveOnline && Boolean(selectedRepId),
@@ -173,65 +168,9 @@ export function SalespersonPortalPage() {
     }
   }
 
-  // Upload unsynced calls from SQLite to Server
-  const handleUploadCalls = async () => {
-    if (!selectedRepId || !effectiveOnline || !currentCompany?.id) return
-    setIsUploading(true)
-    setSyncStatusMsg('Syncing pending sales calls to server...')
-    setSyncErrorMsg(null)
-    try {
-      const unsynced = await sqliteService.getUnsyncedSalesCalls()
-      if (unsynced.length === 0) {
-        setSyncStatusMsg('All sales calls are already up to date.')
-        setTimeout(() => setSyncStatusMsg(null), 3000)
-        setIsUploading(false)
-        return
-      }
-
-      const payload = {
-        companyId: currentCompany.id,
-        salesRepId: selectedRepId,
-        calls: unsynced.map((c) => ({
-          clientCallId: c.id,
-          customerId: c.customerId,
-          callDate: c.callDate,
-          startTime: c.startTime,
-          endTime: c.endTime,
-          notes: c.notes,
-          lines: c.lines.map((l) => ({
-            itemId: l.itemId,
-            itemCode: l.itemCode,
-            description: l.description,
-            quantity: l.orderQty,
-            sellingPrice: l.sellingPrice,
-            unitOfMeasure: 'EA',
-            discountPercent: l.discountPercent,
-            lineTotal: l.lineTotal,
-          })),
-          createSalesOrder: true,
-        })),
-      }
-
-      const res = await uploadOfflineSalesCalls(payload)
-
-      for (const item of res.items) {
-        await sqliteService.markCallSynced(
-          item.clientCallId,
-          item.salesOrderId,
-          item.salesOrderNumber,
-        )
-      }
-
-      await refreshDbStats()
-      queryClient.invalidateQueries({ queryKey: ['om', 'salesOrders'] })
-      setSyncStatusMsg(`Successfully processed ${res.totalProcessed} sales order calls on the live server!`)
-      setTimeout(() => setSyncStatusMsg(null), 4000)
-    } catch (err: unknown) {
-      setSyncErrorMsg(err instanceof Error ? err.message : 'Upload failed.')
-    } finally {
-      setIsUploading(false)
-    }
-  }
+  // Upload of offline calls is a selective action (day filter + per-call checkboxes),
+  // which lives in the SQLite Sync Center rather than this one-tap portal.
+  const handleGoToSyncCenter = () => navigate('/om/salesperson/sync')
 
   return (
     <div className="space-y-6">
@@ -320,14 +259,14 @@ export function SalespersonPortalPage() {
               {isSyncing ? 'Syncing...' : 'Sync to SQLite'}
             </button>
 
-            {/* Upload Unsynced Calls */}
+            {/* Upload Unsynced Calls → selective sync lives in the Sync Center */}
             {dbStats && dbStats.unsyncedCallsCount > 0 && (
               <button
-                onClick={handleUploadCalls}
-                disabled={isUploading || !effectiveOnline}
+                onClick={handleGoToSyncCenter}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all animate-pulse"
+                title="Select which offline calls to sync (by day) in the Sync Center"
               >
-                <UploadCloud className={`w-3.5 h-3.5 ${isUploading ? 'animate-spin' : ''}`} />
+                <UploadCloud className="w-3.5 h-3.5" />
                 Sync {dbStats.unsyncedCallsCount} Pending Order{dbStats.unsyncedCallsCount > 1 ? 's' : ''}
               </button>
             )}

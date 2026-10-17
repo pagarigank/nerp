@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -14,15 +14,20 @@ import {
   BarChart3,
   Zap,
   CheckCircle2,
+  Database,
+  Upload,
 } from 'lucide-react'
 import { useAuth } from '@stores/authStore'
-import { loginUser } from '@/api/auth'
 import { getErrorMessage } from '@/api/client'
+import { getSalesReps } from '@/api/orderManagement'
+import { getOfflineSyncPackage } from '@/api/salesperson'
+import { sqliteService } from '@/utils/sqliteDb'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   rememberMe: z.any().optional(),
+  offlineSqlite: z.any().optional(),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -50,10 +55,34 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null)
+  const [restoreErr, setRestoreErr] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handleRestoreFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsRestoring(true)
+    setRestoreMsg(null)
+    setRestoreErr(null)
+    try {
+      const buffer = await file.arrayBuffer()
+      const stats = await sqliteService.loadDatabaseFromBinary(buffer)
+      setRestoreMsg(
+        `Offline database restored: ${stats.routesCount} routes, ${stats.productsCount} products, ${stats.salesCallsCount} call(s).`,
+      )
+    } catch (err) {
+      setRestoreErr(err instanceof Error ? err.message : 'Failed to load database file.')
+    } finally {
+      setIsRestoring(false)
+      e.target.value = ''
+    }
+  }
 
   const {
     register,
@@ -65,6 +94,7 @@ export function LoginPage() {
       email: '',
       password: '',
       rememberMe: false,
+      offlineSqlite: false,
     },
   })
 
@@ -91,6 +121,51 @@ export function LoginPage() {
         fiscalPeriods: res.fiscalPeriods,
         isSuperAdmin: res.isSuperAdmin,
       })
+
+      // Salesperson Offline Mode: seed the local SQLite database from the
+      // sync package and download the .sqlite3 file so the seller has the
+      // pages' data available for offline order entry.
+      let offlineFileDownloaded = false
+      if (data.offlineSqlite) {
+        try {
+          const salesReps = await getSalesReps()
+          const userEmail = (res.user?.email as string | undefined)?.toLowerCase()
+          const matched = userEmail
+            ? salesReps.find((r) => r.email?.toLowerCase() === userEmail)
+            : undefined
+          const target = matched ?? salesReps[0]
+          if (target) {
+            localStorage.setItem('nerp_selected_salesrep_id', target.id)
+            const pkg = await getOfflineSyncPackage(target.id)
+            await sqliteService.importSyncPackage({
+              serverTime: pkg.serverTime,
+              routes: pkg.routes,
+              products: pkg.products,
+              pricingRules: pkg.pricingRules,
+            })
+            const blob = await sqliteService.exportDatabaseBlob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `nerp-salesperson-offline-${new Date().toISOString().slice(0, 10)}.sqlite3`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            // Delay revoke so the browser has time to consume the blob.
+            setTimeout(() => URL.revokeObjectURL(url), 5000)
+            offlineFileDownloaded = true
+          }
+        } catch (offlineErr) {
+          // Never block sign-in on offline package failure
+          console.error('OFFLINE PACKAGE ERR', offlineErr)
+        }
+      }
+
+      // Give the browser a moment to start the file download before the
+      // full-page navigation, otherwise the download can be cancelled.
+      if (offlineFileDownloaded) {
+        await new Promise((resolve) => setTimeout(resolve, 600))
+      }
 
       window.location.href = '/dashboard'
     } catch (err) {
@@ -305,6 +380,66 @@ export function LoginPage() {
               >
                 Forgot password?
               </Link>
+            </div>
+
+            {/* Salesperson Offline Mode */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-4 py-3">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative mt-0.5">
+                  <input
+                    {...register('offlineSqlite')}
+                    type="checkbox"
+                    className="peer sr-only"
+                  />
+                  <div className="w-4 h-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-primary-500 peer-checked:bg-primary-500 transition-all duration-200 flex items-center justify-center">
+                    <CheckCircle2 className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                    <Database className="w-3.5 h-3.5 text-primary-500" />
+                    Salesperson offline mode
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Download the seller database (.sqlite3) with your routes, customers, products
+                    and pricing, and cache it locally for order entry without internet.
+                  </p>
+                </div>
+              </label>
+
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Restoring on another device?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isRestoring}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-60 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {isRestoring ? 'Loading…' : 'Restore .sqlite3'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".sqlite3,.sqlite,.db,application/x-sqlite3,application/vnd.sqlite3"
+                  className="hidden"
+                  onChange={handleRestoreFile}
+                />
+              </div>
+
+              {(restoreMsg || restoreErr) && (
+                <p
+                  className={`mt-2 text-xs leading-relaxed ${
+                    restoreErr
+                      ? 'text-red-500 dark:text-red-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                  }`}
+                >
+                  {restoreErr ?? restoreMsg}
+                </p>
+              )}
             </div>
 
             {authError && (

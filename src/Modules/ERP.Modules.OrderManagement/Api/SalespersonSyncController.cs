@@ -109,7 +109,8 @@ public class SalespersonSyncController : ControllerBase
     }
 
     /// <summary>
-    /// Uploads batch of offline-recorded sales calls and generates corresponding main sales orders.
+    /// Uploads batch of offline-recorded sales calls and parks them for later review.
+    /// Sales Orders are NOT created here — use process-parked to selectively convert parked calls into orders.
     /// </summary>
     [HttpPost("salesperson/sync-upload")]
     public async Task<ActionResult<ApiResponse<SyncUploadResult>>> SyncUploadAsync(
@@ -189,48 +190,6 @@ public class SalespersonSyncController : ControllerBase
             callEntity.CompleteCall(callDto.EndTime ?? DateTime.UtcNow, callDto.Notes);
             callEntity.MarkSynced(DateTime.UtcNow);
 
-            Guid? generatedOrderId = null;
-            string? generatedOrderNumber = null;
-
-            // If the sales call contains ordered items, auto-create a formal ERP Sales Order
-            if (callDto.Lines.Count > 0 && callDto.CreateSalesOrder)
-            {
-                var sequence = await _platformContext.NumberSequences
-                    .FirstOrDefaultAsync(s => s.CompanyId == request.CompanyId && s.Name == "Sales Order" && s.IsActive, cancellationToken);
-
-                generatedOrderNumber = sequence != null
-                    ? sequence.GetNextNumber()
-                    : $"SO-{DateTime.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString()[..4].ToUpper(CultureInfo.InvariantCulture)}";
-
-                var salesOrder = new SalesOrder(
-                    generatedOrderNumber,
-                    request.CompanyId,
-                    callDto.CustomerId,
-                    callDto.CallDate,
-                    salesRepId: request.SalesRepId.ToString());
-
-                int soLineNum = 1;
-                foreach (var lineDto in callDto.Lines)
-                {
-                    var soLine = new SalesOrderLine(
-                        salesOrder.Id,
-                        soLineNum++,
-                        lineDto.ItemId,
-                        lineDto.Description,
-                        lineDto.Quantity,
-                        lineDto.SellingPrice,
-                        lineDto.UnitOfMeasure,
-                        lineDto.DiscountPercent,
-                        0m);
-
-                    salesOrder.AddLine(soLine);
-                }
-
-                _context.SalesOrders.Add(salesOrder);
-                generatedOrderId = salesOrder.Id;
-                callEntity.LinkSalesOrder(salesOrder.Id);
-            }
-
             _context.SalesCalls.Add(callEntity);
             await _context.SaveChangesAsync(cancellationToken);
 
@@ -238,13 +197,163 @@ public class SalespersonSyncController : ControllerBase
                 callDto.ClientCallId ?? callEntity.Id.ToString(),
                 callEntity.Id,
                 callEntity.CallNumber,
-                generatedOrderId,
-                generatedOrderNumber,
-                "Created",
+                null,
+                null,
+                "Parked",
                 DateTime.UtcNow));
         }
 
         return Ok(ApiResponse<SyncUploadResult>.Success(new SyncUploadResult(results, results.Count)));
+    }
+
+    /// <summary>
+    /// Lists completed sales calls that are parked (synced but not yet processed into Sales Orders).
+    /// </summary>
+    [HttpGet("salesperson/parked-calls")]
+    public async Task<ActionResult<ApiResponse<List<ParkedCallSummary>>>> GetParkedCallsAsync(
+        [FromQuery] Guid? companyId,
+        [FromQuery] Guid? salesRepId,
+        CancellationToken cancellationToken)
+    {
+        var q = _context.SalesCalls.AsNoTracking()
+            .Include(c => c.Lines)
+            .Where(c => c.Status == SalesCallStatus.Completed && c.SalesOrderId == null);
+        q = q.ApplyCompanyScope(HttpContext, x => x.CompanyId, companyId);
+
+        if (salesRepId.HasValue && salesRepId.Value != Guid.Empty)
+        {
+            q = q.Where(c => c.SalesRepId == salesRepId.Value);
+        }
+
+        var calls = await q
+            .OrderBy(c => c.CallDate)
+            .ThenBy(c => c.StartTime)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        var custMap = await LoadCustomerMapAsync(calls.FirstOrDefault()?.CompanyId ?? companyId ?? Guid.Empty, cancellationToken);
+
+        var list = calls.Select(c =>
+        {
+            custMap.TryGetValue(c.CustomerId, out var cust);
+            return new ParkedCallSummary(
+                c.Id,
+                c.CompanyId,
+                c.CallNumber,
+                c.SalesRepId,
+                c.CustomerId,
+                cust?.Code ?? string.Empty,
+                cust?.Name ?? "Unknown Customer",
+                c.CallDate,
+                c.StartTime,
+                c.EndTime,
+                c.TotalAmount,
+                c.Lines.Count,
+                c.IsOfflineCreated,
+                c.ClientCallId,
+                c.SyncedAt);
+        }).ToList();
+
+        return Ok(ApiResponse<List<ParkedCallSummary>>.Success(list));
+    }
+
+    /// <summary>
+    /// Processes selected parked sales calls into formal Sales Orders.
+    /// </summary>
+    [HttpPost("salesperson/process-parked")]
+    public async Task<ActionResult<ApiResponse<ProcessParkedOrdersResult>>> ProcessParkedOrdersAsync(
+        [FromBody] ProcessParkedOrdersRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.SalesCallIds == null || request.SalesCallIds.Count == 0)
+        {
+            return Ok(ApiResponse<ProcessParkedOrdersResult>.Success(new ProcessParkedOrdersResult(new List<ProcessCallResultItem>(), 0)));
+        }
+
+        var results = new List<ProcessCallResultItem>();
+
+        foreach (var callId in request.SalesCallIds.Distinct())
+        {
+            var call = await _context.SalesCalls
+                .Include(c => c.Lines)
+                .FirstOrDefaultAsync(c => c.Id == callId && c.CompanyId == request.CompanyId, cancellationToken);
+
+            if (call == null)
+            {
+                results.Add(new ProcessCallResultItem(callId, string.Empty, "NotFound", null, null, "Sales call not found."));
+                continue;
+            }
+
+            if (call.SalesOrderId.HasValue)
+            {
+                var existingNumber = await _context.SalesOrders
+                    .Where(o => o.Id == call.SalesOrderId.Value)
+                    .Select(o => o.OrderNumber)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                results.Add(new ProcessCallResultItem(call.Id, call.CallNumber, "AlreadyProcessed", call.SalesOrderId, existingNumber, "Sales order already exists for this call."));
+                continue;
+            }
+
+            if (call.Status != SalesCallStatus.Completed)
+            {
+                results.Add(new ProcessCallResultItem(call.Id, call.CallNumber, "SkippedNotCompleted", null, null, "Only completed calls can be processed."));
+                continue;
+            }
+
+            if (call.Lines.Count == 0)
+            {
+                results.Add(new ProcessCallResultItem(call.Id, call.CallNumber, "SkippedNoLines", null, null, "Call has no order lines to process."));
+                continue;
+            }
+
+            var sequence = await _platformContext.NumberSequences
+                .FirstOrDefaultAsync(s => s.CompanyId == call.CompanyId && s.Name == "Sales Order" && s.IsActive, cancellationToken);
+
+            string orderNumber;
+            if (sequence != null)
+            {
+                orderNumber = sequence.GetNextNumber();
+                await _platformContext.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                orderNumber = $"SO-{DateTime.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString()[..4].ToUpper(CultureInfo.InvariantCulture)}";
+            }
+
+            var salesOrder = new SalesOrder(
+                orderNumber,
+                call.CompanyId,
+                call.CustomerId,
+                call.CallDate,
+                salesRepId: call.SalesRepId.ToString());
+
+            int soLineNum = 1;
+            foreach (var line in call.Lines.OrderBy(l => l.LineNumber))
+            {
+                var soLine = new SalesOrderLine(
+                    salesOrder.Id,
+                    soLineNum++,
+                    line.ItemId,
+                    line.Description,
+                    line.Quantity,
+                    line.SellingPrice,
+                    line.UnitOfMeasure,
+                    line.DiscountPercent,
+                    0m);
+
+                salesOrder.AddLine(soLine);
+            }
+
+            _context.SalesOrders.Add(salesOrder);
+            call.LinkSalesOrder(salesOrder.Id);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            results.Add(new ProcessCallResultItem(call.Id, call.CallNumber, "Processed", salesOrder.Id, orderNumber, "Sales order created."));
+        }
+
+        return Ok(ApiResponse<ProcessParkedOrdersResult>.Success(
+            new ProcessParkedOrdersResult(results, results.Count(r => r.Status == "Processed"))));
     }
 
     /// <summary>
@@ -470,8 +579,28 @@ public class SalespersonSyncController : ControllerBase
             await conn.OpenAsync(cancellationToken);
         }
 
+        // Real on-hand totals per item across all warehouses/bins/lots
+        var onHandMap = new Dictionary<Guid, decimal>();
+        await using (var stockCmd = conn.CreateCommand())
+        {
+            stockCmd.CommandText = "SELECT ItemId, SUM(OnHandQuantity) FROM inv.ItemStocks WHERE CompanyId = @cmp GROUP BY ItemId";
+            var stockParam = stockCmd.CreateParameter();
+            stockParam.ParameterName = "@cmp";
+            stockParam.Value = companyId;
+            stockCmd.Parameters.Add(stockParam);
+
+            await using var stockReader = await stockCmd.ExecuteReaderAsync(cancellationToken);
+            while (await stockReader.ReadAsync(cancellationToken))
+            {
+                onHandMap[stockReader.GetGuid(0)] = await stockReader.IsDBNullAsync(1, cancellationToken) ? 0m : stockReader.GetDecimal(1);
+            }
+        }
+
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, ItemCode, Description, BaseUnitOfMeasure, StandardCost, ItemCategoryId FROM inv.Items WHERE CompanyId = @cmp AND Status = 1";
+        cmd.CommandText = @"SELECT i.Id, i.ItemCode, i.Description, i.BaseUnitOfMeasure, i.StandardCost, i.ItemCategoryId, c.CategoryName
+FROM inv.Items i
+LEFT JOIN inv.ItemCategories c ON c.Id = i.ItemCategoryId
+WHERE i.CompanyId = @cmp AND i.Status = 1";
         var p = cmd.CreateParameter();
         p.ParameterName = "@cmp";
         p.Value = companyId;
@@ -486,6 +615,8 @@ public class SalespersonSyncController : ControllerBase
             var uom = await reader.IsDBNullAsync(3, cancellationToken) ? "EA" : reader.GetString(3);
             var cost = await reader.IsDBNullAsync(4, cancellationToken) ? 0m : reader.GetDecimal(4);
             var catId = await reader.IsDBNullAsync(5, cancellationToken) ? (Guid?)null : reader.GetGuid(5);
+            var catName = await reader.IsDBNullAsync(6, cancellationToken) ? string.Empty : reader.GetString(6);
+            var onHand = onHandMap.TryGetValue(id, out var qty) ? qty : 0m;
 
             // Base selling price defaults to StandardCost with standard margin, or at least StandardCost
             var basePrice = cost > 0 ? Math.Round(cost * 1.35m, 2) : 10.00m;
@@ -497,8 +628,8 @@ public class SalespersonSyncController : ControllerBase
                 basePrice,
                 uom,
                 catId,
-                string.Empty,
-                100m));
+                catName,
+                onHand));
         }
 
         return list;
@@ -618,8 +749,7 @@ public record OfflineSalesCallUploadDto(
     DateTime StartTime,
     DateTime? EndTime,
     string? Notes,
-    List<OfflineSalesCallLineUploadDto> Lines,
-    bool CreateSalesOrder = true);
+    List<OfflineSalesCallLineUploadDto> Lines);
 
 public record OfflineSalesCallLineUploadDto(
     Guid ItemId,
@@ -642,6 +772,39 @@ public record SyncCallResultItem(
 
 public record SyncUploadResult(
     List<SyncCallResultItem> Items,
+    int TotalProcessed);
+
+public record ParkedCallSummary(
+    Guid Id,
+    Guid CompanyId,
+    string CallNumber,
+    Guid SalesRepId,
+    Guid CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    DateTime CallDate,
+    DateTime StartTime,
+    DateTime? EndTime,
+    decimal TotalAmount,
+    int LineCount,
+    bool IsOfflineCreated,
+    string? ClientCallId,
+    DateTime? SyncedAt);
+
+public record ProcessParkedOrdersRequest(
+    Guid CompanyId,
+    List<Guid> SalesCallIds);
+
+public record ProcessCallResultItem(
+    Guid CallId,
+    string CallNumber,
+    string Status,
+    Guid? SalesOrderId,
+    string? SalesOrderNumber,
+    string Message);
+
+public record ProcessParkedOrdersResult(
+    List<ProcessCallResultItem> Items,
     int TotalProcessed);
 
 public record SalesCallSummary(

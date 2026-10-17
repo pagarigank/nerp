@@ -15,8 +15,8 @@ export interface RouteRecord {
   address: string
   dayOfWeek: number
   sequenceOrder: number
-  estimatedTime?: string
-  notes?: string
+  estimatedTime?: string | undefined
+  notes?: string | undefined
   creditLimit: number
   currentBalance: number
 }
@@ -27,19 +27,19 @@ export interface ProductRecord {
   description: string
   basePrice: number
   unitOfMeasure: string
-  itemCategoryId?: string
-  categoryName?: string
+  itemCategoryId?: string | undefined
+  categoryName?: string | undefined
   onHandQty: number
 }
 
 export interface PricingRuleRecord {
   id: string
-  customerId?: string
-  itemId?: string
-  itemCategoryId?: string
+  customerId?: string | undefined
+  itemId?: string | undefined
+  itemCategoryId?: string | undefined
   discountPercent: number
-  unitPriceOverride?: number
-  minQty?: number
+  unitPriceOverride?: number | undefined
+  minQty?: number | undefined
   prioritySequence: number
 }
 
@@ -49,17 +49,18 @@ export interface SalesCallRecord {
   salesRepId: string
   customerId: string
   customerName: string
+  routeId?: string | undefined
   callDate: string
   startTime: string
-  endTime?: string
+  endTime?: string | undefined
   status: string
-  notes?: string
+  notes?: string | undefined
   grandTotal: number
   isSynced: number // 0 or 1
-  syncedAt?: string
-  serverOrderId?: string
-  serverOrderNumber?: string
-  syncError?: string
+  syncedAt?: string | undefined
+  serverOrderId?: string | undefined
+  serverOrderNumber?: string | undefined
+  syncError?: string | undefined
 }
 
 export interface SalesCallItemRecord {
@@ -70,6 +71,7 @@ export interface SalesCallItemRecord {
   description: string
   sellingPrice: number
   orderQty: number
+  unitOfMeasure: string
   discountPercent: number
   lineTotal: number
 }
@@ -80,25 +82,34 @@ export interface DatabaseStats {
   pricingRulesCount: number
   salesCallsCount: number
   unsyncedCallsCount: number
-  lastSyncTime?: string
+  lastSyncTime?: string | undefined
   databaseSizeKb: number
 }
 
 const DB_STORE_NAME = 'nerp_sqlite_store'
 const DB_KEY = 'salesperson_sqlite_db'
 
+type SqlJsModule = Awaited<ReturnType<typeof initSqlJs>>
+
 class SqliteService {
   private db: SqliteDatabase | null = null
   private initPromise: Promise<SqliteDatabase> | null = null
+  private sqlModule: SqlJsModule | null = null
+
+  private async getSql(): Promise<SqlJsModule> {
+    if (this.sqlModule) return this.sqlModule
+    this.sqlModule = await initSqlJs({
+      locateFile: () => '/sql-wasm.wasm',
+    })
+    return this.sqlModule
+  }
 
   public async getDb(): Promise<SqliteDatabase> {
     if (this.db) return this.db
     if (this.initPromise) return this.initPromise
 
     this.initPromise = (async () => {
-      const SQL = await initSqlJs({
-        locateFile: () => '/sql-wasm.wasm',
-      })
+      const SQL = await this.getSql()
 
       const savedData = await this.loadFromIndexedDb()
       if (savedData && savedData.byteLength > 0) {
@@ -171,6 +182,7 @@ class SqliteService {
         sales_rep_id TEXT,
         customer_id TEXT,
         customer_name TEXT,
+        route_id TEXT,
         call_date TEXT,
         start_time TEXT,
         end_time TEXT,
@@ -192,10 +204,28 @@ class SqliteService {
         description TEXT,
         selling_price REAL,
         order_qty REAL,
+        unit_of_measure TEXT,
         discount_percent REAL,
         line_total REAL
       );
     `)
+    this.migrateSchema(db)
+  }
+
+  private migrateSchema(db: SqliteDatabase) {
+    const hasColumn = (table: string, column: string): boolean => {
+      const res = db.exec(`PRAGMA table_info(${table});`)
+      if (!res.length) return false
+      const cols = (res[0]?.values ?? []).map((v) => String(v[1]))
+      return cols.includes(column)
+    }
+
+    if (!hasColumn('sales_calls', 'route_id')) {
+      db.run('ALTER TABLE sales_calls ADD COLUMN route_id TEXT;')
+    }
+    if (!hasColumn('sales_call_items', 'unit_of_measure')) {
+      db.run('ALTER TABLE sales_call_items ADD COLUMN unit_of_measure TEXT;')
+    }
   }
 
   // --- IndexedDB Persistence ---
@@ -454,7 +484,9 @@ class SqliteService {
   }
 
   /**
-   * Evaluates pricing rules in SQLite for customer and item.
+   * Evaluates pricing rules in SQLite for customer, item, and category.
+   * Mirrors server PricingEngine: filter by matchable dimensions, then order by
+   * PrioritySequence with customer-specific preference.
    */
   public async calculateItemPrice(
     customerId: string,
@@ -462,19 +494,20 @@ class SqliteService {
     itemCategoryId: string | undefined,
     qty: number,
     basePrice: number,
-  ): Promise<{ sellingPrice: number; discountPercent: number; ruleApplied?: string }> {
+  ): Promise<{ sellingPrice: number; discountPercent: number; ruleApplied?: string | undefined }> {
     const db = await this.getDb()
-    // Find matching rule with highest priority (lowest priority_sequence)
     const stmt = db.prepare(`
       SELECT id, discount_percent, unit_price_override
       FROM pricing_rules
-      WHERE (customer_id = ? OR customer_id = '' OR customer_id IS NULL)
-        AND (item_id = ? OR item_id = '' OR item_id IS NULL)
+      WHERE (customer_id = '' OR customer_id IS NULL OR customer_id = ?)
+        AND (item_id = '' OR item_id IS NULL OR item_id = ?)
+        AND (item_category_id = '' OR item_category_id IS NULL OR item_category_id = ?)
         AND (min_qty IS NULL OR min_qty <= ?)
-      ORDER BY priority_sequence ASC
+      ORDER BY priority_sequence ASC,
+               (CASE WHEN customer_id != '' AND customer_id = ? THEN 0 ELSE 1 END) ASC
       LIMIT 1;
     `)
-    stmt.bind([customerId, itemId, qty])
+    stmt.bind([customerId, itemId, itemCategoryId || '', qty, customerId])
 
     let sellingPrice = basePrice
     let discountPercent = 0
@@ -503,11 +536,12 @@ class SqliteService {
     salesRepId: string
     customerId: string
     customerName: string
+    routeId?: string | undefined
     callDate: string
     startTime: string
-    endTime?: string
+    endTime?: string | undefined
     status: string
-    notes?: string
+    notes?: string | undefined
     grandTotal: number
     lines: {
       itemId: string
@@ -515,6 +549,7 @@ class SqliteService {
       description: string
       sellingPrice: number
       orderQty: number
+      unitOfMeasure?: string | undefined
       discountPercent: number
       lineTotal: number
     }[]
@@ -525,9 +560,9 @@ class SqliteService {
       // Insert Call
       const callStmt = db.prepare(`
         INSERT OR REPLACE INTO sales_calls (
-          id, company_id, sales_rep_id, customer_id, customer_name,
+          id, company_id, sales_rep_id, customer_id, customer_name, route_id,
           call_date, start_time, end_time, status, notes, grand_total, is_synced
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
       `)
       callStmt.run([
         call.id,
@@ -535,6 +570,7 @@ class SqliteService {
         call.salesRepId,
         call.customerId,
         call.customerName,
+        call.routeId || '',
         call.callDate,
         call.startTime,
         call.endTime || '',
@@ -551,8 +587,8 @@ class SqliteService {
       const lineStmt = db.prepare(`
         INSERT INTO sales_call_items (
           id, sales_call_id, item_id, item_code, description,
-          selling_price, order_qty, discount_percent, line_total
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+          selling_price, order_qty, unit_of_measure, discount_percent, line_total
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
 
       for (const line of call.lines) {
@@ -565,6 +601,7 @@ class SqliteService {
           line.description,
           line.sellingPrice,
           line.orderQty,
+          line.unitOfMeasure || 'EA',
           line.discountPercent,
           line.lineTotal,
         ])
@@ -602,6 +639,7 @@ class SqliteService {
           description: String(itemRow.description),
           sellingPrice: Number(itemRow.selling_price || 0),
           orderQty: Number(itemRow.order_qty || 0),
+          unitOfMeasure: String(itemRow.unit_of_measure || 'EA'),
           discountPercent: Number(itemRow.discount_percent || 0),
           lineTotal: Number(itemRow.line_total || 0),
         })
@@ -614,6 +652,7 @@ class SqliteService {
         salesRepId: String(row.sales_rep_id),
         customerId: String(row.customer_id),
         customerName: String(row.customer_name),
+        routeId: row.route_id ? String(row.route_id) : undefined,
         callDate: String(row.call_date),
         startTime: String(row.start_time),
         endTime: row.end_time ? String(row.end_time) : undefined,
@@ -653,6 +692,7 @@ class SqliteService {
           description: String(itemRow.description),
           sellingPrice: Number(itemRow.selling_price || 0),
           orderQty: Number(itemRow.order_qty || 0),
+          unitOfMeasure: String(itemRow.unit_of_measure || 'EA'),
           discountPercent: Number(itemRow.discount_percent || 0),
           lineTotal: Number(itemRow.line_total || 0),
         })
@@ -665,6 +705,7 @@ class SqliteService {
         salesRepId: String(row.sales_rep_id),
         customerId: String(row.customer_id),
         customerName: String(row.customer_name),
+        routeId: row.route_id ? String(row.route_id) : undefined,
         callDate: String(row.call_date),
         startTime: String(row.start_time),
         endTime: row.end_time ? String(row.end_time) : undefined,
@@ -752,12 +793,62 @@ class SqliteService {
   }
 
   /**
+   * Load a previously exported SQLite database file (e.g. one downloaded from
+   * the login page) and make it the active offline database. Validates that the
+   * file is a NERP salesperson database before replacing the current one.
+   */
+  public async loadDatabaseFromBinary(binary: ArrayBuffer | Uint8Array): Promise<DatabaseStats> {
+    await this.getDb() // Ensure the service is initialized before swapping.
+
+    const SQL = await this.getSql()
+    const bytes = binary instanceof Uint8Array ? binary : new Uint8Array(binary)
+
+    let incoming: SqliteDatabase
+    try {
+      incoming = new SQL.Database(bytes)
+    } catch {
+      throw new Error('The selected file is not a valid SQLite database.')
+    }
+
+    let tableNames: string[] = []
+    try {
+      const res = incoming.exec("SELECT name FROM sqlite_master WHERE type='table';")
+      tableNames = res.length ? (res[0]?.values ?? []).map((v) => String(v[0])) : []
+    } catch {
+      incoming.close()
+      throw new Error('The selected file is not a valid SQLite database.')
+    }
+
+    if (!tableNames.includes('routes') && !tableNames.includes('products')) {
+      incoming.close()
+      throw new Error('This file is not a NERP salesperson offline database.')
+    }
+
+    if (this.db) {
+      try {
+        this.db.close()
+      } catch {
+        // Ignore; the database is being replaced regardless.
+      }
+    }
+
+    this.db = incoming
+    this.initPromise = Promise.resolve(incoming)
+
+    // Bring older exports up to the current schema, then persist.
+    this.createSchema(incoming)
+    await this.saveToIndexedDb()
+
+    return this.getDatabaseStats()
+  }
+
+  /**
    * Export the SQLite binary file as a Blob for download / inspection.
    */
   public async exportDatabaseBlob(): Promise<Blob> {
     const db = await this.getDb()
     const binary = db.export()
-    return new Blob([binary], { type: 'application/x-sqlite3' })
+    return new Blob([binary.buffer as ArrayBuffer], { type: 'application/x-sqlite3' })
   }
 }
 

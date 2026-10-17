@@ -10,13 +10,11 @@ import {
   Phone,
   ArrowLeft,
   CheckCircle,
-  AlertTriangle,
   Minus,
   Plus,
   Save,
   Wifi,
   WifiOff,
-  Database,
   Trash2,
 } from 'lucide-react'
 import { useAuthStore } from '@stores/authStore'
@@ -35,7 +33,7 @@ interface OrderLineState {
   discountPercent: number
   orderQty: number
   lineTotal: number
-  ruleApplied?: string
+  ruleApplied?: string | undefined
 }
 
 export function SalesOrderCallPage() {
@@ -66,7 +64,7 @@ export function SalesOrderCallPage() {
   const callStartTimeRef = useRef(new Date().toISOString())
 
   useEffect(() => {
-    let timer: NodeJS.Timeout
+    let timer: ReturnType<typeof setInterval>
     if (isTimerRunning) {
       timer = setInterval(() => {
         setCallSeconds((prev) => prev + 1)
@@ -125,7 +123,7 @@ export function SalesOrderCallPage() {
           dayOfWeek: new Date().getDay(),
           sequenceOrder: 1,
           creditLimit: found.creditLimit || 0,
-          currentBalance: found.currentBalance || 0,
+          currentBalance: 0,
         })
       }
     }
@@ -158,9 +156,8 @@ export function SalesOrderCallPage() {
           id: item.id,
           itemCode: item.itemCode,
           description: item.description,
-          basePrice: item.standardCost ? Math.round(item.standardCost * 1.35 * 100) / 100 : 25.0,
+          basePrice: item.standardCost ? Math.round(item.standardCost * 1.35 * 100) / 100 : 10.0,
           unitOfMeasure: item.baseUnitOfMeasure || 'EA',
-          itemCategoryId: item.itemCategoryId,
           onHandQty: 100,
         })),
       )
@@ -279,6 +276,7 @@ export function SalesOrderCallPage() {
         salesRepId: repIdFromUrl || '00000000-0000-0000-0000-000000000000',
         customerId,
         customerName: customerInfo?.customerName || 'Customer',
+        routeId: routeIdFromUrl,
         callDate: new Date().toISOString().slice(0, 10),
         startTime: callStartTimeRef.current,
         endTime: now,
@@ -291,6 +289,7 @@ export function SalesOrderCallPage() {
           description: l.description,
           sellingPrice: l.sellingPrice,
           orderQty: l.orderQty,
+          unitOfMeasure: l.unitOfMeasure || 'EA',
           discountPercent: l.discountPercent,
           lineTotal: l.lineTotal,
         })),
@@ -299,8 +298,8 @@ export function SalesOrderCallPage() {
       // 1. Store in local SQLite database immediately (offline-safe!)
       await sqliteService.saveSalesCall(callData)
 
-      // 2. If online, attempt live server synchronization right away
-      if (isOnline && activeOrderedLines.length > 0) {
+      // 2. If online, upload right away — call is PARKED on the server for review
+      if (isOnline) {
         try {
           const res = await uploadOfflineSalesCalls({
             companyId: currentCompany.id,
@@ -315,10 +314,15 @@ export function SalesOrderCallPage() {
                 endTime: callData.endTime,
                 notes: callData.notes,
                 lines: callData.lines.map((l) => ({
-                  ...l,
-                  unitOfMeasure: 'EA',
+                  itemId: l.itemId,
+                  itemCode: l.itemCode,
+                  description: l.description,
+                  quantity: l.orderQty,
+                  sellingPrice: l.sellingPrice,
+                  unitOfMeasure: l.unitOfMeasure,
+                  discountPercent: l.discountPercent,
+                  lineTotal: l.lineTotal,
                 })),
-                createSalesOrder: true,
               },
             ],
           })
@@ -330,7 +334,9 @@ export function SalesOrderCallPage() {
               res.items[0].salesOrderNumber,
             )
             setSaveSuccess(
-              `Call completed and live Sales Order ${res.items[0].salesOrderNumber || ''} created!`,
+              activeOrderedLines.length > 0
+                ? 'Call uploaded and parked on the server. Process it into a Sales Order in the Sync Center.'
+                : 'Visit recorded and uploaded to the server.',
             )
           }
         } catch {

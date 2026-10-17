@@ -170,8 +170,9 @@ For each module below: **List/Search screen**, **Detail/Entry screen** (or **Bat
 - [x] **Salesperson Daily Visit Routes Portal** — `SalespersonPortalPage` (daily customer route schedule, rep selection, call launcher).
 - [x] **Sales Order Call Session** — `SalesOrderCallPage` (rapid product listview with selling price, order qty, line total, sticky grand total footer, and call completion).
 - [x] **Client-Side SQLite Database Engine** — `sqliteDb.ts` (`sql.js` WebAssembly + IndexedDB binary persistence, offline product pricing rules evaluation).
-- [x] **Offline SQLite Sync Center** — `SalespersonSyncPage` (live package download to SQLite, pending calls batch upload to server, .sqlite3 file export).
+- [x] **Offline SQLite Sync Center** — `SalespersonSyncPage` (live package download to SQLite — routes, product master, pricing rules; routes embed customer name/code/address/phone/credit so the full customer master is intentionally not stored offline. **Selective upload**: a "Pending Sync" list with **day filter + per-call checkboxes** lets the seller choose which offline calls (e.g. only today's orders) to push to the server as **parked** calls; Parked Orders review/selection + process-into-Sales-Orders; .sqlite3 file export).
 - [x] **Weekly Route Scheduling Manager** — `SalespersonRoutesPage` (weekday stop sequence manager, customer bulk assignment).
+- [x] **Login-Page Offline Database Download & Restore** — `LoginPage` "Salesperson offline mode" opt-in: after sign-in resolves the rep by email, seeds the local SQLite DB from the sync package, and downloads a `nerp-salesperson-offline-<date>.sqlite3` file. A "Restore .sqlite3" control loads a previously downloaded database (validated as a NERP salesperson DB) onto another device via `sqliteService.loadDatabaseFromBinary`.
 
 ### Phase F9 — Bill of Materials
 - [ ] BOM detail/component grid editor.

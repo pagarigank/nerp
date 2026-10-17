@@ -118,13 +118,13 @@ export interface SyncUploadRequest {
   companyId: string
   salesRepId: string
   calls: Array<{
-    clientCallId?: string
+    clientCallId?: string | undefined
     customerId: string
-    routeId?: string
+    routeId?: string | undefined
     callDate: string
     startTime: string
-    endTime?: string
-    notes?: string
+    endTime?: string | undefined
+    notes?: string | undefined
     lines: Array<{
       itemId: string
       itemCode: string
@@ -135,7 +135,6 @@ export interface SyncUploadRequest {
       discountPercent: number
       lineTotal: number
     }>
-    createSalesOrder?: boolean
   }>
 }
 
@@ -151,6 +150,38 @@ export interface SyncCallResultItem {
 
 export interface SyncUploadResult {
   items: SyncCallResultItem[]
+  totalProcessed: number
+}
+
+export interface ParkedCallSummary {
+  id: string
+  companyId: string
+  callNumber: string
+  salesRepId: string
+  customerId: string
+  customerCode: string
+  customerName: string
+  callDate: string
+  startTime: string
+  endTime?: string
+  totalAmount: number
+  lineCount: number
+  isOfflineCreated: boolean
+  clientCallId?: string
+  syncedAt?: string
+}
+
+export interface ProcessCallResultItem {
+  callId: string
+  callNumber: string
+  status: string
+  salesOrderId?: string
+  salesOrderNumber?: string
+  message: string
+}
+
+export interface ProcessParkedOrdersResult {
+  items: ProcessCallResultItem[]
   totalProcessed: number
 }
 
@@ -239,6 +270,28 @@ export function getOfflineSyncPackage(salesRepId: string, companyIdParam?: strin
 
 export function uploadOfflineSalesCalls(data: SyncUploadRequest): Promise<SyncUploadResult> {
   return post('/om/salesperson/sync-upload', data)
+}
+
+// Parked Orders (synced calls awaiting processing into Sales Orders)
+export function getParkedSalesCalls(
+  companyIdParam?: string,
+  salesRepId?: string,
+): Promise<ParkedCallSummary[]> {
+  const params: Record<string, string> = {
+    companyId: companyIdParam || currentCompanyId(),
+  }
+  if (salesRepId) params.salesRepId = salesRepId
+  return get('/om/salesperson/parked-calls', params)
+}
+
+export function processParkedOrders(
+  salesCallIds: string[],
+  companyIdParam?: string,
+): Promise<ProcessParkedOrdersResult> {
+  return post('/om/salesperson/process-parked', {
+    companyId: companyIdParam || currentCompanyId(),
+    salesCallIds,
+  })
 }
 
 // Sales Calls History API

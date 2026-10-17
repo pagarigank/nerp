@@ -53,8 +53,20 @@ function matchesPermission(held: string[], requested: string): boolean {
 }
 
 interface AuthState {
+  user: User | null
+  accessToken: string | null
+  refreshToken: string | null
+  companies: Company[]
+  currentCompany: Company | null
+  isSuperAdmin: boolean
+  fiscalPeriods: FiscalPeriod[]
+  currentPeriod: FiscalPeriod | null
+  roles: Role[]
+  permissions: string[]
+  isAuthenticated: boolean
+  isLoading: boolean
   error: string | null
-  
+
   // True for super admin OR a company-scoped administrator (Admin/Administrator
   // role). These are the only users permitted to review/approve access requests.
   isCompanyAdmin: boolean

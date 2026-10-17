@@ -4,28 +4,18 @@ import {
   Route as RouteIcon,
   Plus,
   Trash2,
-  Clock,
-  MapPin,
-  Phone,
   User,
-  Calendar,
-  Save,
-  CheckCircle2,
-  AlertCircle,
-  ArrowUpDown,
   Search,
 } from 'lucide-react'
 import { useAuthStore } from '@stores/authStore'
 import {
   getSalespersonRoutes,
-  createSalespersonRoute,
-  updateSalespersonRoute,
   deleteSalespersonRoute,
   bulkAssignRoutes,
   reorderRoutes,
-  type SalespersonRouteSummary,
 } from '@/api/salesperson'
 import { getSalesReps } from '@/api/orderManagement'
+import type { SalesRepSummary } from '@/types/orderManagement'
 import { getCustomers } from '@/api/ar'
 
 const DAYS_OF_WEEK = [
@@ -46,27 +36,24 @@ export function SalespersonRoutesPage() {
     return localStorage.getItem('nerp_selected_salesrep_id') || ''
   })
   const [selectedDay, setSelectedDay] = useState<number>(1) // Monday default
-  const [searchTerm, setSearchTerm] = useState('')
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([])
   const [custSearch, setCustSearch] = useState('')
 
   // Query Sales Reps
-  const { data: salesReps = [] } = useQuery({
+  const { data: salesReps = [] } = useQuery<SalesRepSummary[]>({
     queryKey: ['om', 'salesReps'],
-    queryFn: getSalesReps,
+    queryFn: () => getSalesReps(),
   })
 
   // Set default rep if none selected
-  if (!selectedRepId && salesReps.length > 0) {
-    setSelectedRepId(salesReps[0].id)
+  if (!selectedRepId) {
+    const firstRep = salesReps[0]
+    if (firstRep) setSelectedRepId(firstRep.id)
   }
 
   // Query Routes for selected rep and day
-  const {
-    data: routes = [],
-    isLoading: isLoadingRoutes,
-  } = useQuery({
+  const { data: routes = [] } = useQuery({
     queryKey: ['om', 'salespersonRoutes', currentCompany?.id, selectedRepId, selectedDay],
     queryFn: () => getSalespersonRoutes(currentCompany?.id, selectedRepId, selectedDay),
     enabled: Boolean(selectedRepId),
@@ -111,9 +98,11 @@ export function SalespersonRoutesPage() {
     if (targetIndex < 0 || targetIndex >= routes.length) return
 
     const newOrder = [...routes]
-    const temp = newOrder[index]
-    newOrder[index] = newOrder[targetIndex]
-    newOrder[targetIndex] = temp
+    const current = newOrder[index]
+    const swap = newOrder[targetIndex]
+    if (current === undefined || swap === undefined) return
+    newOrder[targetIndex] = current
+    newOrder[index] = swap
 
     await reorderRoutes(newOrder.map((r) => r.id))
     queryClient.invalidateQueries({ queryKey: ['om', 'salespersonRoutes'] })
