@@ -68,7 +68,7 @@ export interface PublicCompany {
   id: string
   name: string
 }
-}
+
 
 export interface FiscalPeriod {
   id: string

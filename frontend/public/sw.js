@@ -6,6 +6,7 @@ const LOOKUP_CACHE = 'erp-lookups-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/sql-wasm.wasm',
 ];
 
 // Lookup API paths that should be cached for offline use

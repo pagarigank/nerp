@@ -164,9 +164,14 @@ For each module below: **List/Search screen**, **Detail/Entry screen** (or **Bat
 - [ ] Stock status / valuation dashboards.
 
 ### Phase F8 — Order Management
-- [ ] Sales Order entry (with live credit-limit and availability check feedback).
-- [ ] Pick/Pack/Ship workspace.
-- [ ] Backorder management view.
+- [x] Sales Order entry (with live credit-limit and availability check feedback).
+- [x] Pick/Pack/Ship workspace.
+- [x] Backorder management view.
+- [x] **Salesperson Daily Visit Routes Portal** — `SalespersonPortalPage` (daily customer route schedule, rep selection, call launcher).
+- [x] **Sales Order Call Session** — `SalesOrderCallPage` (rapid product listview with selling price, order qty, line total, sticky grand total footer, and call completion).
+- [x] **Client-Side SQLite Database Engine** — `sqliteDb.ts` (`sql.js` WebAssembly + IndexedDB binary persistence, offline product pricing rules evaluation).
+- [x] **Offline SQLite Sync Center** — `SalespersonSyncPage` (live package download to SQLite, pending calls batch upload to server, .sqlite3 file export).
+- [x] **Weekly Route Scheduling Manager** — `SalespersonRoutesPage` (weekday stop sequence manager, customer bulk assignment).
 
 ### Phase F9 — Bill of Materials
 - [ ] BOM detail/component grid editor.

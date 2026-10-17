@@ -18,6 +18,7 @@ e2e-report.json
 # IDE
 .vs/
 .idea/
+.opencode/
 *.swp
 *.swo
 *~

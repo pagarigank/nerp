@@ -649,6 +649,146 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.ToTable("ReturnToVendors", "om");
                 });
 
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesCall", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CallDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CallNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ClientCallId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsOfflineCreated")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("ModifiedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("RouteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SalesRepId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SyncedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientCallId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("CompanyId", "CallNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "SalesRepId", "CallDate");
+
+                    b.ToTable("SalesCalls", "om");
+                });
+
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesCallLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<string>("ItemCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("SalesCallId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("UnitOfMeasure")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("SalesCallId");
+
+                    b.ToTable("SalesCallLines", "om");
+                });
+
             modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1188,6 +1328,71 @@ namespace ERP.Modules.OrderManagement.Migrations
                     b.ToTable("SalesTerritories", "om");
                 });
 
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalespersonRoute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("EstimatedTime")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("ModifiedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("SalesRepId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SequenceOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("CompanyId", "SalesRepId", "DayOfWeek", "CustomerId")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "SalesRepId", "DayOfWeek", "SequenceOrder");
+
+                    b.ToTable("SalespersonRoutes", "om");
+                });
+
             modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.Shipment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1576,6 +1781,17 @@ namespace ERP.Modules.OrderManagement.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesCallLine", b =>
+                {
+                    b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.SalesCall", "SalesCall")
+                        .WithMany("Lines")
+                        .HasForeignKey("SalesCallId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SalesCall");
+                });
+
             modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesOrder", b =>
                 {
                     b.HasOne("ERP.Modules.OrderManagement.Domain.Entities.SalesOrderType", null)
@@ -1625,6 +1841,11 @@ namespace ERP.Modules.OrderManagement.Migrations
                 });
 
             modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.Return", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("ERP.Modules.OrderManagement.Domain.Entities.SalesCall", b =>
                 {
                     b.Navigation("Lines");
                 });

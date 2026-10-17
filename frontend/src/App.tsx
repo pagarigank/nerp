@@ -161,6 +161,10 @@ import { CommissionRunsPage } from '@pages/om/CommissionRunsPage'
 import { AtpPage } from '@pages/om/AtpPage'
 import { FreightAllocationPage } from '@pages/om/FreightAllocationPage'
 import { PickPackShipPage } from '@pages/om/PickPackShipPage'
+import { SalespersonPortalPage } from '@pages/om/salesperson/SalespersonPortalPage'
+import { SalesOrderCallPage } from '@pages/om/salesperson/SalesOrderCallPage'
+import { SalespersonRoutesPage } from '@pages/om/salesperson/SalespersonRoutesPage'
+import { SalespersonSyncPage } from '@pages/om/salesperson/SalespersonSyncPage'
 import { BomsPage } from '@pages/bom/BomsPage'
 import { BuildOrdersPage } from '@pages/bom/BuildOrdersPage'
 import { WorkCentersPage } from '@pages/bom/WorkCentersPage'
@@ -440,6 +444,11 @@ function App() {
           <Route path="atp" element={<AtpPage />} />
           <Route path="freight" element={<FreightAllocationPage />} />
           <Route path="pick-pack-ship" element={<PickPackShipPage />} />
+          <Route path="salesperson" element={<Navigate to="portal" replace />} />
+          <Route path="salesperson/portal" element={<SalespersonPortalPage />} />
+          <Route path="salesperson/call/:customerId" element={<SalesOrderCallPage />} />
+          <Route path="salesperson/routes" element={<SalespersonRoutesPage />} />
+          <Route path="salesperson/sync" element={<SalespersonSyncPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="masters" element={<MastersPage />} />
         </Route>

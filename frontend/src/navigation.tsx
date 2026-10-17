@@ -387,6 +387,9 @@ export const mainNavigation: NavModule[] = [
     color: 'cyan',
     roles: ['*'],
     sub: [
+      { label: 'Salesperson Portal', to: '/om/salesperson/portal' },
+      { label: 'Visit Routes', to: '/om/salesperson/routes' },
+      { label: 'Offline SQLite Sync', to: '/om/salesperson/sync' },
       { label: 'Sales Orders', to: '/om/sales-orders' },
       { label: 'Shipments', to: '/om/shipments' },
       { label: 'Returns', to: '/om/returns' },

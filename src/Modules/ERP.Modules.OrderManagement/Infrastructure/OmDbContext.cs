@@ -36,6 +36,9 @@ public class OmDbContext : DispatchableDbContext
     public DbSet<SalesOrderChangeHistory> SalesOrderChangeHistories => Set<SalesOrderChangeHistory>();
     public DbSet<CommissionRun> CommissionRuns => Set<CommissionRun>();
     public DbSet<CommissionRunLine> CommissionRunLines => Set<CommissionRunLine>();
+    public DbSet<SalespersonRoute> SalespersonRoutes => Set<SalespersonRoute>();
+    public DbSet<SalesCall> SalesCalls => Set<SalesCall>();
+    public DbSet<SalesCallLine> SalesCallLines => Set<SalesCallLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -338,6 +341,48 @@ public class OmDbContext : DispatchableDbContext
 
             // One commission line per rep per period — makes duplicate runs impossible at the store level.
             e.HasIndex(x => new { x.PeriodStart, x.SalesRepId }).IsUnique();
+        });
+
+        modelBuilder.Entity<SalespersonRoute>(e =>
+        {
+            e.ToTable("SalespersonRoutes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EstimatedTime).HasMaxLength(50);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => new { x.CompanyId, x.SalesRepId, x.DayOfWeek, x.CustomerId }).IsUnique();
+            e.HasIndex(x => new { x.CompanyId, x.SalesRepId, x.DayOfWeek, x.SequenceOrder });
+            e.HasIndex(x => x.CustomerId);
+        });
+
+        modelBuilder.Entity<SalesCall>(e =>
+        {
+            e.ToTable("SalesCalls");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CallNumber).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Status).HasConversion<int>().IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.ClientCallId).HasMaxLength(100);
+            e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+            e.HasMany(x => x.Lines).WithOne(l => l.SalesCall).HasForeignKey(x => x.SalesCallId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.CompanyId, x.CallNumber }).IsUnique();
+            e.HasIndex(x => new { x.CompanyId, x.SalesRepId, x.CallDate });
+            e.HasIndex(x => x.CustomerId);
+            e.HasIndex(x => x.ClientCallId);
+        });
+
+        modelBuilder.Entity<SalesCallLine>(e =>
+        {
+            e.ToTable("SalesCallLines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ItemCode).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(500).IsRequired();
+            e.Property(x => x.UnitOfMeasure).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)").IsRequired();
+            e.Property(x => x.SellingPrice).HasColumnType("decimal(18,6)").IsRequired();
+            e.Property(x => x.DiscountPercent).HasColumnType("decimal(9,4)").IsRequired();
+            e.Property(x => x.LineTotal).HasColumnType("decimal(18,2)").IsRequired();
+            e.HasIndex(x => x.SalesCallId);
+            e.HasIndex(x => x.ItemId);
         });
     }
 }
